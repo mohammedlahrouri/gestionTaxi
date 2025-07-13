@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Original Android colors (keeping for compatibility) -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- New Taxxi App Color Palette -->
+    <!-- Primary Brand Colors -->
+    <color name="primary">#1E40AF</color>         <!-- Deep Blue - Main brand color -->
+    <color name="primary_variant">#1D4ED8</color> <!-- Slightly lighter blue for variation -->
+    <color name="primary_dark">#0F172A</color>    <!-- Very dark blue for status bar -->
+    <color name="secondary">#F59E0B</color>       <!-- Amber/Gold - Taxi-inspired accent -->
+    <color name="secondary_variant">#D97706</color> <!-- Darker amber for pressed states -->
+
+    <!-- Material theme color mappings -->
+    <color name="primaryColor">@color/primary</color>
+    <color name="primaryDarkColor">@color/primary_dark</color>
+    <color name="secondaryColor">@color/secondary</color>
+    <color name="secondaryDarkColor">@color/secondary_variant</color>
+    <color name="bgColor">@color/background</color>
+    <color name="errorColor">@color/error</color>
+
+    <!-- Background & Surface Colors -->
+    <color name="background">#F8FAFC</color>      <!-- Very light gray-blue for app background -->
+    <color name="surface">#FFFFFF</color>         <!-- White for cards, dialogs -->
+    <color name="surface_variant">#F1F5F9</color> <!-- Slightly off-white for alternating items -->
+
+    <!-- Text Colors -->
+    <color name="text_primary">#0F172A</color>    <!-- Near-black for main text -->
+    <color name="text_secondary">#475569</color>  <!-- Slate gray for secondary text -->
+    <color name="text_hint">#94A3B8</color>       <!-- Light gray for hints/disabled text -->
+    <color name="text_on_primary">#FFFFFF</color> <!-- White text on primary color -->
+
+    <!-- Functional Colors -->
+    <color name="success">#10B981</color>         <!-- Emerald green -->
+    <color name="error">#EF4444</color>           <!-- Bright red -->
+    <color name="warning">#F59E0B</color>         <!-- Amber for warnings/cautions -->
+    <color name="info">#3B82F6</color>            <!-- Blue for information/neutral -->
+
+    <!-- Dividers & Borders -->
+    <color name="divider">#E2E8F0</color>         <!-- Light gray for dividers -->
+    <color name="border">#CBD5E1</color>          <!-- Slightly darker gray for borders -->
+
+    <!-- Calendar Colors -->
+    <color name="calendar_background">#1A237E</color>    <!-- Indigo 900 - Main calendar background -->
+    <color name="calendar_text">#FFFFFF</color>          <!-- White - Calendar text -->
+    <color name="calendar_accent">#3949AB</color>        <!-- Indigo 600 - Calendar accent -->
+    <color name="calendar_selected">#3949AB</color>      <!-- Indigo 600 - Selected day -->
+    <color name="calendar_today">#3949AB</color>         <!-- Indigo 600 - Today indicator -->
+    <color name="calendar_weekend">#3949AB</color>       <!-- Indigo 600 - Weekend days -->
+    <color name="calendar_other_month">#3949AB</color>   <!-- Indigo 600 - Days from other months -->
+</resources>
