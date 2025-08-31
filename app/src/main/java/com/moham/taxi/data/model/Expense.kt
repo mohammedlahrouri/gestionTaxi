@@ -40,7 +40,7 @@ data class Expense(
      * @return true si los datos son válidos, false en caso contrario
      */
     fun isValid(): Boolean {
-        return amount > 0 && 
-               date.time <= System.currentTimeMillis() // La fecha no puede ser futura
+        return amount > 0
+        // Removida la validación de fecha futura para permitir gastos en fechas pasadas
     }
 }

@@ -119,164 +119,45 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     }
     
     fun getTodayRides(): Flow<List<TaxiRide>> {
-        val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        return taxiRideDao.getTaxiRidesByDateRange(startOfDay, endOfDay)
+        val dayRange = com.moham.taxi.utils.DateUtils.getCurrentDayRange()
+        return taxiRideDao.getTaxiRidesByDateRange(dayRange.first, dayRange.second)
     }
     
     fun getMonthRides(): Flow<List<TaxiRide>> {
-        val startOfMonth = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfMonth = Calendar.getInstance().apply {
-            val lastDay = getActualMaximum(Calendar.DAY_OF_MONTH)
-            set(Calendar.DAY_OF_MONTH, lastDay)
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        return taxiRideDao.getTaxiRidesByDateRange(startOfMonth, endOfMonth)
+        val monthRange = com.moham.taxi.utils.DateUtils.getCurrentMonthRange()
+        return taxiRideDao.getTaxiRidesByDateRange(monthRange.first, monthRange.second)
     }
     
     suspend fun getTodayIncome(): Double {
-        val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        return taxiRideDao.getTotalIncomeByDateRange(startOfDay, endOfDay) ?: 0.0
+        val dayRange = com.moham.taxi.utils.DateUtils.getCurrentDayRange()
+        return taxiRideDao.getTotalIncomeByDateRange(dayRange.first, dayRange.second) ?: 0.0
     }
     
     suspend fun getMonthIncome(): Double {
-        val startOfMonth = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfMonth = Calendar.getInstance().apply {
-            val lastDay = getActualMaximum(Calendar.DAY_OF_MONTH)
-            set(Calendar.DAY_OF_MONTH, lastDay)
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        return taxiRideDao.getTotalIncomeByDateRange(startOfMonth, endOfMonth) ?: 0.0
+        val monthRange = com.moham.taxi.utils.DateUtils.getCurrentMonthRange()
+        return taxiRideDao.getTotalIncomeByDateRange(monthRange.first, monthRange.second) ?: 0.0
     }
     
     suspend fun getTodayIncomeByPaymentMethod(): Map<String, Double> {
-        val startOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfDay = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        val summaries = taxiRideDao.getTotalByPaymentMethod(startOfDay, endOfDay)
+        val dayRange = com.moham.taxi.utils.DateUtils.getCurrentDayRange()
+        val summaries = taxiRideDao.getTotalByPaymentMethod(dayRange.first, dayRange.second)
         return summaries.associate { it.paymentMethod to it.total }
     }
     
     suspend fun getMonthIncomeByPaymentMethod(): Map<String, Double> {
-        val startOfMonth = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.time
-        
-        val endOfMonth = Calendar.getInstance().apply {
-            val lastDay = getActualMaximum(Calendar.DAY_OF_MONTH)
-            set(Calendar.DAY_OF_MONTH, lastDay)
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }.time
-        
-        val summaries = taxiRideDao.getTotalByPaymentMethod(startOfMonth, endOfMonth)
+        val monthRange = com.moham.taxi.utils.DateUtils.getCurrentMonthRange()
+        val summaries = taxiRideDao.getTotalByPaymentMethod(monthRange.first, monthRange.second)
         return summaries.associate { it.paymentMethod to it.total }
     }
     
     fun getRidesForDate(date: Date): Flow<List<TaxiRide>> {
-        val calendar = Calendar.getInstance().apply { 
-            time = date
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = calendar.time
-        
-        calendar.apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }
-        val endOfDay = calendar.time
-        
-        return taxiRideDao.getTaxiRidesByDateRange(startOfDay, endOfDay)
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        return taxiRideDao.getTaxiRidesByDateRange(dayRange.first, dayRange.second)
     }
     
     suspend fun getIncomeForDate(date: Date): Double {
-        val calendar = Calendar.getInstance().apply { 
-            time = date
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = calendar.time
-        
-        calendar.apply {
-            set(Calendar.HOUR_OF_DAY, 23)
-            set(Calendar.MINUTE, 59)
-            set(Calendar.SECOND, 59)
-            set(Calendar.MILLISECOND, 999)
-        }
-        val endOfDay = calendar.time
-        
-        return taxiRideDao.getTotalIncomeByDateRange(startOfDay, endOfDay) ?: 0.0
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        return taxiRideDao.getTotalIncomeByDateRange(dayRange.first, dayRange.second) ?: 0.0
     }
     
     suspend fun getIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
@@ -502,25 +383,8 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
      * Obtiene el desglose de ingresos por método de pago para el mes de una fecha específica.
      */
     suspend fun getMonthIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
-        val calendar = Calendar.getInstance().apply { time = date }
-        
-        // Ajustar al primer día del mes
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startOfMonth = calendar.time
-        
-        // Ajustar al último día del mes
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-        val endOfMonth = calendar.time
-        
-        val summaries = taxiRideDao.getTotalByPaymentMethod(startOfMonth, endOfMonth)
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getTotalByPaymentMethod(monthRange.first, monthRange.second)
         return summaries.associate { it.paymentMethod to it.total }
     }
     

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
+
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Settings
@@ -50,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import android.content.pm.PackageManager
 import com.moham.taxi.GestionTaxiApplication
 import com.moham.taxi.ui.navigation.AppScreens
 import kotlinx.coroutines.flow.first
@@ -64,6 +66,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
+
     
     // Estado para el selector del tipo de ingreso en resumen
     var showSummaryIncomeTypeDialog by remember { mutableStateOf(false) }
@@ -89,6 +92,8 @@ fun SettingsScreen(navController: NavController) {
     var backupInProgress by remember { mutableStateOf(false) }
     var showBackupConfirmDialog by remember { mutableStateOf(false) }
     var backupUri by remember { mutableStateOf<Uri?>(null) }
+    
+
     
     // Launcher para seleccionar archivo de backup a importar
     val selectBackupLauncher = rememberLauncherForActivityResult(
@@ -417,6 +422,8 @@ fun SettingsScreen(navController: NavController) {
             
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            
             // Sección Acerca de
             Text(
                 text = "Acerca de",
@@ -457,6 +464,44 @@ fun SettingsScreen(navController: NavController) {
                         contentDescription = "Ir a agradecimiento",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Información de versión
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Versión",
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Versión de la aplicación",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        val context = LocalContext.current
+                        val versionName = try {
+                            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                        } catch (e: PackageManager.NameNotFoundException) {
+            "1.20"
+        }
+                        Text(
+                            text = "v$versionName - Acceso directo sin login",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             
@@ -1211,5 +1256,7 @@ fun SettingsScreen(navController: NavController) {
                 }
             )
         }
+        
+
     }
 }

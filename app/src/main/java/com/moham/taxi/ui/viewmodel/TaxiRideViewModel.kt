@@ -55,20 +55,8 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
      * Obtiene el desglose de ingresos por método de pago para el mes actual.
      */
     suspend fun getTaxiMonthIncomeByPaymentMethod(): Map<String, Double> {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        val startOfMonth = calendar.time
-        
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val endOfMonth = calendar.time
-        
-        val monthRides = repository.getTaxiRidesByDateRange(startOfMonth, endOfMonth).first()
+        val monthRange = com.moham.taxi.utils.DateUtils.getCurrentMonthRange()
+        val monthRides = repository.getTaxiRidesByDateRange(monthRange.first, monthRange.second).first()
         
         // Calcular ingresos por método de pago
         val incomeByMethod = mutableMapOf<String, Double>()
@@ -217,35 +205,19 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         val application = context.applicationContext as GestionTaxiApplication
         val firstDayOfWeek = application.getFirstDayOfWeek().first()
         
-        val calendar = Calendar.getInstance()
-        
         // Semana actual
-        calendar.firstDayOfWeek = firstDayOfWeek
-        calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        val startOfCurrentWeek = calendar.time
-        
-        calendar.add(Calendar.DATE, 6)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val endOfCurrentWeek = calendar.time
-        
-        val currentWeekRides = repository.getTaxiRidesByDateRange(startOfCurrentWeek, endOfCurrentWeek).first()
+        val currentWeekRange = com.moham.taxi.utils.DateUtils.getWeekRange(Date(), firstDayOfWeek)
+        val currentWeekRides = repository.getTaxiRidesByDateRange(currentWeekRange.first, currentWeekRange.second).first()
         val currentWeekIncome = currentWeekRides.sumOf { it.price }
         
         // Semana anterior
-        calendar.time = startOfCurrentWeek
+        val calendar = Calendar.getInstance()
+        calendar.time = currentWeekRange.first
         calendar.add(Calendar.DATE, -7)
-        val startOfPreviousWeek = calendar.time
+        val previousWeekStart = calendar.time
+        val previousWeekRange = com.moham.taxi.utils.DateUtils.getWeekRange(previousWeekStart, firstDayOfWeek)
         
-        calendar.time = endOfCurrentWeek
-        calendar.add(Calendar.DATE, -7)
-        val endOfPreviousWeek = calendar.time
-        
-        val previousWeekRides = repository.getTaxiRidesByDateRange(startOfPreviousWeek, endOfPreviousWeek).first()
+        val previousWeekRides = repository.getTaxiRidesByDateRange(previousWeekRange.first, previousWeekRange.second).first()
         val previousWeekIncome = previousWeekRides.sumOf { it.price }
         
         return Pair(currentWeekIncome, previousWeekIncome)

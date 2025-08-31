@@ -1,6 +1,7 @@
 package com.moham.taxi.ui.navigation
 
 sealed class AppScreens(val route: String) {
+    object Login : AppScreens("login") // Pantalla de inicio de sesión
     object Home : AppScreens("home")
     object TaxiRideForm : AppScreens("taxi_ride_form")
     object ExpenseForm : AppScreens("expense_form")
@@ -25,6 +26,7 @@ sealed class AppScreens(val route: String) {
     companion object {
         fun fromRoute(route: String?): AppScreens {
             return when(route?.substringBefore("/")) {
+                Login.route -> Login
                 Home.route -> Home
                 TaxiRideForm.route -> TaxiRideForm
                 ExpenseForm.route -> ExpenseForm
@@ -37,9 +39,9 @@ sealed class AppScreens(val route: String) {
                 Price.route -> Price
                 BillingData.route -> BillingData
                 Invoice.route -> Invoice
-                null -> Home
+                null -> Login
                 else -> throw IllegalArgumentException("Route $route is not recognized")
             }
         }
     }
-} 
+}

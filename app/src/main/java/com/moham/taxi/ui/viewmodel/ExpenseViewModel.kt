@@ -161,35 +161,19 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         val application = context.applicationContext as GestionTaxiApplication
         val firstDayOfWeek = application.getFirstDayOfWeek().first()
         
-        val calendar = Calendar.getInstance()
-        
         // Semana actual
-        calendar.firstDayOfWeek = firstDayOfWeek
-        calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        val startOfCurrentWeek = calendar.time
-        
-        calendar.add(Calendar.DATE, 6)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val endOfCurrentWeek = calendar.time
-        
-        val currentWeekExpenses = repository.getExpensesByDateRange(startOfCurrentWeek, endOfCurrentWeek).first()
+        val currentWeekRange = com.moham.taxi.utils.DateUtils.getWeekRange(Date(), firstDayOfWeek)
+        val currentWeekExpenses = repository.getExpensesByDateRange(currentWeekRange.first, currentWeekRange.second).first()
         val currentWeekTotal = currentWeekExpenses.sumOf { it.amount }
         
         // Semana anterior
-        calendar.time = startOfCurrentWeek
+        val calendar = Calendar.getInstance()
+        calendar.time = currentWeekRange.first
         calendar.add(Calendar.DATE, -7)
-        val startOfPreviousWeek = calendar.time
+        val previousWeekStart = calendar.time
+        val previousWeekRange = com.moham.taxi.utils.DateUtils.getWeekRange(previousWeekStart, firstDayOfWeek)
         
-        calendar.time = endOfCurrentWeek
-        calendar.add(Calendar.DATE, -7)
-        val endOfPreviousWeek = calendar.time
-        
-        val previousWeekExpenses = repository.getExpensesByDateRange(startOfPreviousWeek, endOfPreviousWeek).first()
+        val previousWeekExpenses = repository.getExpensesByDateRange(previousWeekRange.first, previousWeekRange.second).first()
         val previousWeekTotal = previousWeekExpenses.sumOf { it.amount }
         
         return Pair(currentWeekTotal, previousWeekTotal)

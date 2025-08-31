@@ -114,7 +114,9 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                 actions = {
                     TextButton(
                         onClick = { 
-                            val route = AppScreens.TaxiRideList.createRouteWithDate(selectedDate)
+                            // Usar la fecha normalizada para mantener consistencia
+                            val normalizedTimestamp = useDate.time
+                            val route = AppScreens.TaxiRideList.createRouteWithDate(normalizedTimestamp)
                             // Primero remover la pantalla actual de la pila
                             navController.popBackStack()
                             // Luego navegar a la pantalla de carreras con fecha

@@ -86,6 +86,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         val id = expenseDao.insert(expense)
         expenseCache[id] = CacheEntry(expense)
         invalidateDateRangeCache()
+        totalCache.clear() // Invalidar caché de totales
         cleanupCache()
         id
     }
@@ -94,6 +95,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         expenseDao.update(expense)
         expenseCache[expense.id] = CacheEntry(expense)
         invalidateDateRangeCache()
+        totalCache.clear() // Invalidar caché de totales
         cleanupCache()
     }
     
@@ -101,6 +103,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         expenseDao.delete(expense)
         expenseCache.remove(expense.id)
         invalidateDateRangeCache()
+        totalCache.clear() // Invalidar caché de totales
         cleanupCache()
     }
     
@@ -115,6 +118,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
             }
         }.also {
             invalidateDateRangeCache()
+            totalCache.clear() // Invalidar caché de totales
             cleanupCache()
         }
     }
@@ -189,7 +193,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     suspend fun getExpensesTotalForDate(date: Date): Double {
         val dayRange = DateUtils.getDayRange(date)
         val range = DateRange(dayRange.first, dayRange.second)
-        return getTotalExpensesByDateRange(range.start, range.end)
+        println("DEBUG REPO: Consultando gastos desde ${range.start.time} hasta ${range.end.time}")
+        val result = getTotalExpensesByDateRange(range.start, range.end)
+        println("DEBUG REPO: Total de gastos encontrado: $result")
+        return result
     }
     
     suspend fun getFuelExpensesForDate(date: Date): Double {

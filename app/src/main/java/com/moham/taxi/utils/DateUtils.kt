@@ -152,10 +152,21 @@ object DateUtils {
     
     /**
      * Formatea una fecha en el formato especificado
+     * Si la fecha no es hoy y el patrón contiene HH:mm, reemplaza la hora con "SH" (sin hora)
      */
     fun formatDate(date: Date, pattern: String = "dd/MM/yyyy", locale: Locale = Locale("es", "ES")): String {
-        val formatter = SimpleDateFormat(pattern, locale)
-        return formatter.format(date)
+        // Si el patrón contiene formato de hora y la fecha no es hoy, mostrar "SH" en lugar de la hora
+        if (pattern.contains("HH:mm") && !isToday(date)) {
+            // Extraer solo la parte de la fecha del patrón (sin la hora)
+            val dateOnlyPattern = pattern.replace("HH:mm", "")
+                .replace(" ", "") // Eliminar espacios que pudieran quedar
+            
+            val dateFormatter = SimpleDateFormat(dateOnlyPattern, locale)
+            return dateFormatter.format(date) + " SH"
+        } else {
+            val formatter = SimpleDateFormat(pattern, locale)
+            return formatter.format(date)
+        }
     }
     
     /**
@@ -166,7 +177,38 @@ object DateUtils {
         val dateCalendar = Calendar.getInstance().apply { time = date }
         
         return today.get(Calendar.YEAR) == dateCalendar.get(Calendar.YEAR) &&
-               today.get(Calendar.DAY_OF_YEAR) == dateCalendar.get(Calendar.DAY_OF_YEAR)
+               today.get(Calendar.MONTH) == dateCalendar.get(Calendar.MONTH) &&
+               today.get(Calendar.DAY_OF_MONTH) == dateCalendar.get(Calendar.DAY_OF_MONTH)
+    }
+    
+    /**
+     * Asigna la fecha correcta según los requisitos:
+     * - Si es el día actual, usa la fecha y hora exactas
+     * - Si es un día específico, usa la medianoche de ese día
+     * 
+     * @param selectedDate La fecha seleccionada
+     * @return Date con la fecha y hora correctas según los requisitos
+     */
+    fun assignProperDate(selectedDate: Date): Date {
+        // Normalizar la fecha seleccionada para comparar solo año, mes y día
+        val selectedCalendar = Calendar.getInstance().apply { time = selectedDate }
+        val todayCalendar = Calendar.getInstance()
+        
+        val sameDay = selectedCalendar.get(Calendar.YEAR) == todayCalendar.get(Calendar.YEAR) &&
+                      selectedCalendar.get(Calendar.MONTH) == todayCalendar.get(Calendar.MONTH) &&
+                      selectedCalendar.get(Calendar.DAY_OF_MONTH) == todayCalendar.get(Calendar.DAY_OF_MONTH)
+        
+        return if (sameDay) {
+            // Si es hoy, usa la fecha y hora exactas
+            Date()
+        } else {
+            // Si es otro día, usa la medianoche de ese día
+            selectedCalendar.set(Calendar.HOUR_OF_DAY, 0)
+            selectedCalendar.set(Calendar.MINUTE, 0)
+            selectedCalendar.set(Calendar.SECOND, 0)
+            selectedCalendar.set(Calendar.MILLISECOND, 0)
+            selectedCalendar.time
+        }
     }
     
     /**

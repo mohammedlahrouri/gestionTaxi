@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.moham.taxi.utils.DateUtils
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -98,7 +99,8 @@ fun ExpenseFormScreen(
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply { time = useDate }
         today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
-        today.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+        today.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH) &&
+        today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH)
     }
     
     // Formato para mostrar la fecha
@@ -153,13 +155,19 @@ fun ExpenseFormScreen(
             scope.launch {
                 try {
                     println("DEBUG FORM: Guardando gasto para fecha: ${dateFormat.format(useDate)}")
+                    println("DEBUG FORM: useDate timestamp: ${useDate.time}")
+                    
+                    // Determinar la fecha final usando la función de utilidad
+                    val finalDate = DateUtils.assignProperDate(useDate)
+                    println("DEBUG FORM: Fecha final asignada: ${dateFormat.format(finalDate)}")
+                    println("DEBUG FORM: Fecha final timestamp: ${finalDate.time}")
                     
                     val expense = Expense(
                         id = if (expenseId > 0) expenseId else 0,
                         type = selectedExpenseType,
                         description = if (selectedExpenseType == ExpenseType.FUEL) null else description,
                         amount = amount.toDouble(),
-                        date = useDate  // Usar la fecha seleccionada
+                        date = finalDate
                     )
                     
                     println("DEBUG FORM: Objeto de gasto creado: $expense")
@@ -179,6 +187,9 @@ fun ExpenseFormScreen(
                     } catch (e: Exception) {
                         println("ERROR FORM al obtener gastos: ${e.message}")
                     }
+                    
+                    // Notificar a HomeScreen que debe actualizar los datos
+                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh_data", true)
                     
                     // Navegar inmediatamente de vuelta
                     navController.popBackStack()
@@ -422,9 +433,11 @@ fun ExpenseFormScreen(
                 
                 TaxiTextField(
                     value = amount,
-                    onValueChange = { 
-                        amount = it
-                        amountError = false
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amount = newValue
+                            amountError = false
+                        }
                     },
                     label = "Importe (€)",
                     isError = amountError,

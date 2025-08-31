@@ -15,10 +15,10 @@ import java.util.Date
 
 @Dao
 interface TaxiRideDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(taxiRide: TaxiRide): Long
 
-    @Update
+    @Update(onConflict = OnConflictStrategy.ABORT)
     suspend fun update(taxiRide: TaxiRide)
 
     @Delete

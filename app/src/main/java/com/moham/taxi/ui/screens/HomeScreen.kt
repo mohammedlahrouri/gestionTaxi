@@ -206,7 +206,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
         val selectedCal = Calendar.getInstance().apply { time = selectedDate }
         yesterday.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
-        yesterday.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+        yesterday.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH) &&
+        yesterday.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH)
     }
     
     var refreshKey by remember { mutableStateOf(0) }
@@ -224,14 +225,29 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
     }
     
+    // Efecto para detectar cuando se regresa a la pantalla y forzar actualización
+    LaunchedEffect(Unit) {
+        val navBackStackEntry = navController.currentBackStackEntry
+        navBackStackEntry?.savedStateHandle?.getLiveData<Boolean>("refresh_data")?.observeForever { shouldRefresh ->
+            if (shouldRefresh == true) {
+                refreshKey++
+                navBackStackEntry.savedStateHandle.set("refresh_data", false)
+            }
+        }
+    }
+    
     // Recargar datos cuando cambie la fecha seleccionada
     LaunchedEffect(selectedDate, refreshKey) {
         val normalizedSelectedDate = normalizeDate(selectedDate)
+        println("DEBUG HOME: Cargando datos para fecha: ${dateFormat.format(normalizedSelectedDate)}")
+        println("DEBUG HOME: Fecha normalizada timestamp: ${normalizedSelectedDate.time}")
+        println("DEBUG HOME: refreshKey: $refreshKey")
         
         try {
             withContext(Dispatchers.IO) {
                 dateIncome = taxiRideViewModel.getIncomeForDate(normalizedSelectedDate)
                 dateExpenses = expenseViewModel.getExpensesTotalForDate(normalizedSelectedDate)
+                println("DEBUG HOME: Gastos encontrados para la fecha: $dateExpenses")
                 dateNet = dateIncome - dateExpenses
                 rideCount = taxiRideViewModel.getRideCountForDate(normalizedSelectedDate)
                 expenseCount = expenseViewModel.getExpenseCountForDate(normalizedSelectedDate)
@@ -258,7 +274,9 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     // Función para navegar a formularios con la fecha seleccionada
     fun navigateWithDate(screen: AppScreens) {
-        val timestamp = selectedDate.time
+        // Usar la fecha normalizada para mantener consistencia con las consultas
+        val normalizedDate = normalizeDate(selectedDate)
+        val timestamp = normalizedDate.time
         val route = when (screen) {
             AppScreens.TaxiRideForm -> screen.createRouteWithDateAndId(timestamp)
             AppScreens.ExpenseForm -> screen.createRouteWithDateAndId(timestamp)
@@ -332,7 +350,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
     }
     
-    var showComingSoonDialog by remember { mutableStateOf(false) }
+
     
     Scaffold(
         topBar = {
@@ -520,30 +538,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 )
             }
             
-            if (showComingSoonDialog) {
-                AlertDialog(
-                    onDismissRequest = { showComingSoonDialog = false },
-                    title = {
-                        Text(
-                            text = "Funciones próximamente",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    },
-                    text = {
-                        Text(
-                            text = "Esta funcionalidad estará disponible en próximas actualizaciones.",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = { showComingSoonDialog = false }
-                        ) {
-                            Text("Aceptar")
-                        }
-                    }
-                )
-            }
+
             
             // Fecha con calendario mejorado - Diseño más moderno
             Card(
@@ -688,14 +683,18 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                                 break
                             }
                             
-                            val isSelected = calendar.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().apply { 
+                            val isSelected = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().apply { 
                                 time = selectedDate 
-                            }.get(Calendar.DAY_OF_YEAR) &&
+                            }.get(Calendar.DAY_OF_MONTH) &&
+                            calendar.get(Calendar.MONTH) == Calendar.getInstance().apply { 
+                                time = selectedDate 
+                            }.get(Calendar.MONTH) &&
                             calendar.get(Calendar.YEAR) == Calendar.getInstance().apply { 
                                 time = selectedDate 
                             }.get(Calendar.YEAR)
                             
-                            val isToday = calendar.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) &&
+                            val isToday = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().get(Calendar.DAY_OF_MONTH) &&
+                                       calendar.get(Calendar.MONTH) == Calendar.getInstance().get(Calendar.MONTH) &&
                                        calendar.get(Calendar.YEAR) == Calendar.getInstance().get(Calendar.YEAR)
                             
                             val dayFormat = SimpleDateFormat("dd", Locale("es"))

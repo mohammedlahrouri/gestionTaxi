@@ -23,7 +23,6 @@ import com.moham.taxi.ui.navigation.AppNavigation
 import com.moham.taxi.ui.screens.SplashScreen
 import com.moham.taxi.ui.screens.SplashScreenPreloadData
 import com.moham.taxi.ui.theme.GestionTaxiTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     
@@ -39,9 +38,13 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+
         
         // Solicitar permisos necesarios
         requestStoragePermissions()
@@ -56,16 +59,19 @@ class MainActivity : ComponentActivity() {
                     var showSplash by remember { mutableStateOf(true) }
                     val navController = rememberNavController()
                     
-                    if (showSplash) {
-                        SplashScreen(
-                            onLoadingComplete = { data ->
-                                preloadData = data
-                                showSplash = false
+                    when {
+                        showSplash -> {
+                            SplashScreen(
+                                onLoadingComplete = { data ->
+                                    preloadData = data
+                                    showSplash = false
+                                }
+                            )
+                        }
+                        else -> {
+                            if (preloadData != null) {
+                                AppNavigation(navController = navController, preloadData = preloadData)
                             }
-                        )
-                    } else {
-                        if (preloadData != null) {
-                            AppNavigation(navController = navController, preloadData = preloadData)
                         }
                     }
                 }

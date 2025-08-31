@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import com.moham.taxi.utils.DateUtils
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -67,6 +68,7 @@ import com.moham.taxi.ui.theme.GreenAccent
 import com.moham.taxi.ui.theme.Warning
 import com.moham.taxi.ui.viewmodel.PaymentMethodViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
+import com.moham.taxi.utils.PriceUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -174,24 +176,19 @@ fun TaxiRideFormScreen(
             
             scope.launch {
                 try {
-                    // Crear un objeto Calendar con la fecha seleccionada
-                    val calendar = Calendar.getInstance().apply {
-                        time = useDate
-                        // Siempre usar la hora actual, independientemente de la fecha seleccionada
-                        val currentTime = Calendar.getInstance()
-                        set(Calendar.HOUR_OF_DAY, currentTime.get(Calendar.HOUR_OF_DAY))
-                        set(Calendar.MINUTE, currentTime.get(Calendar.MINUTE))
-                        set(Calendar.SECOND, currentTime.get(Calendar.SECOND))
-                        set(Calendar.MILLISECOND, currentTime.get(Calendar.MILLISECOND))
-                    }
+                    // Usar el precio exacto ingresado por el usuario
+                    val finalPrice = price.toDouble()
+                    
+                    // Determinar la fecha final usando la función de utilidad
+                    val finalDate = DateUtils.assignProperDate(useDate)
                     
                     val taxiRide = TaxiRide(
                         id = if (rideId > 0) rideId else 0,
                         origin = origin,
                         destination = destination,
-                        price = price.toDouble(),
+                        price = finalPrice,
                         paymentMethod = selectedPaymentMethod,
-                        date = calendar.time  // Usar la fecha seleccionada con la hora actual
+                        date = finalDate
                     )
                     
                     if (rideId > 0) {
@@ -199,6 +196,9 @@ fun TaxiRideFormScreen(
                     } else {
                         taxiRideViewModel.insert(taxiRide)
                     }
+                    
+                    // Notificar a HomeScreen que debe refrescar los datos
+                    navController.previousBackStackEntry?.savedStateHandle?.set("refresh_data", true)
                     
                     // Navegar inmediatamente de vuelta
                     navController.popBackStack()
@@ -274,13 +274,7 @@ fun TaxiRideFormScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     
-                    Text(
-                        text = "Introduzca los datos de la carrera",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+
                 }
             }
             
@@ -413,9 +407,12 @@ fun TaxiRideFormScreen(
                         
                         TextField(
                             value = price,
-                            onValueChange = { 
-                                price = it
-                                priceError = false
+                            onValueChange = { newValue ->
+                                // Permitir entrada de números decimales
+                                if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                    price = newValue
+                                    priceError = false
+                                }
                             },
                             label = { Text("Precio (€)") },
                             isError = priceError,

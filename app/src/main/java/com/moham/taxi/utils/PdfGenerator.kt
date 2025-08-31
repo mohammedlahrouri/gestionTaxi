@@ -28,9 +28,8 @@ class PdfGenerator(private val context: Context) {
         date: String,
         time: String
     ): File {
-        // Crear directorio si no existe
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val facturasDir = File(downloadsDir, "Facturas")
+        // Usar el directorio de archivos de la aplicación para evitar problemas de permisos
+        val facturasDir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Facturas")
         if (!facturasDir.exists()) {
             facturasDir.mkdirs()
         }
@@ -102,4 +101,4 @@ class PdfGenerator(private val context: Context) {
 
         return file
     }
-} 
+}

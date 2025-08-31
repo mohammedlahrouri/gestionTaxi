@@ -44,6 +44,8 @@ fun AppNavigation(navController: NavHostController, preloadData: SplashScreenPre
         navController = navController,
         startDestination = AppScreens.Home.route
     ) {
+
+        
         // Pantalla principal
         composable(
             route = AppScreens.Home.route,

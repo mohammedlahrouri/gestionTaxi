@@ -112,7 +112,9 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                 actions = {
                     TextButton(
                         onClick = { 
-                            val route = AppScreens.ExpenseList.createRouteWithDate(selectedDate)
+                            // Usar la fecha normalizada para mantener consistencia
+                            val normalizedTimestamp = useDate.time
+                            val route = AppScreens.ExpenseList.createRouteWithDate(normalizedTimestamp)
                             navController.navigate(route)
                         }
                     ) {

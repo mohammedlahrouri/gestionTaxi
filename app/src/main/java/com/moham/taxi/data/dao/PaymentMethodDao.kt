@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PaymentMethodDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(paymentMethod: PaymentMethod): Long
 
-    @Update
+    @Update(onConflict = OnConflictStrategy.ABORT)
     suspend fun update(paymentMethod: PaymentMethod)
 
     @Delete
@@ -28,4 +28,4 @@ interface PaymentMethodDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM payment_methods WHERE name = :name LIMIT 1)")
     suspend fun paymentMethodExists(name: String): Boolean
-} 
+}

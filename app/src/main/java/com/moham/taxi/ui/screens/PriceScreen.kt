@@ -29,6 +29,7 @@ import java.text.NumberFormat
 import java.util.*
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.components.formatCurrency
+import com.moham.taxi.utils.PriceUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,12 +169,13 @@ fun PriceScreen(navController: NavController) {
             // Botón calcular
             Button(
                 onClick = {
-                    price = calculatePrice(
+                    val calculatedPrice = calculatePrice(
                         tariff = selectedTariff,
                         isDay = isDay,
                         km = kilometers.toDoubleOrNull() ?: 0.0,
                         traffic = selectedTraffic
                     )
+                    price = calculatedPrice?.let { PriceUtils.roundToNearestFiveCents(it) }
                 },
                 enabled = selectedTariff != null && kilometers.isNotEmpty() && (selectedTariff == Tariff.T4 || selectedTraffic != null)
             ) {

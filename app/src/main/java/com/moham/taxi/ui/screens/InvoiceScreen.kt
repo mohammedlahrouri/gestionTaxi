@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import androidx.compose.ui.graphics.Color
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +48,8 @@ fun InvoiceScreen(navController: NavController) {
     var showExportDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var generatedPdfFile by remember { mutableStateOf<File?>(null) }
+    var isGeneratingPdf by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Formateadores de fecha y hora
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
@@ -62,6 +65,8 @@ fun InvoiceScreen(navController: NavController) {
     fun generateAndSharePdf() {
         scope.launch {
             try {
+                isGeneratingPdf = true
+                errorMessage = null
                 val pdfGenerator = PdfGenerator(context)
                 val file = withContext(Dispatchers.IO) {
                     pdfGenerator.generateInvoice(
@@ -78,26 +83,40 @@ fun InvoiceScreen(navController: NavController) {
                     )
                 }
                 generatedPdfFile = file
+                isGeneratingPdf = false
+                Toast.makeText(context, "PDF generado correctamente", Toast.LENGTH_SHORT).show()
                 showShareDialog = true
             } catch (e: Exception) {
-                // Manejar el error
+                isGeneratingPdf = false
+                errorMessage = "Error al generar el PDF: ${e.message}"
+                Toast.makeText(context, "Error al generar el PDF", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     fun sharePdf() {
-        generatedPdfFile?.let { file ->
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            generatedPdfFile?.let { file ->
+                if (!file.exists()) {
+                    Toast.makeText(context, "El archivo PDF no existe", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Compartir factura"))
+            } ?: run {
+                Toast.makeText(context, "No hay ningún PDF para compartir", Toast.LENGTH_SHORT).show()
             }
-            context.startActivity(Intent.createChooser(intent, "Compartir factura"))
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error al compartir el PDF: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -151,7 +170,12 @@ fun InvoiceScreen(navController: NavController) {
                 )
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = { newValue ->
+                        // Permitir entrada de números decimales
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amount = newValue
+                        }
+                    },
                     label = { Text("Importe") },
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -208,22 +232,46 @@ fun InvoiceScreen(navController: NavController) {
                         Text("Total: ${String.format("%.2f", totalAmount)} €", style = MaterialTheme.typography.titleMedium)
                     }
                 }
+                // Mostrar mensaje de error si existe
+                errorMessage?.let { message ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Text(
+                            text = message,
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = { generateAndSharePdf() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = !isGeneratingPdf
                     ) {
-                        Icon(Icons.Default.Description, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Generar PDF")
+                        if (isGeneratingPdf) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Generando...")
+                        } else {
+                            Icon(Icons.Default.Description, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Generar PDF")
+                        }
                     }
                     Button(
                         onClick = { showShareDialog = true },
                         modifier = Modifier.weight(1f),
-                        enabled = generatedPdfFile != null
+                        enabled = generatedPdfFile != null && !isGeneratingPdf
                     ) {
                         Icon(Icons.Default.Share, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -262,4 +310,4 @@ fun InvoiceScreen(navController: NavController) {
             }
         )
     }
-} 
+}
