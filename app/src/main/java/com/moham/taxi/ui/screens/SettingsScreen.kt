@@ -18,11 +18,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.DateRange
+// Importación de DateRange eliminada
 import androidx.compose.material.icons.filled.Download
 
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationCity
+// Importación de LocationCity eliminada
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Divider
@@ -53,7 +54,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import android.content.pm.PackageManager
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
 import com.moham.taxi.ui.navigation.AppScreens
+import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -67,14 +70,7 @@ fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
 
-    
-    // Estado para el selector del tipo de ingreso en resumen
-    var showSummaryIncomeTypeDialog by remember { mutableStateOf(false) }
-    var selectedSummaryIncomeType by remember { mutableStateOf(0) } // Por defecto, ingresos semanales (0)
-    
-    // Estado para el selector de ciudad
-    var showCityDialog by remember { mutableStateOf(false) }
-    var selectedCity by remember { mutableStateOf("Madrid") }
+
     
     // Variables para controlar los diálogos de exportación
     var showExportDayDialog by remember { mutableStateOf(false) }
@@ -93,6 +89,9 @@ fun SettingsScreen(navController: NavController) {
     var showBackupConfirmDialog by remember { mutableStateOf(false) }
     var backupUri by remember { mutableStateOf<Uri?>(null) }
     
+    // Variable para controlar el diálogo de selección de idioma
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    
 
     
     // Launcher para seleccionar archivo de backup a importar
@@ -109,23 +108,9 @@ fun SettingsScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Cargar el tipo de ingreso en resumen
-    LaunchedEffect(Unit) {
-        scope.launch {
-            selectedSummaryIncomeType = application.getSummaryIncomeType().first()
-        }
-    }
+    // La carga del tipo de ingreso en resumen ha sido eliminada
     
-    // Tarjeta para seleccionar el día de inicio de la semana
-    var showStartOfWeekDialog by remember { mutableStateOf(false) }
-    var selectedStartOfWeek by remember { mutableStateOf(2) } // Por defecto, lunes (2)
-    
-    // Cargar el día de inicio de la semana
-    LaunchedEffect(Unit) {
-        scope.launch {
-            selectedStartOfWeek = application.getFirstDayOfWeek().first()
-        }
-    }
+    // La opción de día de inicio de la semana ha sido eliminada y se usará el valor por defecto (lunes)
     
     Scaffold(
         topBar = {
@@ -149,10 +134,10 @@ fun SettingsScreen(navController: NavController) {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
-            // Tarjeta para seleccionar la ciudad
+            // Tarjeta para selección de idioma
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { showCityDialog = true }
+                onClick = { showLanguageDialog = true }
             ) {
                 Row(
                     modifier = Modifier
@@ -161,97 +146,37 @@ fun SettingsScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.LocationCity,
-                        contentDescription = "Ciudad",
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Idioma",
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Ciudad",
+                            text = context.getString(R.string.language_settings),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
+                        
+                        // Mostrar el idioma actual
+                        val currentLanguage by application.getLanguage().collectAsState(initial = "es")
+                        val languageName = when (currentLanguage) {
+                            "en" -> context.getString(R.string.language_english)
+                            "fr" -> context.getString(R.string.language_french)
+                            "de" -> context.getString(R.string.language_german)
+                            else -> context.getString(R.string.language_spanish)
+                        }
+                        
                         Text(
-                            text = selectedCity,
+                            text = languageName,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
-            
-            // Tarjeta para seleccionar el tipo de ingreso a mostrar en el resumen
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { showSummaryIncomeTypeDialog = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Tipo de ingreso en resumen",
-                        modifier = Modifier.padding(end = 16.dp)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Seleccionar idioma",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Tipo de ingreso en resumen",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = when (selectedSummaryIncomeType) {
-                                0 -> "Ingresos Semanales"
-                                1 -> "Ingresos Mensuales"
-                                else -> "Ingresos Semanales"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            
-            // Tarjeta para seleccionar el día de inicio de la semana
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { showStartOfWeekDialog = true }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = "Día de inicio de la semana",
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Día de inicio de la semana",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = when (selectedStartOfWeek) {
-                                1 -> "Domingo"
-                                2 -> "Lunes"
-                                3 -> "Martes"
-                                4 -> "Miércoles"
-                                5 -> "Jueves"
-                                6 -> "Viernes"
-                                7 -> "Sábado"
-                                else -> "Lunes"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
             
@@ -497,124 +422,15 @@ fun SettingsScreen(navController: NavController) {
             "1.20"
         }
                         Text(
-                            text = "v$versionName - Acceso directo sin login",
+                            text = "v$versionName - Group Fasata",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-            
-            // Aquí se pueden añadir más opciones de configuración en el futuro
         }
-        
-        // Diálogo para seleccionar el tipo de ingreso en resumen
-        if (showSummaryIncomeTypeDialog) {
-            AlertDialog(
-                onDismissRequest = { showSummaryIncomeTypeDialog = false },
-                title = { Text("Tipo de ingreso en resumen") },
-                text = {
-                    Column {
-                        Text("Selecciona el tipo de ingreso que quieres mostrar en el resumen financiero:")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        val options = listOf("Ingresos Semanales", "Ingresos Mensuales")
-                        options.forEachIndexed { index, option ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                                    .clickable {
-                                        selectedSummaryIncomeType = index
-                                        scope.launch {
-                                            application.saveSummaryIncomeType(index)
-                                            snackbarHostState.showSnackbar("Tipo de ingreso en resumen actualizado")
-                                            showSummaryIncomeTypeDialog = false
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = selectedSummaryIncomeType == index,
-                                    onClick = {
-                                        selectedSummaryIncomeType = index
-                                        scope.launch {
-                                            application.saveSummaryIncomeType(index)
-                                            snackbarHostState.showSnackbar("Tipo de ingreso en resumen actualizado")
-                                            showSummaryIncomeTypeDialog = false
-                                        }
-                                    }
-                                )
-                                Text(
-                                    text = option,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showSummaryIncomeTypeDialog = false }) {
-                        Text("Cerrar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para seleccionar el día de inicio de la semana
-        if (showStartOfWeekDialog) {
-            AlertDialog(
-                onDismissRequest = { showStartOfWeekDialog = false },
-                title = { Text("Día de inicio de la semana") },
-                text = {
-                    Column {
-                        Text("Selecciona el día de la semana que consideras como inicio de la semana:")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        val options = listOf("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado")
-                        options.forEachIndexed { index, option ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                                    .clickable {
-                                        val dayValue = index + 1 // Calendar: 1=DOM, 2=LUN, ..., 7=SAB
-                                        selectedStartOfWeek = dayValue
-                                        scope.launch {
-                                            application.saveFirstDayOfWeek(dayValue)
-                                            snackbarHostState.showSnackbar("Día de inicio de la semana actualizado")
-                                            showStartOfWeekDialog = false
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = selectedStartOfWeek == index + 1,
-                                    onClick = {
-                                        val dayValue = index + 1 // Calendar: 1=DOM, 2=LUN, ..., 7=SAB
-                                        selectedStartOfWeek = dayValue
-                                        scope.launch {
-                                            application.saveFirstDayOfWeek(dayValue)
-                                            snackbarHostState.showSnackbar("Día de inicio de la semana actualizado")
-                                            showStartOfWeekDialog = false
-                                        }
-                                    }
-                                )
-                                Text(
-                                    text = option,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showStartOfWeekDialog = false }) {
-                        Text("Cerrar")
-                    }
-                }
-            )
-        }
+
         
         // Diálogo para seleccionar opciones de exportación
         if (showExportOptionsDialog) {
@@ -736,7 +552,7 @@ fun SettingsScreen(navController: NavController) {
                                                 is com.moham.taxi.data.service.ShareResult.Error -> {
                                                     snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
                                                 }
-                                                else -> { /* Compartido exitosamente */ }
+                                                else -> { }
                                             }
                                         }
                                         is com.moham.taxi.data.service.ExportResult.Error -> {
@@ -801,7 +617,7 @@ fun SettingsScreen(navController: NavController) {
                                                 is com.moham.taxi.data.service.ShareResult.Error -> {
                                                     snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
                                                 }
-                                                else -> { /* Compartido exitosamente */ }
+                                                else -> { }
                                             }
                                         }
                                         is com.moham.taxi.data.service.ExportResult.Error -> {
@@ -826,6 +642,144 @@ fun SettingsScreen(navController: NavController) {
                         onClick = { showExportWeekDialog = false },
                         enabled = !exportInProgress
                     ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+        
+        // Diálogo para selección de idioma
+        if (showLanguageDialog) {
+            AlertDialog(
+                onDismissRequest = { showLanguageDialog = false },
+                title = { Text(context.getString(R.string.language_settings)) },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Obtener el idioma actual
+                        val currentLanguage by application.getLanguage().collectAsState(initial = "es")
+                        
+                        // Opción para español
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        application.saveLanguage("es")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentLanguage == "es",
+                                onClick = {
+                                    scope.launch {
+                                        application.saveLanguage("es")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = context.getString(R.string.language_spanish),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                        
+                        // Opción para inglés
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        application.saveLanguage("en")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentLanguage == "en",
+                                onClick = {
+                                    scope.launch {
+                                        application.saveLanguage("en")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = context.getString(R.string.language_english),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                        
+                        // Opción para francés
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        application.saveLanguage("fr")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentLanguage == "fr",
+                                onClick = {
+                                    scope.launch {
+                                        application.saveLanguage("fr")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = context.getString(R.string.language_french),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                        
+                        // Opción para alemán
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        application.saveLanguage("de")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentLanguage == "de",
+                                onClick = {
+                                    scope.launch {
+                                        application.saveLanguage("de")
+                                        showLanguageDialog = false
+                                    }
+                                }
+                            )
+                            Text(
+                                text = context.getString(R.string.language_german),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLanguageDialog = false }) {
                         Text("Cancelar")
                     }
                 }
@@ -865,7 +819,7 @@ fun SettingsScreen(navController: NavController) {
                                                 is com.moham.taxi.data.service.ShareResult.Error -> {
                                                     snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
                                                 }
-                                                else -> { /* Compartido exitosamente */ }
+                                                else -> { }
                                             }
                                         }
                                         is com.moham.taxi.data.service.ExportResult.Error -> {
@@ -1175,87 +1129,7 @@ fun SettingsScreen(navController: NavController) {
             )
         }
         
-        // Diálogo de selección de ciudad
-        if (showCityDialog) {
-            AlertDialog(
-                onDismissRequest = { showCityDialog = false },
-                title = { Text("Seleccionar Ciudad") },
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp) // Limitar altura máxima
-                            .verticalScroll(rememberScrollState()) // Agregar scroll
-                    ) {
-                        // Lista de ciudades
-                        val cities = listOf(
-                            "Madrid",
-                            "Barcelona (Próximamente)",
-                            "Valencia (Próximamente)",
-                            "Sevilla (Próximamente)",
-                            "Zaragoza (Próximamente)",
-                            "Málaga (Próximamente)",
-                            "Murcia (Próximamente)",
-                            "Palma (Próximamente)",
-                            "Las Palmas (Próximamente)",
-                            "Bilbao (Próximamente)",
-                            "Alicante (Próximamente)",
-                            "Córdoba (Próximamente)",
-                            "Valladolid (Próximamente)",
-                            "Vigo (Próximamente)",
-                            "Gijón (Próximamente)",
-                            "Hospitalet (Próximamente)",
-                            "Vitoria (Próximamente)",
-                            "La Coruña (Próximamente)",
-                            "Elche (Próximamente)",
-                            "Granada (Próximamente)"
-                        )
-                        
-                        cities.forEach { city ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        enabled = city == "Madrid" || !city.contains("Próximamente"),
-                                        onClick = {
-                                            if (city == "Madrid") {
-                                                selectedCity = city
-                                                showCityDialog = false
-                                            }
-                                        }
-                                    )
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = city == selectedCity,
-                                    onClick = {
-                                        if (city == "Madrid") {
-                                            selectedCity = city
-                                            showCityDialog = false
-                                        }
-                                    },
-                                    enabled = city == "Madrid" || !city.contains("Próximamente")
-                                )
-                                Text(
-                                    text = city,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    color = if (city == "Madrid" || !city.contains("Próximamente")) 
-                                        MaterialTheme.colorScheme.onSurface 
-                                    else 
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showCityDialog = false }) {
-                        Text("Cerrar")
-                    }
-                }
-            )
-        }
+        // El diálogo de selección de ciudad ha sido eliminado
         
 
     }

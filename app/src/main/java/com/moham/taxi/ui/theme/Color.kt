@@ -2,59 +2,65 @@ package com.moham.taxi.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Colores principales - Paleta moderna y minimalista
-val PrimaryBlue = Color(0xFF6366F1)  // Indigo moderno
-val SecondaryPurple = Color(0xFF8B5CF6)  // Violeta suave
-val AccentGreen = Color(0xFF10B981)  // Esmeralda vibrante
-val AccentRed = Color(0xFFEF4444)  // Rojo coral moderno
+// Colores principales - Paleta profesional sobria
+val PrimaryBlue = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación/neutro principal
+val SecondaryPurple = Color(0xFF8B5CF6)  // Violeta suave (mantener para compatibilidad)
+val AccentGreen = Color(0xFF2E7D32)  // Verde profesional más oscuro para ingresos/positivo
+val AccentRed = Color(0xFFD32F2F)  // Rojo profesional más oscuro para gastos/negativo
 
-// Colores de fondo y superficie - Grises modernos con mejor contraste
-val DarkBackground = Color(0xFF0F172A)  // Slate 900 - Más profundo y elegante
-val DarkSurface = Color(0xFF1E293B)  // Slate 800 - Superficie elevada
-val DarkCard = Color(0xFF334155)  // Slate 700 - Tarjetas con mejor contraste
+// Colores de fondo y superficie - Gris muy oscuro profesional
+val DarkBackground = Color(0xFF121212)  // Gris muy oscuro como fondo principal
+val DarkSurface = Color(0xFF1E1E1E)  // Superficie ligeramente más clara
+val DarkCard = Color(0xFF2C2C2C)  // Tarjetas con contraste sutil
 
 // Colores de texto
-val TextPrimary = Color(0xFFE0E0E0)  // Texto principal más legible
-val TextSecondary = Color(0xFFB0B0B0)  // Texto secundario
-val TextTertiary = Color(0xFF808080)  // Texto terciario
+val TextPrimary = Color(0xFFFFFFFF)  // Texto principal blanco
+val TextSecondary = Color(0xFF9E9E9E)  // Iconos secundarios y divisores - gris medio
+val TextTertiary = Color(0xFF757575)  // Texto terciario
 
-// Colores de estado - Más suaves y menos saturados
-val Success = Color(0xFF4CAF50)  // Verde esmeralda suave
-val Warning = Color(0xFFFFB74D)  // Amarillo mostaza apagado
-val Error = Color(0xFFE57373)  // Rojo coral oscuro
-val Info = Color(0xFF64B5F6)  // Azul cerúleo claro
+// Colores de estado - Paleta profesional sobria
+val Success = Color(0xFF2E7D32)  // Verde profesional para elementos positivos
+val Warning = Color(0xFFFF9800)  // Naranja para advertencias
+val Error = Color(0xFFD32F2F)  // Rojo profesional para elementos negativos
+val Info = Color(0xFF1565C0)  // Azul profesional para información
 
-// Colores específicos para gráficas - Mejor contraste y legibilidad
-val ChartIncomeColor = Color(0xFF1E90FF)  // Azul vibrante para ingresos
-val ChartExpenseColor = Color(0xFFFF7F50)  // Naranja quemado para gastos
-val ChartIncomeAltColor = Color(0xFF28A745)  // Verde bosque alternativo
-val ChartExpenseAltColor = Color(0xFFDC3545)  // Rojo terracota alternativo
-val ChartGridColor = Color(0xFFFFFFFF)  // Blanco para líneas de cuadrícula
-val ChartBackgroundColor = Color(0xFF37474F)  // Fondo oscuro azulado para gráficas
+// Colores para gráficos - Paleta profesional sobria
+val ChartIncomeColor = Color(0xFF2E7D32)  // Verde profesional para ingresos
+val ChartExpenseColor = Color(0xFFD32F2F)  // Rojo profesional para gastos
+val ChartIncomeAltColor = Color(0xFF2E7D32)  // Verde profesional alternativo
+val ChartExpenseAltColor = Color(0xFFD32F2F)  // Rojo profesional alternativo
+val ChartGridColor = Color(0xFF9E9E9E)  // Gris medio para líneas de cuadrícula
+val ChartBackgroundColor = Color(0xFF121212)  // Fondo gris muy oscuro para gráficas
 
-// Colores de acento para elementos interactivos - Nuevos colores sugeridos
-val BlueAccent = Color(0xFF42A5F5)  // Azul profundo para análisis/datos
-val PurpleAccent = Color(0xFF7E57C2)  // Índigo para estadísticas
-val GreenAccent = Color(0xFF66BB6A)  // Verde esmeralda para ingresos
-val RedAccent = Color(0xFFE57373)  // Rojo ladrillo para gastos
-val YellowAccent = Color(0xFFFFCA28)  // Amarillo mostaza para precio
-val GrayAccent = Color(0xFF616161)  // Gris antracita para facturas
-val OrangeAccent = Color(0xFFFF7043)  // Naranja suave desaturado
+// Colores de acento específicos - Paleta profesional sobria
+val BlueAccent = Color(0xFF1565C0)  // Azul profesional para navegación/acciones
+val PurpleAccent = Color(0xFF1565C0)  // Azul profesional para estadísticas
+val GreenAccent = Color(0xFF2E7D32)  // Verde profesional exclusivo para ingresos
+val RedAccent = Color(0xFFD32F2F)  // Rojo profesional exclusivo para gastos
+val YellowAccent = Color(0xFF1565C0)  // Azul profesional para precio
+val TealAccent = Color(0xFF009688)  // Verde azulado para elementos especiales
+val OrangeAccent = Color(0xFF1565C0)  // Azul profesional para acciones
 
-// Colores específicos para botones del menú principal - Paleta moderna
-val IncomeButtonColor = Color(0xFF059669)  // Esmeralda 600 para ingresos
-val ExpenseButtonColor = Color(0xFFDC2626)  // Rojo 600 para gastos
-val RidesButtonColor = Color(0xFF2563EB)  // Azul 600 para carreras
-val StatsButtonColor = Color(0xFF7C3AED)  // Violeta 600 para estadísticas
-val InvoiceButtonColor = Color(0xFF475569)  // Slate 600 para facturas
-val PriceButtonColor = Color(0xFFEA580C)  // Naranja 600 para precio
+// Colores específicos para botones del menú principal - Paleta profesional sobria
+val IncomeButtonColor = Color(0xFF2E7D32)  // Verde profesional más oscuro para ingresos
+val ExpenseButtonColor = Color(0xFFD32F2F)  // Rojo profesional más oscuro para gastos
+val RidesButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación
+val StatsButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para acciones principales
+val InvoiceButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación
+val PriceButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para acciones principales
 
-// Colores para el calendario - Modernos y consistentes
-val CalendarBackground = Color(0xFF1E293B)  // Slate 800 - Consistente con DarkSurface
-val CalendarAccent = Color(0xFF6366F1)  // Indigo 500 - Consistente con PrimaryBlue
-val CalendarText = Color(0xFFF1F5F9)  // Slate 100 para mejor legibilidad
-val CalendarDayBackground = Color(0xFF64748B)  // Slate 500 para días
-val CalendarDayText = Color(0xFFF8FAFC)  // Slate 50 para texto de días
+// Colores para widgets/tarjetas - Fondo similar al calendario con iconos de colores
+val IncomeWidgetBackground = Color(0xFF1E1E1E)  // Fondo similar al calendario
+val ExpenseWidgetBackground = Color(0xFF1E1E1E)  // Fondo similar al calendario
+val IncomeIconColor = Color(0xFF2E7D32)  // Verde profesional para iconos de ingresos
+val ExpenseIconColor = Color(0xFFD32F2F)  // Rojo profesional para iconos de gastos
+
+// Colores para el calendario - Paleta profesional funcional
+val CalendarBackground = Color(0xFF1E1E1E)  // Consistente con DarkSurface
+val CalendarAccent = Color(0xFF1565C0)  // Azul profesional para acciones principales
+val CalendarText = Color(0xFFFFFFFF)  // Texto blanco para mejor legibilidad
+val CalendarDayBackground = Color(0xFF9E9E9E)  // Gris medio para días
+val CalendarDayText = Color(0xFFFFFFFF)  // Texto blanco para días
 
 // Colores del tema original (mantener para compatibilidad)
 val Purple80 = Color(0xFFD0BCFF)
@@ -80,14 +86,14 @@ val md_theme_light_onSecondaryContainer = Color(0xFF251A58)
 val md_theme_light_background = Color.White
 val md_theme_light_surface = Color.White
 
-// Colores de tema oscuro
-val md_theme_dark_primary = PrimaryBlue
+// Colores de tema oscuro - Paleta profesional funcional
+val md_theme_dark_primary = PrimaryBlue  // Azul brillante
 val md_theme_dark_onPrimary = Color.White
-val md_theme_dark_primaryContainer = Color(0xFF00325A)
-val md_theme_dark_onPrimaryContainer = Color(0xFFD1E4FF)
+val md_theme_dark_primaryContainer = Color(0xFF1565C0)  // Azul más oscuro
+val md_theme_dark_onPrimaryContainer = Color.White
 val md_theme_dark_secondary = SecondaryPurple
 val md_theme_dark_onSecondary = Color.White
 val md_theme_dark_secondaryContainer = Color(0xFF3A2A71)
 val md_theme_dark_onSecondaryContainer = Color(0xFFEFDDFF)
-val md_theme_dark_background = DarkBackground
-val md_theme_dark_surface = DarkCard
+val md_theme_dark_background = DarkBackground  // Gris muy oscuro
+val md_theme_dark_surface = DarkCard  // Gris oscuro para superficies

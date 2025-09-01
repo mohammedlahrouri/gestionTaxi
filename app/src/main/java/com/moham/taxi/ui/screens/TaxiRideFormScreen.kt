@@ -314,8 +314,8 @@ fun TaxiRideFormScreen(
                             label = { Text("Origen (Opcional)") },
                             isError = originError,
                             colors = TextFieldDefaults.colors(
-                                unfocusedContainerColor = Color(0xFF2A2A2A),
-                                focusedContainerColor = Color(0xFF2A2A2A),
+                                unfocusedContainerColor = DarkCard,
+                            focusedContainerColor = DarkCard,
                                 focusedIndicatorColor = BlueAccent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 focusedLabelColor = BlueAccent,
@@ -364,8 +364,8 @@ fun TaxiRideFormScreen(
                             label = { Text("Destino (Opcional)") },
                             isError = destinationError,
                             colors = TextFieldDefaults.colors(
-                                unfocusedContainerColor = Color(0xFF2A2A2A),
-                                focusedContainerColor = Color(0xFF2A2A2A),
+                                unfocusedContainerColor = DarkCard,
+                            focusedContainerColor = DarkCard,
                                 focusedIndicatorColor = BlueAccent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 focusedLabelColor = BlueAccent,
@@ -417,8 +417,8 @@ fun TaxiRideFormScreen(
                             label = { Text("Precio (€)") },
                             isError = priceError,
                             colors = TextFieldDefaults.colors(
-                                unfocusedContainerColor = Color(0xFF2A2A2A),
-                                focusedContainerColor = Color(0xFF2A2A2A),
+                                unfocusedContainerColor = DarkCard,
+                            focusedContainerColor = DarkCard,
                                 focusedIndicatorColor = BlueAccent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 focusedLabelColor = BlueAccent,

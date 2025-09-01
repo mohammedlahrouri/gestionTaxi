@@ -96,8 +96,6 @@ class MainActivity : ComponentActivity() {
         }
         
         if (missingPermissions.isEmpty()) {
-            // Todos los permisos ya están concedidos
-            Toast.makeText(this, "Permisos de almacenamiento ya concedidos", Toast.LENGTH_SHORT).show()
             return
         }
         

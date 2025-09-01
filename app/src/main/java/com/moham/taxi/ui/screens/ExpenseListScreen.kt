@@ -56,6 +56,8 @@ import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.utils.DateUtils
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
+import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
+import com.moham.taxi.data.model.TaxiRide
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -68,17 +70,24 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
     
-    // ViewModel
+    // ViewModels
     val expenseViewModel: ExpenseViewModel = viewModel(
         factory = ExpenseViewModel.ExpenseViewModelFactory(
             repository = application.expenseRepository
         )
     )
     
+    val taxiRideViewModel: TaxiRideViewModel = viewModel(
+        factory = TaxiRideViewModel.TaxiRideViewModelFactory(
+            repository = application.taxiRideRepository
+        )
+    )
+    
     // Estado para las tabs y confirmación de eliminación
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex by remember { mutableStateOf(0) } // Iniciar en carreras (índice 0)
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
+    var rideToDelete by remember { mutableStateOf<TaxiRide?>(null) }
     
     // Determinar la fecha a usar
     val useDate = remember(selectedDate) {
@@ -98,10 +107,14 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")) }
     val formattedDate = remember(useDate) { dateFormat.format(useDate) }
     
-    // Obtener listas de gastos
+    // Obtener listas de gastos y carreras
     val allExpenses by expenseViewModel.allExpenses.collectAsState(initial = emptyList())
     val todayExpenses by expenseViewModel.todayExpenses.collectAsState(initial = emptyList())
     val selectedDateExpenses by expenseViewModel.getSelectedDateExpenses(useDate).collectAsState(initial = emptyList())
+    
+    val allRides by taxiRideViewModel.allTaxiRides.collectAsState(initial = emptyList())
+    val todayRides by taxiRideViewModel.todayRides.collectAsState(initial = emptyList())
+    val selectedDateRides by taxiRideViewModel.getSelectedDateRides(useDate).collectAsState(initial = emptyList())
     
     // Coroutine scope y SnackbarHostState
     val scope = rememberCoroutineScope()
@@ -110,25 +123,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gastos") },
-                actions = {
-                    TextButton(
-                        onClick = { 
-                            // Usar la fecha normalizada para mantener consistencia
-                            val normalizedTimestamp = useDate.time
-                            val route = AppScreens.TaxiRideList.createRouteWithDate(normalizedTimestamp)
-                            // Primero remover la pantalla actual de la pila
-                            navController.popBackStack()
-                            // Luego navegar a la pantalla de carreras con fecha
-                            navController.navigate(route) {
-                                // Evitar múltiples copias de la misma pantalla en la pila
-                                launchSingleTop = true
-                            }
-                        }
-                    ) {
-                        Text("Ver Carreras")
-                    }
-                }
+                title = { Text("Gastos") }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -147,82 +142,120 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Mostrando gastos del: $formattedDate",
+                        text = "Mostrando datos del: $formattedDate",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
             
-            // Tabs para filtrar gastos
+            // Tabs para alternar entre carreras y gastos
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
-                    text = { Text(if (isToday || selectedDate <= 0) "Hoy" else "Fecha seleccionada") },
+                    text = { Text("Gastos") },
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 }
                 )
                 
                 Tab(
-                    text = { Text("Todos") },
+                    text = { Text("Carreras") },
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 }
                 )
             }
             
-            // Lista de gastos según la tab seleccionada
-            val expensesToShow = if (selectedTabIndex == 0) {
-                if (selectedDate > 0 && !isToday) {
-                    // Si hay una fecha seleccionada que no es hoy, mostrar los gastos de esa fecha
-                    selectedDateExpenses
-                } else {
-                    // Si no hay fecha seleccionada o es hoy, mostrar los gastos de hoy
-                    todayExpenses
-                }
-            } else {
-                // Si se selecciona "Todos", mostrar todos los gastos
-                allExpenses
-            }
-            
-            if (expensesToShow.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "No hay gastos registrados",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(expensesToShow) { expense ->
-                        ExpenseItem(
-                            expense = expense,
-                            onEdit = {
-                                // Navegar a la pantalla de edición con ID de gasto
-                                val timestamp = expense.date.time
-                                val route = AppScreens.ExpenseForm.createRouteWithDateAndId(timestamp, expense.id)
-                                navController.navigate(route)
-                            },
-                            onDelete = {
-                                expenseToDelete = expense
-                                showDeleteConfirmDialog = true
+            // Contenido basado en la pestaña seleccionada
+            when (selectedTabIndex) {
+                0 -> {
+                    // Mostrar carreras
+                    val ridesToShow = if (selectedDate > 0 && !isToday) {
+                        selectedDateRides
+                    } else {
+                        todayRides
+                    }
+                    
+                    if (ridesToShow.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No hay carreras registradas",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(ridesToShow) { ride ->
+                                TaxiRideItem(
+                                    ride = ride,
+                                    onDeleteClick = {
+                                        rideToDelete = ride
+                                        showDeleteConfirmDialog = true
+                                    }
+                                )
                             }
-                        )
+                        }
+                    }
+                }
+                1 -> {
+                    // Mostrar gastos
+                    val expensesToShow = if (selectedDate > 0 && !isToday) {
+                        selectedDateExpenses
+                    } else {
+                        todayExpenses
+                    }
+                    
+                    if (expensesToShow.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No hay gastos registrados",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(expensesToShow) { expense ->
+                                ExpenseItem(
+                                    expense = expense,
+                                    onEdit = {
+                                        val timestamp = expense.date.time
+                                        val route = AppScreens.ExpenseForm.createRouteWithDateAndId(timestamp, expense.id)
+                                        navController.navigate(route)
+                                    },
+                                    onDelete = {
+                                        expenseToDelete = expense
+                                        showDeleteConfirmDialog = true
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
         
-        // Diálogo de confirmación para eliminar
+        // Diálogo de confirmación para eliminar gastos
         if (showDeleteConfirmDialog && expenseToDelete != null) {
             AlertDialog(
                 onDismissRequest = { 
@@ -263,116 +296,100 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                 }
             )
         }
+        
+        // Diálogo de confirmación para eliminar carreras
+        if (showDeleteConfirmDialog && rideToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showDeleteConfirmDialog = false
+                    rideToDelete = null
+                },
+                title = { Text("Eliminar Carrera") },
+                text = { Text("¿Está seguro de que desea eliminar esta carrera?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            // Guardar referencia local de la carrera a eliminar
+                            val carreraAEliminar = rideToDelete
+                            
+                            // Cerrar el diálogo inmediatamente
+                            showDeleteConfirmDialog = false
+                            rideToDelete = null
+                            
+                            // Realizar la operación de eliminación con la referencia local
+                            scope.launch {
+                                carreraAEliminar?.let { taxiRideViewModel.delete(it) }
+                                snackbarHostState.showSnackbar("Carrera eliminada correctamente")
+                            }
+                        }
+                    ) {
+                        Text("Eliminar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirmDialog = false
+                            rideToDelete = null
+                        }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
     }
-}
 
 @Composable
-fun ExpenseItem(
-    expense: Expense,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
+fun TaxiRideItem(
+    ride: TaxiRide,
+    onDeleteClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (expense.type == ExpenseType.FUEL) 
-                            Icons.Default.LocalGasStation 
-                        else 
-                            Icons.Default.Payments,
-                        contentDescription = expense.type.name,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    
-                    Text(
-                        text = if (expense.type == ExpenseType.FUEL) "Combustible" else "Otro",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = formatCurrency(expense.amount),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Más opciones"
-                        )
-                    }
-                    
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Editar") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Editar"
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onEdit()
-                            }
-                        )
-                        
-                        DropdownMenuItem(
-                            text = { Text("Eliminar") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Eliminar"
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            }
-                        )
-                    }
-                }
+                Text(
+                    text = "Origen: ${ride.origin}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Destino: ${ride.destination}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Tarifa: $${ride.price}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(ride.date)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = DateUtils.formatDate(expense.date, "dd/MM/yyyy HH:mm"),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            
-            // Mostrar descripción solo si es de tipo OTHER
-            if (expense.type == ExpenseType.OTHER && !expense.description.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = "Descripción: ${expense.description}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+            IconButton(
+                onClick = onDeleteClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Eliminar carrera",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }

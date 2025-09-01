@@ -289,7 +289,7 @@ fun ExpenseFormScreen(
             
             // Radio buttons para seleccionar el tipo de gasto
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(

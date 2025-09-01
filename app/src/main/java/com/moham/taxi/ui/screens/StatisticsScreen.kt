@@ -25,6 +25,7 @@ import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
 import com.moham.taxi.ui.components.FinancialDetail
 import com.moham.taxi.ui.components.formatCurrency
+import com.moham.taxi.ui.theme.CalendarBackground
 import com.moham.taxi.ui.theme.ChartBackgroundColor
 import com.moham.taxi.ui.theme.ChartExpenseColor
 import com.moham.taxi.ui.theme.ChartGridColor
@@ -157,7 +158,7 @@ fun StatisticsScreen(navController: NavHostController) {
         ) {
             // Sección de estadísticas diarias
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF6200EA)),
+                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -567,7 +568,7 @@ fun StatisticsScreen(navController: NavHostController) {
             
             // Sección de la semana actual
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0277BD)),
+                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -972,7 +973,7 @@ fun StatisticsScreen(navController: NavHostController) {
             
             // Sección del mes actual
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF00838F)),
+                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()

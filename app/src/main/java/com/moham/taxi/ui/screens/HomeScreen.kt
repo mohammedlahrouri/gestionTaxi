@@ -106,6 +106,10 @@ import com.moham.taxi.ui.components.FinancialDetail
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.theme.*
+import com.moham.taxi.ui.theme.IncomeWidgetBackground
+import com.moham.taxi.ui.theme.ExpenseWidgetBackground
+import com.moham.taxi.ui.theme.IncomeIconColor
+import com.moham.taxi.ui.theme.ExpenseIconColor
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import kotlinx.coroutines.Dispatchers
@@ -367,7 +371,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                                 .background(
                                     Brush.radialGradient(
                                         colors = listOf(
-                                            Color(0xFF4A90E2).copy(alpha = 0.3f),
+                                            PrimaryBlue.copy(alpha = 0.3f),
                                             Color.Transparent
                                         ),
                                         radius = 50f
@@ -385,29 +389,13 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         }
                         
                         // Título con tipografía elegante
-                        Column {
-                            Text(
-                                "GESTIÓN TAXI",
-                                fontWeight = FontWeight.Light,
-                                fontSize = 20.sp,
-                                letterSpacing = 2.sp,
-                                color = Color.White
-                            )
-                            // Línea decorativa sutil
-                            Box(
-                                modifier = Modifier
-                                    .width(60.dp)
-                                    .height(1.dp)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                             colors = listOf(
-                                                 Color.White,
-                                                 Color.Transparent
-                                             )
-                                         )
-                                    )
-                            )
-                        }
+                        Text(
+                            "GESTION TAXI",
+                            fontWeight = FontWeight.Light,
+                            fontSize = 20.sp,
+                            letterSpacing = 2.sp,
+                            color = Color.White
+                        )
                     }
                 },
                 navigationIcon = {}, // Sin botón de atrás
@@ -766,7 +754,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                                     fontWeight = if (dayIncome > 0) FontWeight.Bold else FontWeight.Normal,
                                     color = when {
                                         dayIncome > 0 && (isSelected || isToday) -> CalendarText.copy(alpha = 0.9f)
-                                        dayIncome > 0 -> GreenAccent
+                                        dayIncome > 0 -> CalendarText.copy(alpha = 0.9f)
                                         isSelected || isToday -> CalendarText.copy(alpha = 0.6f)
                                         else -> CalendarDayText.copy(alpha = 0.6f)
                                     }
@@ -781,7 +769,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             // Tarjeta de ingresos
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = IncomeButtonColor),
+                colors = CardDefaults.cardColors(containerColor = IncomeWidgetBackground),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
@@ -791,8 +779,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    IncomeButtonColor, // Verde bosque principal
-                                    IncomeButtonColor.copy(alpha = 0.9f)  // Verde ligeramente más oscuro
+                                    IncomeWidgetBackground, // Fondo similar al calendario
+                                    IncomeWidgetBackground.copy(alpha = 0.9f)  // Ligeramente más oscuro
                                 )
                             )
                         )
@@ -811,7 +799,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         Icon(
                             imageVector = Icons.Filled.AttachMoney,
                             contentDescription = "Ingresos",
-                            tint = Color.White,
+                            tint = IncomeIconColor,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -831,7 +819,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.Today,
                                 contentDescription = "Día",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = IncomeIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -853,7 +841,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (dateIncome > 0) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
                                 contentDescription = "Tendencia",
-                                tint = if (dateIncome > 0) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.5f),
+                                tint = if (dateIncome > 0) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -874,7 +862,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.DateRange,
                                 contentDescription = "Semana",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = IncomeIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -896,7 +884,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (weekIncome > dateIncome * 7) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
                                 contentDescription = "Tendencia",
-                                tint = if (weekIncome > dateIncome * 7) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.5f),
+                                tint = if (weekIncome > dateIncome * 7) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -917,7 +905,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.CalendarMonth,
                                 contentDescription = "Mes",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = IncomeIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -939,7 +927,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (monthIncome > weekIncome * 4) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
                                 contentDescription = "Tendencia",
-                                tint = if (monthIncome > weekIncome * 4) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.5f),
+                                tint = if (monthIncome > weekIncome * 4) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -950,7 +938,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             // Tarjeta de gastos
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = ExpenseButtonColor),
+                colors = CardDefaults.cardColors(containerColor = ExpenseWidgetBackground),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
@@ -960,8 +948,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    ExpenseButtonColor, // Rojo vino principal
-                                    ExpenseButtonColor.copy(alpha = 0.9f)  // Rojo ligeramente más oscuro
+                                    ExpenseWidgetBackground, // Fondo similar al calendario
+                                    ExpenseWidgetBackground.copy(alpha = 0.9f)  // Ligeramente más oscuro
                                 )
                             )
                         )
@@ -980,7 +968,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         Icon(
                             imageVector = Icons.Filled.MoneyOff,
                             contentDescription = "Gastos",
-                            tint = Color.White,
+                            tint = ExpenseIconColor,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1000,7 +988,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.Today,
                                 contentDescription = "Día",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -1022,7 +1010,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (dateExpenses > 0) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
                                 contentDescription = "Tendencia",
-                                tint = if (dateExpenses > 0) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f),
+                                tint = if (dateExpenses > 0) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -1043,7 +1031,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.DateRange,
                                 contentDescription = "Semana",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -1065,7 +1053,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (weekExpenses > dateExpenses * 7) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
                                 contentDescription = "Tendencia",
-                                tint = if (weekExpenses > dateExpenses * 7) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f),
+                                tint = if (weekExpenses > dateExpenses * 7) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -1086,7 +1074,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = Icons.Filled.CalendarMonth,
                                 contentDescription = "Mes",
-                                tint = Color.White.copy(alpha = 0.8f),
+                                tint = ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -1108,7 +1096,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             Icon(
                                 imageVector = if (monthExpenses > weekExpenses * 4) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
                                 contentDescription = "Tendencia",
-                                tint = if (monthExpenses > weekExpenses * 4) Color.White.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.8f),
+                                tint = if (monthExpenses > weekExpenses * 4) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
                                 modifier = Modifier.size(16.dp)
                             )
                         }

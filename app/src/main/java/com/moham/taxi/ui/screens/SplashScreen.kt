@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
 import kotlinx.coroutines.withTimeoutOrNull
+import com.moham.taxi.ui.theme.PrimaryBlue
 
 // Definir un data class para los datos precargados
 data class SplashScreenPreloadData(
@@ -146,7 +147,7 @@ fun SplashScreen(
                 onLoadingComplete(preloadData)
             } else {
                 loadingText = "No se pudo cargar la información."
-                // Aquí podrías forzar el cierre o mostrar un botón de reintentar
+                
             }
         } catch (e: Exception) {
             loadingText = "Error al cargar datos: ${e.message}"
@@ -172,7 +173,7 @@ fun SplashScreen(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF4A90E2).copy(alpha = 0.2f),
+                                PrimaryBlue.copy(alpha = 0.2f),
                                 Color.Transparent
                             ),
                             radius = 100f
@@ -184,7 +185,7 @@ fun SplashScreen(
                 Icon(
                     imageVector = Icons.Filled.DirectionsCar,
                     contentDescription = "Logo Taxi",
-                    tint = Color(0xFF4A90E2), // Azul corporativo
+                    tint = PrimaryBlue, // Azul corporativo
                     modifier = Modifier.size(48.dp)
                 )
             }
@@ -193,11 +194,21 @@ fun SplashScreen(
             
             // Título principal con tipografía elegante
             Text(
-                text = "GESTIÓN TAXI",
+                text = "GESTION TAXI",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Light,
                 color = Color.White,
                 letterSpacing = 3.sp,
+                textAlign = TextAlign.Center
+            )
+            
+            // Subtítulo Group Fasata
+            Text(
+                text = "GROUP FASATA",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryBlue.copy(alpha = 0.9f),
+                letterSpacing = 2.sp,
                 textAlign = TextAlign.Center
             )
             
@@ -212,7 +223,7 @@ fun SplashScreen(
                         Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color(0xFF4A90E2),
+                                PrimaryBlue,
                                 Color.Transparent
                             )
                         )
@@ -223,7 +234,7 @@ fun SplashScreen(
             
             // Subtítulo profesional
             Text(
-                text = "Solución profesional de gestión",
+                text = "Solución profesional para taxistas",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 color = Color.White.copy(alpha = 0.7f),
@@ -247,7 +258,7 @@ fun SplashScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(2.dp),
-                    color = Color(0xFF4A90E2),
+                    color = PrimaryBlue,
                     trackColor = Color.Transparent
                 )
             }

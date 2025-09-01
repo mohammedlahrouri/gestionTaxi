@@ -2,12 +2,15 @@ package com.moham.taxi
 
 import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.util.Locale
 import com.moham.taxi.data.AppDatabase
 import com.moham.taxi.data.repository.ExpenseRepository
 import com.moham.taxi.data.repository.PaymentMethodRepository
@@ -18,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -31,7 +35,6 @@ class GestionTaxiApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     // Sistema de caché para preferencias frecuentemente usadas
-    private var cachedFirstDayOfWeek: Int? = null
     private var cachedSummaryIncomeType: Int? = null
     private var cachedSelectedDate: Date? = null
     private var cachedBillingData: BillingData? = null
@@ -56,14 +59,14 @@ class GestionTaxiApplication : Application() {
     // Claves para almacenar preferencias
     companion object {
         val SELECTED_DATE_KEY = longPreferencesKey("selected_date")
-        val FIRST_DAY_OF_WEEK_KEY = intPreferencesKey("first_day_of_week")
         val SUMMARY_INCOME_TYPE_KEY = intPreferencesKey("summary_income_type")
-        val BILLING_NAME_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_name")
-        val BILLING_NIF_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_nif")
-        val BILLING_LICENSE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_license")
-        val BILLING_STREET_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_street")
-        val BILLING_CITY_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_city")
-        val BILLING_POSTAL_CODE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("billing_postal_code")
+        val BILLING_NAME_KEY = stringPreferencesKey("billing_name")
+        val BILLING_NIF_KEY = stringPreferencesKey("billing_nif")
+        val BILLING_LICENSE_KEY = stringPreferencesKey("billing_license")
+        val BILLING_STREET_KEY = stringPreferencesKey("billing_street")
+        val BILLING_CITY_KEY = stringPreferencesKey("billing_city")
+        val BILLING_POSTAL_CODE_KEY = stringPreferencesKey("billing_postal_code")
+        val LANGUAGE_KEY = stringPreferencesKey("app_language")
     }
     
     // Método para guardar la fecha seleccionada con caché
@@ -90,20 +93,10 @@ class GestionTaxiApplication : Application() {
         }
     }
     
-    // Método para guardar el primer día de la semana con caché
-    suspend fun saveFirstDayOfWeek(dayOfWeek: Int) {
-        dataStore.edit { preferences ->
-            preferences[FIRST_DAY_OF_WEEK_KEY] = dayOfWeek
-        }
-        cachedFirstDayOfWeek = dayOfWeek
-    }
-    
-    // Método para obtener el primer día de la semana con caché
+    // Método para obtener el primer día de la semana (siempre lunes por defecto)
     fun getFirstDayOfWeek(): Flow<Int> {
         return dataStore.data.map { preferences ->
-            cachedFirstDayOfWeek ?: preferences[FIRST_DAY_OF_WEEK_KEY]?.also {
-                cachedFirstDayOfWeek = it
-            } ?: 2
+            2
         }
     }
     
@@ -162,10 +155,47 @@ class GestionTaxiApplication : Application() {
     
     // Método para limpiar la caché
     fun clearCache() {
-        cachedFirstDayOfWeek = null
         cachedSummaryIncomeType = null
         cachedSelectedDate = null
         cachedBillingData = null
+    }
+    
+    // Método para guardar el idioma seleccionado
+    suspend fun saveLanguage(languageCode: String) {
+        dataStore.edit { preferences ->
+            preferences[LANGUAGE_KEY] = languageCode
+        }
+        updateLocale(languageCode)
+    }
+    
+    // Método para obtener el idioma seleccionado
+    fun getLanguage(): Flow<String> {
+        return dataStore.data.map { preferences ->
+            preferences[LANGUAGE_KEY] ?: "es" // Español por defecto
+        }
+    }
+    
+    // Método para actualizar el idioma de la aplicación
+    fun updateLocale(languageCode: String) {
+        val locale = when (languageCode) {
+            "en" -> Locale("en")
+            "fr" -> Locale("fr")
+            "de" -> Locale("de")
+            else -> Locale("es")
+        }
+        Locale.setDefault(locale)
+        val config = Configuration()
+        config.setLocale(locale)
+        baseContext.resources.updateConfiguration(config, baseContext.resources.displayMetrics)
+    }
+    
+    override fun onCreate() {
+        super.onCreate()
+        // Inicializar el idioma al arrancar la aplicación
+        applicationScope.launch {
+            val languageCode = getLanguage().first()
+            updateLocale(languageCode)
+        }
     }
 }
 
