@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
-    id("com.google.gms.google-services")
 }
 
 android {
@@ -95,13 +94,6 @@ dependencies {
     implementation("com.itextpdf:io:7.2.5")
     implementation("com.itextpdf:layout:7.2.5")
     implementation("com.itextpdf:forms:7.2.5")
-    
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    
-
     
     // Testing
     testImplementation("junit:junit:4.13.2")

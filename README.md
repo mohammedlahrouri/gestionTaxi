@@ -30,11 +30,11 @@ Una aplicación móvil completa para la gestión integral de servicios de taxi, 
 - Exportación y compartir documentos
 - Cumplimiento fiscal
 
-### ☁️ Respaldo y Sincronización
-- Copias de seguridad automáticas
-- Sincronización con Firebase
+### 💾 Respaldo de Datos
+- Copias de seguridad locales
+- Exportación de datos
 - Restauración de datos
-- Acceso multiplataforma
+- Gestión de archivos
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -46,7 +46,6 @@ Una aplicación móvil completa para la gestión integral de servicios de taxi, 
 
 ### Backend y Datos
 - **Room Database** - Base de datos local SQLite
-- **Firebase Firestore** - Base de datos en la nube
 - **DataStore** - Almacenamiento de preferencias
 - **Coroutines & Flow** - Programación asíncrona
 
@@ -73,10 +72,9 @@ Una aplicación móvil completa para la gestión integral de servicios de taxi, 
    cd taxi-app
    ```
 
-2. **Configurar Firebase**
-   - Crear proyecto en [Firebase Console](https://console.firebase.google.com/)
-   - Descargar `google-services.json`
-   - Colocar en `app/google-services.json`
+2. **Configurar el proyecto**
+   - Abrir en Android Studio
+   - Sincronizar dependencias
 
 3. **Compilar y ejecutar**
    ```bash
@@ -154,8 +152,7 @@ implementation("androidx.navigation:navigation-compose:2.7.7")
 implementation("androidx.room:room-runtime:2.6.1")
 implementation("androidx.room:room-ktx:2.6.1")
 
-// Firebase
-implementation("com.google.firebase:firebase-firestore-ktx")
+// Todas las dependencias están incluidas en build.gradle.kts
 
 // PDF
 implementation("com.itextpdf:itext7-core:7.2.5")
@@ -229,7 +226,7 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 - 🚀 Mejoras de rendimiento significativas
 - 📊 Dashboard rediseñado con métricas avanzadas
 - 🧾 Sistema de facturación mejorado
-- ☁️ Sincronización con Firebase
+- 💾 Respaldo local de datos
 - 🔒 Mejoras de seguridad y privacidad
 
 ### Versión 1.20
