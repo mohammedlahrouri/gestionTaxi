@@ -90,9 +90,8 @@ Una aplicación móvil completa para la gestión integral de servicios de taxi, 
 ## 📖 Guía de Uso
 
 ### Primer Uso
-1. **Configuración inicial**: Establecer datos del taxista y vehículo
-2. **Métodos de pago**: Configurar formas de cobro disponibles
-3. **Tarifas**: Definir precios base y recargos
+1. **Métodos de pago**: Configurar formas de cobro disponibles
+2. **Tarifas**: Definir precios base y recargos
 
 ### Registro de Carreras
 1. Abrir la app y tocar "Nueva Carrera"
