@@ -1,0 +1,192 @@
+# LISTA DE ARCHIVOS DEL PROYECTO TAXI
+
+## ARCHIVOS PRINCIPALES (ALTA IMPORTANCIA)
+
+1. **TaxxiApplication.kt**
+   - Clase de aplicación principal que inicializa todos los componentes
+   - Gestiona repositorios, servicios y preferencias de la aplicación
+   - Implementa sistema de caché para optimizar el rendimiento
+
+2. **MainActivity.kt**
+   - Punto de entrada principal de la aplicación
+   - Gestiona permisos y configuración inicial
+   - Configura la navegación y el tema de la aplicación
+
+3. **AppDatabase.kt**
+   - Define la estructura de la base de datos Room
+   - Configura las entidades, DAOs y migraciones
+   - Gestiona la inicialización de la base de datos
+
+## MODELOS DE DATOS (ALTA IMPORTANCIA)
+
+4. **TaxiRide.kt**
+   - Modelo principal para las carreras de taxi
+   - Define la estructura de datos y validaciones
+   - Incluye índices para optimizar consultas
+
+5. **Expense.kt**
+   - Modelo para los gastos del taxista
+   - Define tipos de gastos y estructura de datos
+
+6. **PaymentMethod.kt**
+   - Modelo para los métodos de pago
+   - Permite gestionar diferentes formas de cobro
+
+## REPOSITORIOS (ALTA IMPORTANCIA)
+
+7. **TaxiRideRepository.kt**
+   - Gestiona el acceso a datos de carreras de taxi
+   - Implementa caché para optimizar consultas frecuentes
+   - Proporciona métodos para estadísticas y resúmenes
+
+8. **ExpenseRepository.kt**
+   - Gestiona el acceso a datos de gastos
+   - Proporciona métodos para análisis de gastos
+
+9. **PaymentMethodRepository.kt**
+   - Gestiona el acceso a datos de métodos de pago
+   - Mantiene la consistencia de los métodos de pago
+
+## VIEWMODELS (ALTA IMPORTANCIA)
+
+10. **TaxiRideViewModel.kt**
+    - Lógica de negocio para las carreras de taxi
+    - Conecta la UI con el repositorio
+    - Gestiona operaciones CRUD y cálculos
+
+11. **ExpenseViewModel.kt**
+    - Lógica de negocio para los gastos
+    - Proporciona datos para análisis y estadísticas
+
+12. **PaymentMethodViewModel.kt**
+    - Lógica de negocio para los métodos de pago
+    - Gestiona la creación y edición de métodos de pago
+
+## SERVICIOS (ALTA IMPORTANCIA)
+
+13. **ExportService.kt**
+    - Exporta datos de la aplicación en diferentes formatos
+    - Genera informes y resúmenes
+    - Permite compartir datos exportados
+
+14. **BackupService.kt**
+    - Gestiona copias de seguridad de la base de datos
+    - Permite restaurar datos desde copias de seguridad
+
+## PANTALLAS PRINCIPALES (MEDIA IMPORTANCIA)
+
+15. **HomeScreen.kt**
+    - Pantalla principal de la aplicación
+    - Muestra resumen de ingresos y acceso rápido a funciones
+
+16. **TaxiRideFormScreen.kt**
+    - Formulario para crear y editar carreras de taxi
+    - Validación de datos y selección de métodos de pago
+
+17. **TaxiRideListScreen.kt**
+    - Lista de carreras de taxi con filtros
+    - Permite buscar y ordenar carreras
+
+18. **ExpenseFormScreen.kt**
+    - Formulario para crear y editar gastos
+    - Selección de tipos de gastos y validación
+
+19. **ExpenseListScreen.kt**
+    - Lista de gastos con filtros y categorías
+    - Visualización de gastos por período
+
+20. **SummaryScreen.kt**
+    - Resumen de ingresos y gastos
+    - Gráficos y estadísticas generales
+
+21. **StatisticsScreen.kt**
+    - Estadísticas detalladas de ingresos y gastos
+    - Gráficos y análisis por períodos
+
+22. **SettingsScreen.kt**
+    - Configuración de la aplicación
+    - Opciones de exportación y copia de seguridad
+
+## PANTALLAS SECUNDARIAS (MEDIA IMPORTANCIA)
+
+23. **DetailedSummaryScreen.kt**
+    - Resumen detallado de ingresos y gastos
+    - Análisis por categorías y períodos
+
+24. **TaxiRideDetailScreen.kt**
+    - Detalles de una carrera específica
+    - Opciones para editar o eliminar
+
+25. **ExpenseDetailScreen.kt**
+    - Detalles de un gasto específico
+    - Opciones para editar o eliminar
+
+26. **PaymentMethodScreen.kt**
+    - Gestión de métodos de pago
+    - Creación y edición de métodos
+
+27. **BillingDataScreen.kt**
+    - Gestión de datos de facturación
+    - Información fiscal y de contacto
+
+28. **InvoiceScreen.kt**
+    - Generación y visualización de facturas
+    - Opciones para compartir y exportar
+
+## COMPONENTES DE ACCESO A DATOS (MEDIA IMPORTANCIA)
+
+29. **TaxiRideDao.kt**
+    - Interfaz de acceso a datos para carreras de taxi
+    - Consultas SQL para operaciones específicas
+
+30. **ExpenseDao.kt**
+    - Interfaz de acceso a datos para gastos
+    - Consultas SQL para análisis de gastos
+
+31. **PaymentMethodDao.kt**
+    - Interfaz de acceso a datos para métodos de pago
+    - Consultas SQL para gestión de métodos
+
+## UTILIDADES Y COMPONENTES AUXILIARES (BAJA IMPORTANCIA)
+
+32. **DateUtils.kt**
+    - Utilidades para manejo de fechas
+    - Formateo y cálculos con fechas
+
+33. **PriceUtils.kt**
+    - Utilidades para formateo de precios
+    - Cálculos con monedas y porcentajes
+
+34. **PdfGenerator.kt**
+    - Generación de documentos PDF
+    - Informes y facturas en formato PDF
+
+35. **Converters.kt**
+    - Conversores para tipos de datos en Room
+    - Transformación entre tipos de datos
+
+36. **Migration.kt**
+    - Migraciones de la base de datos
+    - Actualización de esquemas entre versiones
+
+37. **SplashScreen.kt**
+    - Pantalla de inicio de la aplicación
+    - Carga inicial de datos
+
+38. **AcknowledgmentScreen.kt**
+    - Pantalla de agradecimientos y créditos
+    - Información sobre la aplicación
+
+39. **PriceScreen.kt**
+    - Configuración de precios y tarifas
+    - Ajustes para cálculos automáticos
+
+## NAVEGACIÓN Y TEMAS (BAJA IMPORTANCIA)
+
+40. **AppNavigation.kt**
+    - Configuración de la navegación entre pantallas
+    - Definición de rutas y argumentos
+
+41. **Theme.kt**
+    - Definición del tema de la aplicación
+    - Colores, tipografías y estilos

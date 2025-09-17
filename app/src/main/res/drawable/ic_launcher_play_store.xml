@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Fondo azul degradado -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startColor="#0D47A1"
+                android:centerColor="#1976D2"
+                android:endColor="#42A5F5"
+                android:type="linear"
+                android:angle="135"/>
+        </aapt:attr>
+    </path>
+    
+    <!-- Efecto de luz en la parte superior para simular el cielo -->
+    <path android:pathData="M0,0h108v40h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startColor="#80BBDEFB"
+                android:endColor="#002196F3"
+                android:type="linear"
+                android:angle="270"/>
+        </aapt:attr>
+    </path>
+    
+    <!-- Carretera para dar contexto al taxi -->
+    <path
+        android:fillColor="#424242"
+        android:pathData="M0,75h108v33h-108z" />
+    
+    <!-- Línea central de la carretera -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M0,91.5h20v1h-20z" />
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M30,91.5h20v1h-20z" />
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M60,91.5h20v1h-20z" />
+    <path
+        android:fillColor="#FFEB3B"
+        android:pathData="M90,91.5h18v1h-18z" />
+    
+    <!-- Fondo circular blanco para el logo -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    
+    <!-- Letra G en rojo -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M36,40L56,40C58,40 60,42 60,44L60,46L41,46L41,52L51,52L51,58L41,58L41,64L56,64C58,64 60,62 60,60L60,58L51,58L51,52L60,52L60,44C60,42 58,40 56,40Z" />
+    
+    <!-- Letra T en negro -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M60,40L75,40L75,45L70,45L70,70L65,70L65,45L60,45L60,40Z" />
+    
+    <!-- Letra x en negro -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M77,40L82,40L87,50L92,40L97,40L89,55L97,70L92,70L87,60L82,70L77,70L85,55L77,40Z" />
+</vector>

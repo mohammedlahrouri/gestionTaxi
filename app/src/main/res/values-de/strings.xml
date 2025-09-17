@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Taxi-Verwaltung</string>
+    <string name="language_settings">Sprache</string>
+    <string name="language_spanish">Spanisch</string>
+    <string name="language_english">Englisch</string>
+    <string name="language_french">Französisch</string>
+    <string name="language_german">Deutsch</string>
+</resources>

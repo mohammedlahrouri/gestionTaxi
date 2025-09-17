@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark theme specific colors -->
+    <color name="background">#0F172A</color>         <!-- Dark blue background -->
+    <color name="surface">#1E293B</color>            <!-- Slightly lighter surface -->
+    <color name="surface_variant">#334155</color>    <!-- Even lighter surface for cards -->
+    
+    <color name="text_primary">#F8FAFC</color>       <!-- Nearly white text -->
+    <color name="text_secondary">#CBD5E1</color>     <!-- Light gray text -->
+    <color name="text_hint">#64748B</color>          <!-- Medium gray text -->
+    
+    <color name="divider">#334155</color>            <!-- Darker divider for dark mode -->
+    <color name="border">#475569</color>             <!-- Darker border for dark mode -->
+</resources> 
