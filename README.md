@@ -209,15 +209,9 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 **Group Fasata** - Soluciones tecnológicas profesionales
 
-- **Desarrollador Principal**: [Tu Nombre]
-- **UI/UX Design**: [Diseñador]
-- **QA Testing**: [Tester]
-
-## 📞 Soporte
-
-- **Email**: soporte@groupfasata.com
-- **Issues**: [GitHub Issues](https://github.com/tu-usuario/taxi-app/issues)
-- **Documentación**: [Wiki del Proyecto](https://github.com/tu-usuario/taxi-app/wiki)
+- **Desarrollador Principal**: Mohammed Lahrouri Laasiri 
+- **UI/UX Design**: Mohammed Lahrouri Laasiri 
+- **QA Testing**: Grupo Fasata
 
 ## 🔄 Changelog
 
