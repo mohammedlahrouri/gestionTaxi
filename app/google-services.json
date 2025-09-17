@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "109947607765",
+    "project_id": "taxi-gestion-b0922",
+    "storage_bucket": "taxi-gestion-b0922.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:109947607765:android:a6b63a12a686bbcfeae05c",
+        "android_client_info": {
+          "package_name": "com.moham.taxi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "109947607765-2eb40rto7jrrhv3eu6f4bpbjt2hn0bn7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8Ui_7nUEzeYZllt-tJSGQpv4HBlh9DAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "109947607765-2eb40rto7jrrhv3eu6f4bpbjt2hn0bn7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
