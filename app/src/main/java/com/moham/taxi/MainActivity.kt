@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            Toast.makeText(this, "Permisos concedidos para exportar datos", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Permisos concedidos", Toast.LENGTH_SHORT).show()
         } else {
             handlePermissionDenied(permissions)
         }
@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
             // Mostrar explicación antes de solicitar permisos
             Toast.makeText(
                 this, 
-                "La aplicación necesita permisos de almacenamiento para exportar datos. Por favor, concede los permisos.", 
+                "Se necesitan permisos de almacenamiento para exportar datos. Por favor, concede los permisos.",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -150,9 +150,7 @@ class MainActivity : ComponentActivity() {
                 "Los permisos fueron denegados permanentemente. Para habilitar la exportación de datos, ve a Configuración > Aplicaciones > Gestión Taxi > Permisos y activa los permisos de almacenamiento.", 
                 Toast.LENGTH_LONG
             ).show()
-            
-            // No abrir automáticamente la configuración para dar al usuario más control
-            // El usuario puede ir manualmente si lo desea
+
         } else {
             Toast.makeText(
                 this, 
