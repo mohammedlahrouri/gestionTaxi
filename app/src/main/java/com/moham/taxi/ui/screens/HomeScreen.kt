@@ -9,6 +9,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -21,6 +24,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +44,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -67,6 +72,9 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +97,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -132,7 +141,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     // Scope para operaciones de coroutine
     val scope = rememberCoroutineScope()
-    
+    var expandedFab by remember { mutableStateOf(false) }
     // Usar los datos precargados si existen
     val initialSelectedDate = preloadData?.selectedDate ?: Date()
     var selectedDate by rememberSaveable(key = "selected_date") { 
@@ -424,6 +433,72 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 )
             )
         },
+        floatingActionButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                AnimatedVisibility(
+                    visible = expandedFab,
+                    enter = fadeIn() + slideInVertically(),
+                            exit = fadeOut () + slideOutVertically()
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            navigateWithDate(AppScreens.TaxiRideForm)
+                            expandedFab = false
+                        },
+                        containerColor = IncomeButtonColor,
+                        contentColor = Color.White,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Filled.AttachMoney, "Añadir Ingreso")
+                            Text("Añadir Ingreso")
+                        }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = expandedFab,
+                    enter = fadeIn() + slideInVertically(),
+                    exit = fadeOut () + slideOutVertically()
+                ) {
+                    FloatingActionButton(
+                        onClick = {
+                            navigateWithDate(AppScreens.ExpenseForm)
+                            expandedFab = false
+                        },
+                        containerColor = ExpenseButtonColor,
+                        contentColor = Color.White,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Filled.MoneyOff, "Añadir Gasto")
+                            Text("Añadir Gasto")
+                        }
+                    }
+                }
+                FloatingActionButton(
+                    onClick = { expandedFab = !expandedFab },
+                    containerColor = PrimaryBlue,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (expandedFab) Icons.Filled.Close else Icons.Filled.Add,
+                        contentDescription = "Añadir",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        },
         containerColor = DarkBackground
     ) { paddingValues ->
         Column(
@@ -436,35 +511,6 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Botones de acción principales
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón Añadir Ingreso
-                ModernButton(
-                    text = "Añadir Ingreso",
-                    icon = Icons.Filled.AttachMoney,
-                    colors = listOf(
-                        IncomeButtonColor,
-                        IncomeButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navigateWithDate(AppScreens.TaxiRideForm) },
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Botón Añadir Gasto
-                ModernButton(
-                    text = "Añadir Gasto",
-                    icon = Icons.Filled.MoneyOff,
-                    colors = listOf(
-                        ExpenseButtonColor,
-                        ExpenseButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navigateWithDate(AppScreens.ExpenseForm) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
             
             // Botones secundarios
             Row(
