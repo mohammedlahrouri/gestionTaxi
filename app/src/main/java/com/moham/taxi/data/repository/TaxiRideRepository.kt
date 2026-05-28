@@ -9,9 +9,15 @@ import com.moham.taxi.data.model.TaxiRide
 import com.moham.taxi.data.model.MonthlySummary
 import com.moham.taxi.data.model.YearlySummary
 import com.moham.taxi.data.model.PeriodSummary
+import com.moham.taxi.data.model.ServicePlatformSummary
+import com.moham.taxi.data.model.ServicePlatformCountSummary
+import com.moham.taxi.data.model.IncomeCountSummary
+import com.moham.taxi.dataStore
+import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Date
@@ -68,11 +74,13 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     
     val allTaxiRides: Flow<List<TaxiRide>> = taxiRideDao.getAllTaxiRides()
     
-    suspend fun insert(taxiRide: TaxiRide): Long = withContext(Dispatchers.IO) {
+    suspend fun insert(taxiRide: TaxiRide, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO) {
         val id = taxiRideDao.insert(taxiRide)
         rideCache[id] = CacheEntry(taxiRide.copy(id = id))
         invalidateDateRangeCache()
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
         id
     }
     
@@ -81,6 +89,8 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         rideCache[taxiRide.id] = CacheEntry(taxiRide)
         invalidateDateRangeCache()
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
     }
     
     suspend fun delete(taxiRide: TaxiRide) = withContext(Dispatchers.IO) {
@@ -88,6 +98,8 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         rideCache.remove(taxiRide.id)
         invalidateDateRangeCache()
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
     }
     
     suspend fun insertMultiple(taxiRides: List<TaxiRide>): List<Long> = withContext(Dispatchers.IO) {
@@ -159,6 +171,17 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
         return taxiRideDao.getTotalIncomeByDateRange(dayRange.first, dayRange.second) ?: 0.0
     }
+
+    suspend fun getTipsForDate(date: Date): Double {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        return taxiRideDao.getTotalTipsByDateRange(dayRange.first, dayRange.second) ?: 0.0
+    }
+
+    suspend fun getTipsByMethodForDate(date: Date): Map<String, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val summaries = taxiRideDao.getTipsByMethod(dayRange.first, dayRange.second)
+        return summaries.associate { it.paymentMethod to it.total }
+    }
     
     suspend fun getIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
         val calendar = Calendar.getInstance().apply { 
@@ -180,6 +203,45 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         
         val summaries = taxiRideDao.getTotalByPaymentMethod(startOfDay, endOfDay)
         return summaries.associate { it.paymentMethod to it.total }
+    }
+
+    suspend fun getAppIncomeByPlatform(startDate: Date, endDate: Date): Map<String, Pair<Double, Int>> {
+        val summaries = taxiRideDao.getAppIncomeByPlatformWithCount(startDate, endDate)
+        return mapPlatformCountSummaries(summaries)
+    }
+
+    suspend fun getIncomeByPlatform(startDate: Date, endDate: Date): Map<String, Pair<Double, Int>> {
+        val summaries = taxiRideDao.getIncomeByPlatformWithCount(startDate, endDate)
+        return mapPlatformCountSummaries(summaries)
+    }
+
+    suspend fun getIncomeWithoutPlatform(startDate: Date, endDate: Date): Pair<Double, Int> {
+        val summary = taxiRideDao.getIncomeWithoutPlatform(startDate, endDate)
+        return summary.total to summary.count
+    }
+
+    suspend fun getAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val summaries = taxiRideDao.getAppIncomeByPlatform(dayRange.first, dayRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val summaries = taxiRideDao.getAppNetIncomeByPlatform(dayRange.first, dayRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val summaries = taxiRideDao.getTotalIncomeByPlatform(dayRange.first, dayRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val summaries = taxiRideDao.getNetIncomeByPlatform(dayRange.first, dayRange.second)
+        return mapPlatformSummaries(summaries)
     }
     
     suspend fun getRideCountForDate(date: Date): Int {
@@ -230,6 +292,10 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     
     fun getTaxiRidesByDateRange(startDate: Date, endDate: Date): Flow<List<TaxiRide>> {
         return taxiRideDao.getTaxiRidesByDateRange(startDate, endDate)
+    }
+    
+    suspend fun getTaxiRidesByDateRangeSuspend(startDate: Date, endDate: Date): List<TaxiRide> {
+        return taxiRideDao.getTaxiRidesByDateRangeSuspend(startDate, endDate)
     }
     
     /**
@@ -295,6 +361,23 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         
         return taxiRideDao.getTotalIncomeByDateRange(startOfWeek, endOfWeek) ?: 0.0
     }
+
+    suspend fun getWeekTipsForDate(date: Date): Double {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        return taxiRideDao.getTotalTipsByDateRange(startOfWeek, endOfWeek) ?: 0.0
+    }
+
+    suspend fun getWeekTipsByMethodForDate(date: Date): Map<String, Double> {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val summaries = taxiRideDao.getTipsByMethod(startOfWeek, endOfWeek)
+        return summaries.associate { it.paymentMethod to it.total }
+    }
     
     /**
      * Obtiene el número de carreras de la semana de una fecha específica.
@@ -326,6 +409,42 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         val summaries = taxiRideDao.getTotalByPaymentMethod(startOfWeek, endOfWeek)
         return summaries.associate { it.paymentMethod to it.total }
     }
+
+    suspend fun getWeekAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val summaries = taxiRideDao.getAppIncomeByPlatform(startOfWeek, endOfWeek)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getWeekAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val summaries = taxiRideDao.getAppNetIncomeByPlatform(startOfWeek, endOfWeek)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getWeekIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val summaries = taxiRideDao.getTotalIncomeByPlatform(startOfWeek, endOfWeek)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getWeekNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val context = getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val summaries = taxiRideDao.getNetIncomeByPlatform(startOfWeek, endOfWeek)
+        return mapPlatformSummaries(summaries)
+    }
     
     /**
      * Obtiene el ingreso del mes de una fecha específica.
@@ -352,6 +471,11 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         println("DEBUG REPOSITORY: Calculando ingresos de mes desde ${startOfMonth} hasta ${endOfMonth}")
         
         return taxiRideDao.getTotalIncomeByDateRange(startOfMonth, endOfMonth) ?: 0.0
+    }
+
+    suspend fun getMonthTipsForDate(date: Date): Double {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        return taxiRideDao.getTotalTipsByDateRange(monthRange.first, monthRange.second) ?: 0.0
     }
     
     /**
@@ -387,6 +511,36 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         val summaries = taxiRideDao.getTotalByPaymentMethod(monthRange.first, monthRange.second)
         return summaries.associate { it.paymentMethod to it.total }
     }
+
+    suspend fun getMonthTipsByMethodForDate(date: Date): Map<String, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getTipsByMethod(monthRange.first, monthRange.second)
+        return summaries.associate { it.paymentMethod to it.total }
+    }
+
+    suspend fun getMonthAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getAppIncomeByPlatform(monthRange.first, monthRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getMonthAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getAppNetIncomeByPlatform(monthRange.first, monthRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getMonthIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getTotalIncomeByPlatform(monthRange.first, monthRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getMonthNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val summaries = taxiRideDao.getNetIncomeByPlatform(monthRange.first, monthRange.second)
+        return mapPlatformSummaries(summaries)
+    }
     
     /**
      * Inserta una nueva carrera en la base de datos
@@ -394,7 +548,7 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
      * @return El ID de la carrera insertada
      */
     suspend fun insertTaxiRide(taxiRide: TaxiRide): Long {
-        return taxiRideDao.insert(taxiRide)
+        return insert(taxiRide, triggerOnlineBackup = false)
     }
     
     /**
@@ -404,6 +558,14 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
      */
     suspend fun deleteTaxiRidesByDateRange(startDate: Date, endDate: Date) {
         taxiRideDao.deleteByDateRange(startDate, endDate)
+    }
+
+    private fun mapPlatformSummaries(summaries: List<ServicePlatformSummary>): Map<String, Double> {
+        return summaries.associate { it.servicePlatform to it.total }
+    }
+
+    private fun mapPlatformCountSummaries(summaries: List<ServicePlatformCountSummary>): Map<String, Pair<Double, Int>> {
+        return summaries.associate { it.servicePlatform to (it.total to it.count) }
     }
     
     // ========== PAGINATION AND OPTIMIZATION METHODS ==========
@@ -635,6 +797,13 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         paginationCache.clear()
         summaryCache.clear()
     }
+
+    private suspend fun triggerOnlineBackupIfEnabled() {
+        val app = context.applicationContext as GestionTaxiApplication
+        if (app.isOnlineBackupEnabled().first()) {
+            app.scheduleOnlineBackupDebounced()
+        }
+    }
     
     /**
      * Checks if the database is large enough to benefit from pagination
@@ -645,4 +814,22 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     }
     
     // Método para obtener carreras por rango de fecha
+
+    /**
+     * Obtiene el objetivo diario de ingresos
+     */
+    fun getDailyTarget(): Flow<Double?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[GestionTaxiApplication.DAILY_TARGET_KEY]?.toDoubleOrNull()
+        }
+    }
+
+    /**
+     * Guarda el objetivo diario de ingresos
+     */
+    suspend fun setDailyTarget(target: Double) {
+        context.dataStore.edit { preferences ->
+            preferences[GestionTaxiApplication.DAILY_TARGET_KEY] = target.toString()
+        }
+    }
 }

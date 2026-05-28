@@ -31,8 +31,31 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE id = :id")
     suspend fun getExpenseById(id: Long): Expense?
 
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM expenses
+            WHERE date = :date
+            AND amount = :amount
+            AND type = :type
+            AND IFNULL(description, '') = IFNULL(:description, '')
+            LIMIT 1
+        )
+    """)
+    suspend fun expenseExists(
+        date: Date,
+        amount: Double,
+        type: ExpenseType,
+        description: String?
+    ): Boolean
+
     @Query("SELECT * FROM expenses WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     fun getExpensesByDateRange(startDate: Date, endDate: Date): Flow<List<Expense>>
+
+    @Query("SELECT * FROM expenses WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    suspend fun getExpensesByDateRangeSuspend(startDate: Date, endDate: Date): List<Expense>
+
+    @Query("SELECT * FROM expenses WHERE type = :type ORDER BY date DESC")
+    fun getExpensesByType(type: ExpenseType): Flow<List<Expense>>
 
     @Query("SELECT SUM(amount) FROM expenses WHERE date BETWEEN :startDate AND :endDate")
     suspend fun getTotalExpensesByDateRange(startDate: Date, endDate: Date): Double?

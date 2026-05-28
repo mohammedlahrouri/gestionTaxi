@@ -1,5 +1,8 @@
 package com.moham.taxi.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.moham.taxi.R
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +35,7 @@ fun AcknowledgmentScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Agradecimiento") },
+                title = { Text(stringResource(R.string.title_acknowledgment)) },
             )
         }
     ) { paddingValues ->
@@ -44,7 +47,7 @@ fun AcknowledgmentScreen(navController: NavController) {
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "¡Gracias por confiar en esta app!",
+                text = stringResource(R.string.thanks_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -52,35 +55,35 @@ fun AcknowledgmentScreen(navController: NavController) {
             )
             
             Text(
-                text = "Esta aplicación nace de la pasión y el compromiso de un taxista que también es desarrollador. Aquí no hay grandes empresas ni intereses ocultos: solo el deseo de aportar algo útil y honesto a nuestra comunidad.",
+                text = stringResource(R.string.thanks_p1),
                 style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
             Text(
-                text = "Tu confianza y apoyo hacen posible que sigamos creciendo juntos, mejorando el día a día del taxi desde dentro, con independencia y profesionalidad. Esta app es tuya tanto como mía: una herramienta hecha por y para taxistas.",
+                text = stringResource(R.string.thanks_p2),
                 style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
             Text(
-                text = "El taxi es mucho más que un trabajo: es una forma de vida, una comunidad y una familia. Sigamos avanzando, apoyándonos y defendiendo lo nuestro con las mejores herramientas.",
+                text = stringResource(R.string.thanks_p3),
                 style = MaterialTheme.typography.bodyLarge,
                 lineHeight = 24.sp,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             
             Text(
-                text = "Gracias por ser parte de esta comunidad.",
+                text = stringResource(R.string.thanks_community),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             
             Text(
-                text = "¡Seguimos en la carretera!",
+                text = stringResource(R.string.thanks_road),
                 style = MaterialTheme.typography.bodyLarge,
                 fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.SemiBold

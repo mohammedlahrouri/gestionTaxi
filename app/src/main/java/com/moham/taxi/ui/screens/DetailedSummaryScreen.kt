@@ -1,5 +1,8 @@
 package com.moham.taxi.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.moham.taxi.R
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -155,7 +158,7 @@ fun DetailedSummaryScreen(navController: NavHostController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Resumen Financiero Detallado") },
+                title = { Text(stringResource(R.string.title_detailed_summary)) },
             )
         }
     ) { paddingValues ->
@@ -169,19 +172,19 @@ fun DetailedSummaryScreen(navController: NavHostController) {
             // Tabs para seleccionar entre día, semana y mes
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
-                    text = { Text("Jornada") },
+                    text = { Text(stringResource(R.string.tab_day)) },
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 }
                 )
                 
                 Tab(
-                    text = { Text("Semana") },
+                    text = { Text(stringResource(R.string.tab_week)) },
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 }
                 )
                 
                 Tab(
-                    text = { Text("Mes") },
+                    text = { Text(stringResource(R.string.tab_month)) },
                     selected = selectedTabIndex == 2,
                     onClick = { selectedTabIndex = 2 }
                 )
@@ -237,17 +240,17 @@ fun DailySummaryDetailed(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Hoy)",
+            title = stringResource(R.string.gross_income_day),
             amount = income
         )
         
         SummaryCard(
-            title = "Gastos Jornada",
+            title = stringResource(R.string.expenses_day),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Hoy)",
+            title = stringResource(R.string.net_income_day),
             amount = net
         )
         
@@ -255,7 +258,7 @@ fun DailySummaryDetailed(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Hoy)",
+            title = stringResource(R.string.breakdown_payment_day),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
     }
@@ -298,17 +301,17 @@ fun WeeklySummary(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Semana)",
+            title = stringResource(R.string.gross_income_week),
             amount = income
         )
         
         SummaryCard(
-            title = "Gastos Semana",
+            title = stringResource(R.string.expenses_week),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Semana)",
+            title = stringResource(R.string.net_income_week),
             amount = net
         )
         
@@ -316,7 +319,7 @@ fun WeeklySummary(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Semana)",
+            title = stringResource(R.string.breakdown_payment_week),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
     }
@@ -359,17 +362,17 @@ fun MonthlySummaryDetailed(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Mes)",
+            title = stringResource(R.string.gross_income_month),
             amount = income
         )
         
         SummaryCard(
-            title = "Gastos Mes",
+            title = stringResource(R.string.expenses_month),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Mes)",
+            title = stringResource(R.string.net_income_month),
             amount = net
         )
         
@@ -377,7 +380,7 @@ fun MonthlySummaryDetailed(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Mes)",
+            title = stringResource(R.string.breakdown_payment_month),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
     }

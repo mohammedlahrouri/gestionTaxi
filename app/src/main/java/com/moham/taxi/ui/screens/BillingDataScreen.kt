@@ -1,5 +1,8 @@
 package com.moham.taxi.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.moham.taxi.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,7 +46,7 @@ fun BillingDataScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Datos de Facturación") },
+                title = { Text(stringResource(R.string.title_billing_data)) },
             )
         }
     ) { paddingValues ->
@@ -58,37 +61,37 @@ fun BillingDataScreen(navController: NavController) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Nombre y apellidos") },
+                label = { Text(stringResource(R.string.label_name_surname)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = nif,
                 onValueChange = { nif = it },
-                label = { Text("NIF del propietario") },
+                label = { Text(stringResource(R.string.label_owner_nif)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = license,
                 onValueChange = { license = it },
-                label = { Text("Licencia") },
+                label = { Text(stringResource(R.string.label_license)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = street,
                 onValueChange = { street = it },
-                label = { Text("Nombre de la calle y número") },
+                label = { Text(stringResource(R.string.label_street_number)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = city,
                 onValueChange = { city = it },
-                label = { Text("Localidad") },
+                label = { Text(stringResource(R.string.label_city)) },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = postalCode,
                 onValueChange = { postalCode = it },
-                label = { Text("Código postal del propietario") },
+                label = { Text(stringResource(R.string.label_owner_postal_code)) },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -101,10 +104,10 @@ fun BillingDataScreen(navController: NavController) {
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Guardar")
+                Text(stringResource(R.string.save))
             }
             if (showSaved) {
-                Text("Datos guardados correctamente.", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.msg_data_saved), color = MaterialTheme.colorScheme.primary)
             }
         }
     }

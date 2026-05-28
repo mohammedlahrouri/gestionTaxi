@@ -1,7 +1,9 @@
+
 package com.moham.taxi.utils
 
 import android.content.Context
 import android.os.Environment
+import com.moham.taxi.R
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.Document
@@ -20,8 +22,10 @@ class PdfGenerator(private val context: Context) {
         billingData: com.moham.taxi.BillingData,
         clientName: String,
         clientNif: String,
+        clientAddress: String,
         origin: String,
         destination: String,
+        invoiceNumber: Int,
         totalAmount: Double,
         baseAmount: Double,
         ivaAmount: Double,
@@ -34,6 +38,8 @@ class PdfGenerator(private val context: Context) {
             facturasDir.mkdirs()
         }
 
+        val currencySymbol = CurrencyUtils.getCurrencySymbol()
+
         // Crear nombre del archivo con fecha y hora
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val fileName = "Factura_${timestamp}.pdf"
@@ -44,58 +50,69 @@ class PdfGenerator(private val context: Context) {
             val pdf = PdfDocument(writer)
             Document(pdf).use { document ->
                 // Título
-                val title = Paragraph("FACTURA")
+                val title = Paragraph(context.getString(R.string.invoice_title_upper))
                     .setTextAlignment(TextAlignment.CENTER)
                     .setFontSize(20f)
                 document.add(title)
-                document.add(Paragraph("\n"))
 
                 // Fecha y hora
-                document.add(Paragraph("Fecha: $date"))
-                document.add(Paragraph("Hora: $time"))
+                document.add(Paragraph("${context.getString(R.string.invoice_number_pdf)}: $invoiceNumber"))
+                document.add(Paragraph("${context.getString(R.string.date)}: $date"))
+                document.add(Paragraph("${context.getString(R.string.time)}: $time"))
                 document.add(Paragraph("\n"))
 
                 // Datos del emisor
-                document.add(Paragraph("DATOS DEL EMISOR"))
-                document.add(Paragraph("Nombre: ${billingData.name}"))
-                document.add(Paragraph("NIF: ${billingData.nif}"))
-                document.add(Paragraph("Licencia: ${billingData.license}"))
-                document.add(Paragraph("Dirección: ${billingData.street}, ${billingData.city}, CP: ${billingData.postalCode}"))
+                document.add(Paragraph(context.getString(R.string.issuer_data_title)))
+                document.add(Paragraph("${context.getString(R.string.name_label)}: ${billingData.name}"))
+                document.add(Paragraph("${context.getString(R.string.nif_label)}: ${billingData.nif}"))
+                document.add(Paragraph("${context.getString(R.string.license_label_pdf)}: ${billingData.license}"))
+                document.add(Paragraph("${context.getString(R.string.address_label_pdf)}: ${billingData.street}, ${billingData.city}, CP: ${billingData.postalCode}"))
                 document.add(Paragraph("\n"))
 
                 // Datos del cliente
-                document.add(Paragraph("DATOS DEL CLIENTE"))
-                document.add(Paragraph("Nombre: $clientName"))
-                document.add(Paragraph("NIF/CIF: $clientNif"))
+                document.add(Paragraph(context.getString(R.string.client_data_title)))
+                document.add(Paragraph("${context.getString(R.string.name_label)}: $clientName"))
+                document.add(Paragraph("${context.getString(R.string.nif_cif_label)}: $clientNif"))
+                document.add(Paragraph("${context.getString(R.string.address_label_pdf)}: $clientAddress"))
                 document.add(Paragraph("\n"))
 
                 // Detalles del servicio
-                document.add(Paragraph("DETALLES DEL SERVICIO"))
-                document.add(Paragraph("Origen: $origin"))
-                document.add(Paragraph("Destino: $destination"))
+                document.add(Paragraph(context.getString(R.string.service_details_title)))
+                document.add(Paragraph("${context.getString(R.string.origin_label)}: $origin"))
+                document.add(Paragraph("${context.getString(R.string.destination_label)}: $destination"))
                 document.add(Paragraph("\n"))
 
                 // Tabla de importes
-                val table = Table(UnitValue.createPercentArray(2))
+                val table = Table(UnitValue.createPercentArray(floatArrayOf(3f, 1f)))
                 table.setWidth(UnitValue.createPercentValue(100f))
-                
+
                 // Encabezados
-                table.addCell(Cell().add(Paragraph("Concepto")))
-                table.addCell(Cell().add(Paragraph("Importe")))
-                
+                table.addHeaderCell(Cell().add(Paragraph(context.getString(R.string.concept_header))))
+                table.addHeaderCell(Cell().add(Paragraph(context.getString(R.string.amount_header))))
+
+                // Fila de servicio
+                table.addCell(Cell().add(Paragraph(context.getString(R.string.taxi_service_concept))))
+                table.addCell(Cell().add(Paragraph(""))) // Dejar importe vacío
+
                 // Base imponible
-                table.addCell(Cell().add(Paragraph("Base Imponible")))
-                table.addCell(Cell().add(Paragraph(String.format("%.2f €", baseAmount))))
-                
+                table.addCell(Cell().add(Paragraph(context.getString(R.string.base_amount_row))))
+                table.addCell(Cell().add(Paragraph(String.format("%.2f %s", baseAmount, currencySymbol))))
+
                 // IVA
-                table.addCell(Cell().add(Paragraph("IVA (10%)")))
-                table.addCell(Cell().add(Paragraph(String.format("%.2f €", ivaAmount))))
-                
+                table.addCell(Cell().add(Paragraph(context.getString(R.string.vat_row))))
+                table.addCell(Cell().add(Paragraph(String.format("%.2f %s", ivaAmount, currencySymbol))))
+
                 // Total
-                table.addCell(Cell().add(Paragraph("Total")))
-                table.addCell(Cell().add(Paragraph(String.format("%.2f €", totalAmount))))
-                
+                table.addCell(Cell().add(Paragraph(context.getString(R.string.total_row))))
+                table.addCell(Cell().add(Paragraph(String.format("%.2f %s", totalAmount, currencySymbol))))
+
                 document.add(table)
+                
+                document.add(Paragraph("\n"))
+                
+                document.add(Paragraph(context.getString(R.string.invoice_footer_note))
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setFontSize(10f))
             }
         }
 

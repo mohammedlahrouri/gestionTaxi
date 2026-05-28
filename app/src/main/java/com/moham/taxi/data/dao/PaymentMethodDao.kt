@@ -26,6 +26,9 @@ interface PaymentMethodDao {
     @Query("SELECT * FROM payment_methods WHERE id = :id")
     suspend fun getPaymentMethodById(id: Long): PaymentMethod?
 
+    @Query("SELECT * FROM payment_methods WHERE lower(name) = lower(:name) LIMIT 1")
+    suspend fun getPaymentMethodByName(name: String): PaymentMethod?
+
     @Query("SELECT EXISTS(SELECT 1 FROM payment_methods WHERE name = :name LIMIT 1)")
     suspend fun paymentMethodExists(name: String): Boolean
 }

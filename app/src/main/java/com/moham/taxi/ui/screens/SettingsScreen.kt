@@ -13,21 +13,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Cloud
 // Importación de DateRange eliminada
 import androidx.compose.material.icons.filled.Download
 
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.AttachMoney
 // Importación de LocationCity eliminada
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +44,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -63,6 +73,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+ 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,13 +83,6 @@ fun SettingsScreen(navController: NavController) {
 
 
     
-    // Variables para controlar los diálogos de exportación
-    var showExportDayDialog by remember { mutableStateOf(false) }
-    var showExportWeekDialog by remember { mutableStateOf(false) }
-    var showExportMonthDialog by remember { mutableStateOf(false) }
-    var exportInProgress by remember { mutableStateOf(false) }
-    var showExportOptionsDialog by remember { mutableStateOf(false) }
-
     // Variables para controlar los diálogos de backup
     var showBackupDialog by remember { mutableStateOf(false) }
     var showBackupOptionsDialog by remember { mutableStateOf(false) }
@@ -89,9 +93,9 @@ fun SettingsScreen(navController: NavController) {
     var showBackupConfirmDialog by remember { mutableStateOf(false) }
     var backupUri by remember { mutableStateOf<Uri?>(null) }
     
-    // Variable para controlar el diálogo de selección de idioma
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    
+    // Variables para el tema
+    val appTheme by application.getAppTheme().collectAsState(initial = "blue")
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     
     // Launcher para seleccionar archivo de backup a importar
@@ -115,7 +119,7 @@ fun SettingsScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajustes") },
+                title = { Text(stringResource(R.string.settings_title)) },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -129,15 +133,15 @@ fun SettingsScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Configuración General",
+                text = stringResource(R.string.settings_general_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
-            // Tarjeta para selección de idioma
+
+            // Tarjeta para cambiar de Tema
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { showLanguageDialog = true }
+                onClick = { showThemeDialog = true }
             ) {
                 Row(
                     modifier = Modifier
@@ -146,35 +150,83 @@ fun SettingsScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = "Idioma",
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = stringResource(R.string.settings_themes_title),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = context.getString(R.string.language_settings),
+                            text = stringResource(R.string.settings_themes_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
-                        
-                        // Mostrar el idioma actual
-                        val currentLanguage by application.getLanguage().collectAsState(initial = "es")
-                        val languageName = when (currentLanguage) {
-                            "en" -> context.getString(R.string.language_english)
-                            "fr" -> context.getString(R.string.language_french)
-                            "de" -> context.getString(R.string.language_german)
-                            else -> context.getString(R.string.language_spanish)
-                        }
-                        
                         Text(
-                            text = languageName,
+                            text = if (appTheme == "blue") stringResource(R.string.theme_blue_name) else stringResource(R.string.theme_green_name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Seleccionar idioma",
+                        contentDescription = stringResource(R.string.settings_themes_change_desc),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.translation_notice_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AppScreens.ExtraModules.route) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.settings_active_options_title),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_active_options_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_active_options_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.settings_active_options_title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -183,15 +235,14 @@ fun SettingsScreen(navController: NavController) {
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             
             Text(
-                text = "Gestión de Datos",
+                text = stringResource(R.string.settings_data_management_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
             )
-            
-            // Tarjeta para métodos de pago
+
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AppScreens.PaymentMethod.route) }
+                onClick = { navController.navigate(AppScreens.ServicePlatform.route) }
             ) {
                 Row(
                     modifier = Modifier
@@ -200,25 +251,25 @@ fun SettingsScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CreditCard,
-                        contentDescription = "Métodos de pago",
+                        imageVector = Icons.Default.Apps,
+                        contentDescription = stringResource(R.string.settings_service_platforms_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Métodos de pago",
+                            text = stringResource(R.string.settings_service_platforms_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Gestionar los métodos de pago disponibles",
+                            text = stringResource(R.string.settings_service_platforms_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Ir a métodos de pago",
+                        contentDescription = stringResource(R.string.settings_service_platforms_arrow_desc),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -237,37 +288,27 @@ fun SettingsScreen(navController: NavController) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
-                        contentDescription = "Datos de facturación",
+                        contentDescription = stringResource(R.string.settings_billing_data_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Datos facturación",
+                            text = stringResource(R.string.settings_billing_data_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Gestiona tus datos fiscales para facturación",
+                            text = stringResource(R.string.settings_billing_data_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-            
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            // Sección de exportación de datos
-            Text(
-                text = "Exportación de Datos",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
-            )
-            
-            // Tarjeta única para exportar datos
+
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { showExportOptionsDialog = true }
+                onClick = { navController.navigate(AppScreens.Tariffs.route) }
             ) {
                 Row(
                     modifier = Modifier
@@ -276,25 +317,25 @@ fun SettingsScreen(navController: NavController) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = "Exportar datos",
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = stringResource(R.string.settings_tariffs_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Exportar datos",
+                            text = stringResource(R.string.settings_tariffs_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Descargar resumen de datos financieros",
+                            text = stringResource(R.string.settings_tariffs_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Opciones de exportación",
+                        contentDescription = stringResource(R.string.settings_tariffs_content_desc),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -302,14 +343,12 @@ fun SettingsScreen(navController: NavController) {
             
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             
-            // Sección de backup de datos
             Text(
-                text = "Copia de Seguridad",
+                text = stringResource(R.string.settings_backup_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
             )
             
-            // Tarjeta única para backup de datos
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { showBackupOptionsDialog = true }
@@ -322,24 +361,59 @@ fun SettingsScreen(navController: NavController) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Backup,
-                        contentDescription = "Backup de datos",
+                        contentDescription = stringResource(R.string.settings_local_backup_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Backup de datos",
+                            text = stringResource(R.string.settings_local_backup_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Crear o restaurar copias de seguridad",
+                            text = stringResource(R.string.settings_local_backup_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Opciones de backup",
+                        contentDescription = stringResource(R.string.settings_local_backup_arrow_desc),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AppScreens.OnlineBackup.route) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cloud,
+                        contentDescription = stringResource(R.string.settings_online_backup_content_desc),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_online_backup_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_online_backup_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.settings_online_backup_arrow_desc),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -351,7 +425,7 @@ fun SettingsScreen(navController: NavController) {
             
             // Sección Acerca de
             Text(
-                text = "Acerca de",
+                text = stringResource(R.string.settings_about_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
             )
@@ -369,30 +443,28 @@ fun SettingsScreen(navController: NavController) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
-                        contentDescription = "Agradecimiento",
+                        contentDescription = stringResource(R.string.settings_acknowledgment_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Agradecimiento",
+                            text = stringResource(R.string.settings_acknowledgment_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = "Sobre el desarrollador y el proyecto",
+                            text = stringResource(R.string.settings_acknowledgment_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Ir a agradecimiento",
+                        contentDescription = stringResource(R.string.settings_acknowledgment_arrow_desc),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
             
             // Información de versión
             OutlinedCard(
@@ -406,23 +478,22 @@ fun SettingsScreen(navController: NavController) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Versión",
+                        contentDescription = stringResource(R.string.settings_app_version_content_desc),
                         modifier = Modifier.padding(end = 16.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Versión de la aplicación",
+                            text = stringResource(R.string.settings_app_version_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
-                        val context = LocalContext.current
                         val versionName = try {
                             context.packageManager.getPackageInfo(context.packageName, 0).versionName
                         } catch (e: PackageManager.NameNotFoundException) {
-            "1.20"
-        }
+                            stringResource(R.string.settings_default_version)
+                        }
                         Text(
-                            text = "v$versionName - Group Fasata",
+                            text = stringResource(R.string.settings_app_version_desc, versionName ?: "Unknown"),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -431,436 +502,18 @@ fun SettingsScreen(navController: NavController) {
             }
         }
 
-        
-        // Diálogo para seleccionar opciones de exportación
-        if (showExportOptionsDialog) {
-            AlertDialog(
-                onDismissRequest = { showExportOptionsDialog = false },
-                title = { Text("Exportar datos") },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text("Seleccione el período de tiempo para exportar:")
-                        
-                        // Opción para exportar día
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { 
-                                showExportOptionsDialog = false
-                                showExportDayDialog = true 
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Exportar día",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                        
-                        // Opción para exportar semana
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { 
-                                showExportOptionsDialog = false
-                                showExportWeekDialog = true 
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Exportar semana",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                        
-                        // Opción para exportar mes
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { 
-                                showExportOptionsDialog = false
-                                showExportMonthDialog = true 
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Exportar mes",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showExportOptionsDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para exportar datos del día
-        if (showExportDayDialog) {
-            AlertDialog(
-                onDismissRequest = { showExportDayDialog = false },
-                title = { Text("Exportar datos del día") },
-                text = {
-                    Column {
-                        Text("Se exportarán los datos financieros del día seleccionado en la pantalla principal. El archivo se guardará en la carpeta de descargas.")
-                        
-                        if (exportInProgress) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Exportando datos, por favor espere...")
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            exportInProgress = true
-                            scope.launch {
-                                try {
-                                    val selectedDate = application.getSelectedDate().first()
-                                    val exportResult = application.exportService.exportDayData(selectedDate)
-                                    
-                                    when (exportResult) {
-                                        is com.moham.taxi.data.service.ExportResult.Success -> {
-                                            snackbarHostState.showSnackbar("Datos exportados correctamente")
-                                            // Compartir el archivo exportado
-                                            val shareResult = application.exportService.shareFile(exportResult.uri, exportResult.fileName)
-                                            when (shareResult) {
-                                                is com.moham.taxi.data.service.ShareResult.Error -> {
-                                                    snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
-                                                }
-                                                else -> { }
-                                            }
-                                        }
-                                        is com.moham.taxi.data.service.ExportResult.Error -> {
-                                            snackbarHostState.showSnackbar("Error al exportar: ${exportResult.message}")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Error inesperado: ${e.localizedMessage ?: e.message}")
-                                } finally {
-                                    exportInProgress = false
-                                    showExportDayDialog = false
-                                }
-                            }
-                        },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Exportar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showExportDayDialog = false },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para exportar datos de la semana
-        if (showExportWeekDialog) {
-            AlertDialog(
-                onDismissRequest = { showExportWeekDialog = false },
-                title = { Text("Exportar datos de la semana") },
-                text = {
-                    Column {
-                        Text("Se exportarán los datos financieros de la semana que contiene el día seleccionado en la pantalla principal. El archivo se guardará en la carpeta de descargas.")
-                        
-                        if (exportInProgress) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Exportando datos, por favor espere...")
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            exportInProgress = true
-                            scope.launch {
-                                try {
-                                    val selectedDate = application.getSelectedDate().first()
-                                    val firstDayOfWeek = application.getFirstDayOfWeek().first()
-                                    val exportResult = application.exportService.exportWeekData(selectedDate, firstDayOfWeek)
-                                    
-                                    when (exportResult) {
-                                        is com.moham.taxi.data.service.ExportResult.Success -> {
-                                            snackbarHostState.showSnackbar("Datos exportados correctamente")
-                                            // Compartir el archivo exportado
-                                            val shareResult = application.exportService.shareFile(exportResult.uri, exportResult.fileName)
-                                            when (shareResult) {
-                                                is com.moham.taxi.data.service.ShareResult.Error -> {
-                                                    snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
-                                                }
-                                                else -> { }
-                                            }
-                                        }
-                                        is com.moham.taxi.data.service.ExportResult.Error -> {
-                                            snackbarHostState.showSnackbar("Error al exportar: ${exportResult.message}")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Error inesperado: ${e.localizedMessage ?: e.message}")
-                                } finally {
-                                    exportInProgress = false
-                                    showExportWeekDialog = false
-                                }
-                            }
-                        },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Exportar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showExportWeekDialog = false },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para selección de idioma
-        if (showLanguageDialog) {
-            AlertDialog(
-                onDismissRequest = { showLanguageDialog = false },
-                title = { Text(context.getString(R.string.language_settings)) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Obtener el idioma actual
-                        val currentLanguage by application.getLanguage().collectAsState(initial = "es")
-                        
-                        // Opción para español
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        application.saveLanguage("es")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = currentLanguage == "es",
-                                onClick = {
-                                    scope.launch {
-                                        application.saveLanguage("es")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                            )
-                            Text(
-                                text = context.getString(R.string.language_spanish),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                        
-                        // Opción para inglés
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        application.saveLanguage("en")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = currentLanguage == "en",
-                                onClick = {
-                                    scope.launch {
-                                        application.saveLanguage("en")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                            )
-                            Text(
-                                text = context.getString(R.string.language_english),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                        
-                        // Opción para francés
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        application.saveLanguage("fr")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = currentLanguage == "fr",
-                                onClick = {
-                                    scope.launch {
-                                        application.saveLanguage("fr")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                            )
-                            Text(
-                                text = context.getString(R.string.language_french),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                        
-                        // Opción para alemán
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        application.saveLanguage("de")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = currentLanguage == "de",
-                                onClick = {
-                                    scope.launch {
-                                        application.saveLanguage("de")
-                                        showLanguageDialog = false
-                                    }
-                                }
-                            )
-                            Text(
-                                text = context.getString(R.string.language_german),
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showLanguageDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para exportar datos del mes
-        if (showExportMonthDialog) {
-            AlertDialog(
-                onDismissRequest = { showExportMonthDialog = false },
-                title = { Text("Exportar datos del mes") },
-                text = {
-                    Column {
-                        Text("Se exportarán los datos financieros del mes que contiene el día seleccionado en la pantalla principal. El archivo se guardará en la carpeta de descargas.")
-                        
-                        if (exportInProgress) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Exportando datos, por favor espere...")
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            exportInProgress = true
-                            scope.launch {
-                                try {
-                                    val selectedDate = application.getSelectedDate().first()
-                                    val exportResult = application.exportService.exportMonthData(selectedDate)
-                                    
-                                    when (exportResult) {
-                                        is com.moham.taxi.data.service.ExportResult.Success -> {
-                                            snackbarHostState.showSnackbar("Datos exportados correctamente")
-                                            // Compartir el archivo exportado
-                                            val shareResult = application.exportService.shareFile(exportResult.uri, exportResult.fileName)
-                                            when (shareResult) {
-                                                is com.moham.taxi.data.service.ShareResult.Error -> {
-                                                    snackbarHostState.showSnackbar("Archivo exportado pero error al compartir: ${shareResult.message}")
-                                                }
-                                                else -> { }
-                                            }
-                                        }
-                                        is com.moham.taxi.data.service.ExportResult.Error -> {
-                                            snackbarHostState.showSnackbar("Error al exportar: ${exportResult.message}")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Error inesperado: ${e.localizedMessage ?: e.message}")
-                                } finally {
-                                    exportInProgress = false
-                                    showExportMonthDialog = false
-                                }
-                            }
-                        },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Exportar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showExportMonthDialog = false },
-                        enabled = !exportInProgress
-                    ) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
-        
-        // Diálogo para seleccionar opciones de backup
+
+        // Diálogo para seleccionar opciones de copia local
         if (showBackupOptionsDialog) {
             AlertDialog(
                 onDismissRequest = { showBackupOptionsDialog = false },
-                title = { Text("Backup de datos") },
+                title = { Text(stringResource(R.string.dialog_backup_options_title)) },
                 text = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("Seleccione una opción de backup:")
+                        Text(stringResource(R.string.dialog_backup_options_message))
                         
                         // Opción para crear backup mensual
                         OutlinedCard(
@@ -877,7 +530,7 @@ fun SettingsScreen(navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Backup Mensual",
+                                    text = stringResource(R.string.backup_option_monthly),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -899,7 +552,7 @@ fun SettingsScreen(navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Backup Completo",
+                                    text = stringResource(R.string.backup_option_full),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -911,7 +564,7 @@ fun SettingsScreen(navController: NavController) {
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { 
                                 showBackupOptionsDialog = false
-                                selectBackupLauncher.launch("application/json")
+                                selectBackupLauncher.launch("*/*")
                             }
                         ) {
                             Row(
@@ -921,7 +574,7 @@ fun SettingsScreen(navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Importar backup",
+                                    text = stringResource(R.string.backup_option_import),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -931,7 +584,7 @@ fun SettingsScreen(navController: NavController) {
                 },
                 confirmButton = {
                     TextButton(onClick = { showBackupOptionsDialog = false }) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                 }
             )
@@ -941,14 +594,20 @@ fun SettingsScreen(navController: NavController) {
         if (showCreateMonthlyBackupDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateMonthlyBackupDialog = false },
-                title = { Text("Crear backup mensual") },
+                title = { Text(stringResource(R.string.dialog_backup_monthly_title)) },
                 text = {
                     Column {
-                        Text("Se creará una copia de seguridad de los datos del mes seleccionado en la pantalla principal. El archivo se guardará en la carpeta de descargas.")
+                        Text(stringResource(R.string.dialog_backup_monthly_message))
                         
                         if (backupInProgress) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Creando backup, por favor espere...")
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.backup_progress_message))
                         }
                     }
                 },
@@ -958,20 +617,26 @@ fun SettingsScreen(navController: NavController) {
                             backupInProgress = true
                             scope.launch {
                                 try {
+                                    kotlinx.coroutines.delay(5000)
                                     val selectedDate = application.getSelectedDate().first()
                                     val uri = application.backupService.createMonthlyBackup(selectedDate)
                                     
                                     if (uri != null) {
-                                        snackbarHostState.showSnackbar("Backup mensual creado correctamente")
+                                        snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_monthly_success))
                                         // Compartir el archivo de backup
-                                        val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale("es", "ES"))
+                                        val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale.getDefault())
                                         val fileName = "Taxi_Backup_Mes_${monthYearFormat.format(selectedDate)}_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
                                         application.backupService.shareFile(uri, fileName)
                                     } else {
-                                        snackbarHostState.showSnackbar("Error al crear el backup mensual")
+                                        snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_monthly_error))
                                     }
                                 } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Error: ${e.message}")
+                                    snackbarHostState.showSnackbar(
+                                        context.getString(
+                                            R.string.snackbar_generic_error,
+                                            e.message.orEmpty()
+                                        )
+                                    )
                                 } finally {
                                     backupInProgress = false
                                     showCreateMonthlyBackupDialog = false
@@ -980,7 +645,7 @@ fun SettingsScreen(navController: NavController) {
                         },
                         enabled = !backupInProgress
                     ) {
-                        Text("Crear")
+                        Text(stringResource(R.string.action_create))
                     }
                 },
                 dismissButton = {
@@ -988,7 +653,7 @@ fun SettingsScreen(navController: NavController) {
                         onClick = { showCreateMonthlyBackupDialog = false },
                         enabled = !backupInProgress
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                 }
             )
@@ -998,20 +663,26 @@ fun SettingsScreen(navController: NavController) {
         if (showCreateFullBackupDialog) {
             AlertDialog(
                 onDismissRequest = { showCreateFullBackupDialog = false },
-                title = { Text("Crear backup completo") },
+                title = { Text(stringResource(R.string.dialog_backup_full_title)) },
                 text = {
                     Column {
-                        Text("Se creará una copia de seguridad con TODOS los datos de la aplicación. El archivo se guardará en la carpeta de descargas.")
+                        Text(stringResource(R.string.dialog_backup_full_message))
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Este backup incluirá todos los meses y puede ser usado para transferir todos los datos a otro dispositivo.",
+                            stringResource(R.string.dialog_backup_full_note),
                             fontWeight = FontWeight.Medium
                         )
                         
                         if (backupInProgress) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Creando backup, por favor espere...")
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.backup_progress_message))
                         }
                     }
                 },
@@ -1021,18 +692,24 @@ fun SettingsScreen(navController: NavController) {
                             backupInProgress = true
                             scope.launch {
                                 try {
+                                    kotlinx.coroutines.delay(5000)
                                     val uri = application.backupService.createFullBackup()
                                     
                                     if (uri != null) {
-                                        snackbarHostState.showSnackbar("Backup completo creado correctamente")
+                                        snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_full_success))
                                         // Compartir el archivo de backup
                                         val fileName = "Taxi_Backup_Completo_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.json"
                                         application.backupService.shareFile(uri, fileName)
                                     } else {
-                                        snackbarHostState.showSnackbar("Error al crear el backup completo")
+                                        snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_full_error))
                                     }
                                 } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("Error: ${e.message}")
+                                    snackbarHostState.showSnackbar(
+                                        context.getString(
+                                            R.string.snackbar_generic_error,
+                                            e.message.orEmpty()
+                                        )
+                                    )
                                 } finally {
                                     backupInProgress = false
                                     showCreateFullBackupDialog = false
@@ -1041,7 +718,7 @@ fun SettingsScreen(navController: NavController) {
                         },
                         enabled = !backupInProgress
                     ) {
-                        Text("Crear")
+                        Text(stringResource(R.string.action_create))
                     }
                 },
                 dismissButton = {
@@ -1049,7 +726,7 @@ fun SettingsScreen(navController: NavController) {
                         onClick = { showCreateFullBackupDialog = false },
                         enabled = !backupInProgress
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                 }
             )
@@ -1062,26 +739,32 @@ fun SettingsScreen(navController: NavController) {
                     showBackupConfirmDialog = false
                     backupUri = null
                 },
-                title = { Text("Importar backup") },
+                title = { Text(stringResource(R.string.dialog_backup_import_title)) },
                 text = {
                     Column {
-                        Text("¿Está seguro de que desea importar este backup?")
+                        Text(stringResource(R.string.dialog_backup_import_message))
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Si es un backup mensual, se reemplazarán todos los datos del mes incluido en el backup. Si es un backup completo, se reemplazarán TODOS los datos de la aplicación.",
+                            stringResource(R.string.dialog_backup_import_note),
                             fontWeight = FontWeight.Medium
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "ADVERTENCIA: Esta acción no se puede deshacer. Se recomienda crear un backup de sus datos actuales antes de importar.",
+                            stringResource(R.string.dialog_backup_import_warning),
                             fontWeight = FontWeight.Bold
                         )
                         
                         if (backupInProgress) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Importando backup, por favor espere...")
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(stringResource(R.string.backup_import_progress_message))
                         }
                     }
                 },
@@ -1093,15 +776,21 @@ fun SettingsScreen(navController: NavController) {
                                 backupInProgress = true
                                 scope.launch {
                                     try {
+                                        kotlinx.coroutines.delay(5000)
                                         val success = application.backupService.restoreBackup(currentUri)
                                         
                                         if (success) {
-                                            snackbarHostState.showSnackbar("Backup importado correctamente")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_import_success))
                                         } else {
-                                            snackbarHostState.showSnackbar("Error al importar el backup")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.snackbar_backup_import_error))
                                         }
                                     } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar("Error: ${e.message}")
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(
+                                                R.string.snackbar_generic_error,
+                                                e.message.orEmpty()
+                                            )
+                                        )
                                     } finally {
                                         backupInProgress = false
                                         showBackupConfirmDialog = false
@@ -1112,7 +801,7 @@ fun SettingsScreen(navController: NavController) {
                         },
                         enabled = !backupInProgress
                     ) {
-                        Text("Sí, importar")
+                        Text(stringResource(R.string.action_import_yes))
                     }
                 },
                 dismissButton = {
@@ -1123,14 +812,62 @@ fun SettingsScreen(navController: NavController) {
                         },
                         enabled = !backupInProgress
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                 }
             )
         }
-        
         // El diálogo de selección de ciudad ha sido eliminado
         
-
+        // Diálogo para seleccionar el tema
+        if (showThemeDialog) {
+            AlertDialog(
+                onDismissRequest = { showThemeDialog = false },
+                title = { Text(stringResource(R.string.settings_themes_dialog_title)) },
+                text = {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch { application.saveAppTheme("blue") }
+                                    showThemeDialog = false
+                                }
+                                .padding(12.dp)
+                        ) {
+                            RadioButton(
+                                selected = appTheme == "blue",
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.theme_blue_name))
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch { application.saveAppTheme("green") }
+                                    showThemeDialog = false
+                                }
+                                .padding(12.dp)
+                        ) {
+                            RadioButton(
+                                selected = appTheme == "green",
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.theme_green_name))
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showThemeDialog = false }) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+            )
+        }
     }
 }

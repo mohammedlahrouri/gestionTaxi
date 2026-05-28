@@ -17,6 +17,7 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     val allTaxiRides: Flow<List<TaxiRide>> = repository.allTaxiRides
     val todayRides: Flow<List<TaxiRide>> = repository.getTodayRides()
     val monthRides: Flow<List<TaxiRide>> = repository.getMonthRides()
+    val dailyTarget: Flow<Double?> = repository.getDailyTarget()
     
     // Función para obtener las carreras de una fecha específica
     fun getSelectedDateRides(date: Date): Flow<List<TaxiRide>> {
@@ -33,6 +34,10 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     
     fun delete(taxiRide: TaxiRide) = viewModelScope.launch {
         repository.delete(taxiRide)
+    }
+
+    fun setDailyTarget(target: Double) = viewModelScope.launch {
+        repository.setDailyTarget(target)
     }
     
     suspend fun getTaxiRideById(id: Long): TaxiRide? {
@@ -75,9 +80,65 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     suspend fun getIncomeForDate(date: Date): Double {
         return repository.getIncomeForDate(date)
     }
+
+    suspend fun getTipsForDate(date: Date): Double {
+        return repository.getTipsForDate(date)
+    }
+
+    suspend fun getTipsByMethodForDate(date: Date): Map<String, Double> {
+        return repository.getTipsByMethodForDate(date)
+    }
     
     suspend fun getIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
         return repository.getIncomeByPaymentMethodForDate(date)
+    }
+
+    suspend fun getAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getAppIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getAppNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getWeekAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getWeekAppIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getWeekAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getWeekAppNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getWeekIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getWeekIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getWeekNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getWeekNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getMonthAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getMonthAppIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getMonthAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getMonthAppNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getMonthIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getMonthIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getMonthNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getMonthNetIncomeByPlatformForDate(date)
     }
     
     suspend fun getRideCountForDate(date: Date): Int {
@@ -86,6 +147,39 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     
     suspend fun getMonthRideCount(): Int {
         return repository.getMonthRideCount()
+    }
+
+    suspend fun getServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+        val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
+        val rides = repository.getTaxiRidesByDateRange(dayRange.first, dayRange.second).first()
+        return calculateServiceTypeTotals(rides)
+    }
+
+    suspend fun getWeekServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+        val context = repository.getContext()
+        val application = context.applicationContext as GestionTaxiApplication
+        val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
+        val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(date, firstDayOfWeekValue)
+        val rides = repository.getTaxiRidesByDateRange(startOfWeek, endOfWeek).first()
+        return calculateServiceTypeTotals(rides)
+    }
+
+    suspend fun getMonthServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+        val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
+        val rides = repository.getTaxiRidesByDateRange(monthRange.first, monthRange.second).first()
+        return calculateServiceTypeTotals(rides)
+    }
+
+    private fun calculateServiceTypeTotals(rides: List<TaxiRide>): Pair<Double, Double> {
+        var meterTotal = 0.0
+        var fixedTotal = 0.0
+        rides.forEach { ride ->
+            when (ride.serviceType) {
+                TaxiRide.SERVICE_TYPE_METER -> meterTotal += ride.price
+                TaxiRide.SERVICE_TYPE_FIXED -> fixedTotal += ride.price
+            }
+        }
+        return Pair(meterTotal, fixedTotal)
     }
     
     // Nuevas funciones para estadísticas más detalladas
@@ -176,6 +270,14 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     suspend fun getWeekIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
         return repository.getWeekIncomeByPaymentMethodForDate(date)
     }
+
+    suspend fun getWeekTipsForDate(date: Date): Double {
+        return repository.getWeekTipsForDate(date)
+    }
+
+    suspend fun getWeekTipsByMethodForDate(date: Date): Map<String, Double> {
+        return repository.getWeekTipsByMethodForDate(date)
+    }
     
     /**
      * Obtiene el ingreso del mes que contiene la fecha específica.
@@ -196,6 +298,14 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
      */
     suspend fun getMonthIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
         return repository.getMonthIncomeByPaymentMethodForDate(date)
+    }
+
+    suspend fun getMonthTipsForDate(date: Date): Double {
+        return repository.getMonthTipsForDate(date)
+    }
+
+    suspend fun getMonthTipsByMethodForDate(date: Date): Map<String, Double> {
+        return repository.getMonthTipsByMethodForDate(date)
     }
     
     // Obtener comparativa de ingresos respecto a la semana anterior

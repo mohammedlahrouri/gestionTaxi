@@ -1,5 +1,8 @@
 package com.moham.taxi.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.moham.taxi.R
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +17,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.AlertDialog
@@ -50,14 +55,18 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.data.model.TaxiRide
 import com.moham.taxi.data.model.Expense
 import com.moham.taxi.data.model.ExpenseType
 import com.moham.taxi.ui.components.formatCurrency
+import com.moham.taxi.ui.components.DateFloatingActionButton
+import com.moham.taxi.ui.components.TicketPhotoThumbnail
+import com.moham.taxi.ui.components.TicketPhotoDialog
 import com.moham.taxi.utils.DateUtils
 import com.moham.taxi.ui.navigation.AppScreens
-import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
-import com.moham.taxi.data.model.TaxiRide
+import com.moham.taxi.ui.viewmodel.ExpenseViewModel
+import com.moham.taxi.ui.screens.BottomNavBar
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -104,7 +113,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     }
     
     // Formato para mostrar la fecha
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")) }
+    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val formattedDate = remember(useDate) { dateFormat.format(useDate) }
     
     // Obtener listas de gastos y carreras
@@ -123,7 +132,22 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gastos") }
+                title = { Text(stringResource(R.string.title_expenses)) }
+            )
+        },
+        floatingActionButton = {
+            DateFloatingActionButton(
+                currentDate = useDate,
+                onDateSelected = { newDate ->
+                    // Navegar a la misma pantalla con la nueva fecha
+                    val route = AppScreens.ExpenseList.createRouteWithDate(newDate.time)
+                    navController.navigate(route) {
+                        popUpTo(AppScreens.ExpenseList.route) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -142,9 +166,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Mostrando datos del: $formattedDate",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                        text = stringResource(R.string.msg_showing_data_for, formattedDate),
                     )
                 }
             }
@@ -152,13 +174,13 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
             // Tabs para alternar entre carreras y gastos
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
-                    text = { Text("Gastos") },
+                    text = { Text(stringResource(R.string.tab_expenses)) },
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 }
                 )
                 
                 Tab(
-                    text = { Text("Carreras") },
+                    text = { Text(stringResource(R.string.tab_rides)) },
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 }
                 )
@@ -183,7 +205,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "No hay carreras registradas",
+                                text = stringResource(R.string.msg_no_rides),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
@@ -200,6 +222,10 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                                     onDeleteClick = {
                                         rideToDelete = ride
                                         showDeleteConfirmDialog = true
+                                    },
+                                    onItemClick = {
+                                        val route = AppScreens.TaxiRideDetail.createRouteWithId(ride.id)
+                                        navController.navigate(route)
                                     }
                                 )
                             }
@@ -223,7 +249,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "No hay gastos registrados",
+                                text = stringResource(R.string.msg_no_expenses),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
@@ -245,6 +271,10 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                                     onDelete = {
                                         expenseToDelete = expense
                                         showDeleteConfirmDialog = true
+                                    },
+                                    onItemClick = {
+                                        val route = AppScreens.ExpenseDetail.createRouteWithId(expense.id)
+                                        navController.navigate(route)
                                     }
                                 )
                             }
@@ -262,8 +292,8 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                     showDeleteConfirmDialog = false
                     expenseToDelete = null
                 },
-                title = { Text("Eliminar Gasto") },
-                text = { Text("¿Está seguro de que desea eliminar este gasto?") },
+                title = { Text(stringResource(R.string.delete_expense_title)) },
+                text = { Text(stringResource(R.string.delete_expense_confirm)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -277,11 +307,11 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             // Realizar la operación de eliminación con la referencia local
                             scope.launch {
                                 gastoAEliminar?.let { expenseViewModel.delete(it) }
-                                snackbarHostState.showSnackbar("Gasto eliminado correctamente")
+                                snackbarHostState.showSnackbar(context.getString(R.string.msg_expense_deleted))
                             }
                         }
                     ) {
-                        Text("Eliminar")
+                        Text(stringResource(R.string.delete))
                     }
                 },
                 dismissButton = {
@@ -291,7 +321,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             expenseToDelete = null
                         }
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
@@ -304,8 +334,8 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                     showDeleteConfirmDialog = false
                     rideToDelete = null
                 },
-                title = { Text("Eliminar Carrera") },
-                text = { Text("¿Está seguro de que desea eliminar esta carrera?") },
+                title = { Text(stringResource(R.string.delete_ride_title)) },
+                text = { Text(stringResource(R.string.delete_ride_confirm)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -319,11 +349,11 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             // Realizar la operación de eliminación con la referencia local
                             scope.launch {
                                 carreraAEliminar?.let { taxiRideViewModel.delete(it) }
-                                snackbarHostState.showSnackbar("Carrera eliminada correctamente")
+                                snackbarHostState.showSnackbar(context.getString(R.string.msg_ride_deleted))
                             }
                         }
                     ) {
-                        Text("Eliminar")
+                        Text(stringResource(R.string.delete))
                     }
                 },
                 dismissButton = {
@@ -333,7 +363,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
                             rideToDelete = null
                         }
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
@@ -343,12 +373,23 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
 @Composable
 fun TaxiRideItem(
     ride: TaxiRide,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onItemClick: () -> Unit = {}
 ) {
+    var showPhotoDialog by remember { mutableStateOf(false) }
+
+    if (showPhotoDialog && ride.ticketPhotoPath != null) {
+        TicketPhotoDialog(
+            photoPath = ride.ticketPhotoPath,
+            onDismiss = { showPhotoDialog = false }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onItemClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -361,26 +402,66 @@ fun TaxiRideItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                val originText = ride.origin.ifBlank { stringResource(R.string.no_origin) }
+                val destinationText = ride.destination.ifBlank { stringResource(R.string.no_destination) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = originText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Flag,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = destinationText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Text(
-                    text = "Origen: ${ride.origin}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "Destino: ${ride.destination}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Tarifa: $${ride.price}",
+                    text = stringResource(R.string.label_rate, ride.price),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("es", "ES")).format(ride.date)}",
+                    text = stringResource(R.string.label_date_format, SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).format(ride.date)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = stringResource(R.string.label_time_format, ride.rideTime.ifBlank { "00:00" }),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                if (ride.ticketPhotoPath != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TicketPhotoThumbnail(
+                        photoPath = ride.ticketPhotoPath,
+                        onClick = { showPhotoDialog = true }
+                    )
+                }
             }
             
             IconButton(
@@ -388,7 +469,7 @@ fun TaxiRideItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar carrera",
+                    contentDescription = stringResource(R.string.cd_delete_ride),
                     tint = MaterialTheme.colorScheme.error
                 )
             }

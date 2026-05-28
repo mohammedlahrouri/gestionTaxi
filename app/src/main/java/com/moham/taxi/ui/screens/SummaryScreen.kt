@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,12 +36,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
 import com.moham.taxi.ui.components.SummaryCard
+import com.moham.taxi.ui.components.AutoSizeText
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
@@ -150,7 +155,7 @@ fun SummaryScreen(navController: NavHostController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Resumen y Totales") },
+                title = { Text(stringResource(R.string.summary_title)) },
             )
         }
     ) { paddingValues ->
@@ -164,19 +169,19 @@ fun SummaryScreen(navController: NavHostController) {
             // Tabs para seleccionar entre día, semana y mes
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
-                    text = { Text("Jornada") },
+                    text = { Text(stringResource(R.string.tab_day)) },
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 }
                 )
                 
                 Tab(
-                    text = { Text("Semana") },
+                    text = { Text(stringResource(R.string.tab_week)) },
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 }
                 )
                 
                 Tab(
-                    text = { Text("Mes") },
+                    text = { Text(stringResource(R.string.tab_month)) },
                     selected = selectedTabIndex == 2,
                     onClick = { selectedTabIndex = 2 }
                 )
@@ -220,17 +225,17 @@ fun DailySummary(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Hoy)",
+            title = stringResource(R.string.gross_income_day),
             amount = income
         )
         
         SummaryCard(
-            title = if (summaryIncomeType.value == 0) "Total Semana Ingresos" else "Total Mes Ingresos",
+            title = stringResource(R.string.label_expenses_total),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Hoy)",
+            title = stringResource(R.string.net_income_day),
             amount = net
         )
         
@@ -238,7 +243,7 @@ fun DailySummary(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Hoy)",
+            title = stringResource(R.string.breakdown_payment_day),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
         
@@ -249,7 +254,7 @@ fun DailySummary(
             onClick = { navController.navigate("detailed_summary") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Ver Completo")
+            Text(stringResource(R.string.view_full_details))
         }
     }
 }
@@ -280,17 +285,17 @@ fun WeeklySummary(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Semana)",
+            title = stringResource(R.string.gross_income_week),
             amount = income
         )
         
         SummaryCard(
-            title = if (summaryIncomeType.value == 0) "Total Semana Ingresos" else "Total Mes Ingresos",
+            title = stringResource(R.string.label_expenses_total),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Semana)",
+            title = stringResource(R.string.net_income_week),
             amount = net
         )
         
@@ -298,7 +303,7 @@ fun WeeklySummary(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Semana)",
+            title = stringResource(R.string.breakdown_payment_week),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
         
@@ -309,7 +314,7 @@ fun WeeklySummary(
             onClick = { navController.navigate("detailed_summary") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Ver Completo")
+            Text(stringResource(R.string.view_full_details))
         }
     }
 }
@@ -340,17 +345,17 @@ fun MonthlySummary(
     ) {
         // Cards con los totales
         SummaryCard(
-            title = "Ingresos Brutos (Mes)",
+            title = stringResource(R.string.gross_income_month),
             amount = income
         )
         
         SummaryCard(
-            title = if (summaryIncomeType.value == 0) "Total Semana Ingresos" else "Total Mes Ingresos",
+            title = stringResource(R.string.label_expenses_total),
             amount = expenses
         )
         
         SummaryCard(
-            title = "Neto (Mes)",
+            title = stringResource(R.string.net_income_month),
             amount = net
         )
         
@@ -358,7 +363,7 @@ fun MonthlySummary(
         
         // Detalle por método de pago
         PaymentMethodBreakdown(
-            title = "Desglose por Forma de Pago (Mes)",
+            title = stringResource(R.string.breakdown_payment_month),
             incomeByPaymentMethod = incomeByPaymentMethod
         )
         
@@ -369,7 +374,7 @@ fun MonthlySummary(
             onClick = { navController.navigate("detailed_summary") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Ver Completo")
+            Text(stringResource(R.string.view_full_details))
         }
     }
 }
@@ -379,6 +384,18 @@ fun PaymentMethodBreakdown(
     title: String,
     incomeByPaymentMethod: Map<String, Double>
 ) {
+    val cashLabel = stringResource(R.string.payment_cash)
+    val cardLabel = stringResource(R.string.payment_card)
+    val appLabel = stringResource(R.string.payment_via_app)
+    fun displayPaymentMethodName(value: String): String {
+        val lower = value.trim().lowercase()
+        return when {
+            lower == "efectivo" || lower == "cash" -> cashLabel
+            lower == "tarjeta" || lower == "card" -> cardLabel
+            lower.replace(" ", "") == "viaapp" || lower == "via app" -> appLabel
+            else -> value
+        }
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -400,7 +417,7 @@ fun PaymentMethodBreakdown(
             
             if (incomeByPaymentMethod.isEmpty()) {
                 Text(
-                    text = "No hay datos disponibles",
+                    text = stringResource(R.string.no_data_available),
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
@@ -413,13 +430,18 @@ fun PaymentMethodBreakdown(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = paymentMethod,
+                            text = displayPaymentMethodName(paymentMethod),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
-                        Text(
+                        AutoSizeText(
                             text = formatCurrency(amount),
-                            style = MaterialTheme.typography.bodyLarge
+                            modifier = Modifier.widthIn(max = 160.dp),
+                            maxFontSize = 16.sp,
+                            minFontSize = 12.sp,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
                         )
                     }
                 }

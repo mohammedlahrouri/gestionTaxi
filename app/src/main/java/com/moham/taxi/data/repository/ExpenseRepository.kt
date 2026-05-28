@@ -82,12 +82,14 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     
     val allExpenses: Flow<List<Expense>> = expenseDao.getAllExpenses()
     
-    suspend fun insert(expense: Expense): Long = withContext(Dispatchers.IO) {
+    suspend fun insert(expense: Expense, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO) {
         val id = expenseDao.insert(expense)
         expenseCache[id] = CacheEntry(expense)
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
         id
     }
     
@@ -97,6 +99,8 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
     }
     
     suspend fun delete(expense: Expense) = withContext(Dispatchers.IO) {
@@ -105,6 +109,8 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
+        val application = context.applicationContext as GestionTaxiApplication
+        application.savePendingBackup(true)
     }
     
     suspend fun insertMultiple(expenses: List<Expense>): List<Long> = withContext(Dispatchers.IO) {
@@ -215,6 +221,14 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         return expenseDao.getExpensesByDateRange(startDate, endDate)
     }
     
+    suspend fun getExpensesByDateRangeSuspend(startDate: Date, endDate: Date): List<Expense> {
+        return expenseDao.getExpensesByDateRangeSuspend(startDate, endDate)
+    }
+
+    fun getExpensesByType(type: ExpenseType): Flow<List<Expense>> {
+        return expenseDao.getExpensesByType(type)
+    }
+    
     suspend fun getTotalExpensesForDate(date: Date): Double {
         val dayRange = DateUtils.getDayRange(date)
         val range = DateRange(dayRange.first, dayRange.second)
@@ -299,7 +313,7 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     }
     
     suspend fun insertExpense(expense: Expense): Long {
-        return insert(expense)
+        return insert(expense, triggerOnlineBackup = false)
     }
     
     suspend fun deleteExpensesByDateRange(startDate: Date, endDate: Date) {
@@ -558,6 +572,13 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         invalidateDateRangeCache()
         paginationCache.clear()
         summaryCache.clear()
+    }
+
+    private suspend fun triggerOnlineBackupIfEnabled() {
+        val app = context.applicationContext as GestionTaxiApplication
+        if (app.isOnlineBackupEnabled().first()) {
+            app.scheduleOnlineBackupDebounced()
+        }
     }
     
     /**

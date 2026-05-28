@@ -1,5 +1,8 @@
 package com.moham.taxi.ui.screens
 
+import androidx.compose.ui.res.stringResource
+import com.moham.taxi.R
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -87,14 +90,14 @@ fun PaymentMethodScreen(navController: NavHostController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Métodos de Pago") },
+                title = { Text(stringResource(R.string.title_payment_methods)) },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Añadir Método de Pago"
+                    contentDescription = stringResource(R.string.cd_add_payment_method)
                 )
             }
         },
@@ -107,14 +110,14 @@ fun PaymentMethodScreen(navController: NavHostController) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Métodos de pago disponibles",
+                text = stringResource(R.string.title_available_payment_methods),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
             if (paymentMethods.isEmpty()) {
                 Text(
-                    text = "No hay métodos de pago configurados",
+                    text = stringResource(R.string.empty_payment_methods_msg),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
@@ -140,10 +143,10 @@ fun PaymentMethodScreen(navController: NavHostController) {
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Nuevo Método de Pago") },
+                title = { Text(stringResource(R.string.dialog_new_payment_method_title)) },
                 text = {
                     Column {
-                        Text("Introduce el nombre del método de pago:")
+                        Text(stringResource(R.string.label_enter_payment_method_name))
                         Spacer(modifier = Modifier.height(8.dp))
                         TaxiTextField(
                             value = newMethodName,
@@ -151,9 +154,9 @@ fun PaymentMethodScreen(navController: NavHostController) {
                                 newMethodName = it
                                 nameError = false
                             },
-                            label = "Nombre",
+                            label = stringResource(R.string.label_name),
                             isError = nameError,
-                            errorMessage = if (nameError) "El nombre no puede estar vacío" else ""
+                            errorMessage = if (nameError) stringResource(R.string.error_name_empty) else ""
                         )
                     }
                 },
@@ -167,11 +170,11 @@ fun PaymentMethodScreen(navController: NavHostController) {
                                     paymentMethodViewModel.insert(PaymentMethod(name = newMethodName))
                                     newMethodName = ""
                                     showAddDialog = false
-                                    snackbarHostState.showSnackbar("Método de pago añadido")
+                                    snackbarHostState.showSnackbar(context.getString(R.string.msg_payment_method_added))
                                 }
                             }
                         },
-                        text = "Guardar"
+                        text = stringResource(R.string.save)
                     )
                 },
                 dismissButton = {
@@ -181,7 +184,7 @@ fun PaymentMethodScreen(navController: NavHostController) {
                             showAddDialog = false 
                         }
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
@@ -191,9 +194,9 @@ fun PaymentMethodScreen(navController: NavHostController) {
         if (showDeleteConfirmDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmDialog = false },
-                title = { Text("Eliminar Método de Pago") },
+                title = { Text(stringResource(R.string.dialog_delete_payment_method_title)) },
                 text = { 
-                    Text("¿Estás seguro de que deseas eliminar el método de pago '${methodToDelete?.name}'?") 
+                    Text(stringResource(R.string.dialog_delete_payment_method_msg, methodToDelete?.name ?: "")) 
                 },
                 confirmButton = {
                     TaxiButton(
@@ -202,18 +205,18 @@ fun PaymentMethodScreen(navController: NavHostController) {
                                 scope.launch {
                                     paymentMethodViewModel.delete(method)
                                     showDeleteConfirmDialog = false
-                                    snackbarHostState.showSnackbar("Método de pago eliminado")
+                                    snackbarHostState.showSnackbar(context.getString(R.string.msg_payment_method_deleted))
                                 }
                             }
                         },
-                        text = "Eliminar"
+                        text = stringResource(R.string.delete)
                     )
                 },
                 dismissButton = {
                     TextButton(
                         onClick = { showDeleteConfirmDialog = false }
                     ) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
@@ -246,7 +249,7 @@ fun PaymentMethodItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar Método de Pago",
+                    contentDescription = stringResource(R.string.cd_delete_payment_method),
                     tint = MaterialTheme.colorScheme.error
                 )
             }

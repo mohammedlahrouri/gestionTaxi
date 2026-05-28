@@ -1,17 +1,39 @@
 package com.moham.taxi.ui.screens
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
+import com.moham.taxi.data.model.TaxiRide
+import com.moham.taxi.ui.components.InlineTicketPhoto
+import com.moham.taxi.ui.components.formatCurrency
+import com.moham.taxi.ui.navigation.AppScreens
+import com.moham.taxi.ui.theme.AccentRed
+import com.moham.taxi.ui.theme.DarkBackground
+import com.moham.taxi.ui.theme.DarkCard
+import com.moham.taxi.ui.theme.PrimaryBlue
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaxiRideDetailScreen(
     navController: NavHostController,
@@ -19,22 +41,139 @@ fun TaxiRideDetailScreen(
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
+    val scope = rememberCoroutineScope()
     
-    // ViewModel
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
         factory = TaxiRideViewModel.TaxiRideViewModelFactory(
             repository = application.taxiRideRepository
         )
     )
     
-    // Redirigir directamente al formulario para editar la carrera
+    var ride by remember { mutableStateOf<TaxiRide?>(null) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(rideId) {
         if (rideId > 0) {
-            // Simplemente usamos el TaxiRideFormScreen con el id pasado como parámetro
-            // Esto permite reutilizar el formulario para crear y editar
+            ride = taxiRideViewModel.getTaxiRideById(rideId)
         }
     }
-    
-    // Reutilizamos el formulario para editar
-    TaxiRideFormScreen(navController = navController, rideId = rideId)
-} 
+
+    Scaffold(
+        containerColor = DarkBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.rides_title), color = Color.White) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+            )
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            ride?.let { currentRide ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = DarkCard),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Basic Info
+                            Text("Fecha: ${com.moham.taxi.utils.DateUtils.formatDate(currentRide.date, "dd/MM/yyyy")}", color = Color.White, fontSize = 16.sp)
+                            if (currentRide.rideTime.isNotBlank()) {
+                                Text("Hora: ${currentRide.rideTime}", color = Color.White, fontSize = 16.sp)
+                            }
+                            Text("Origen: ${currentRide.origin.ifBlank { "N/A" }}", color = Color.White, fontSize = 16.sp)
+                            Text("Destino: ${currentRide.destination.ifBlank { "N/A" }}", color = Color.White, fontSize = 16.sp)
+                            val hasCommission = currentRide.netPrice != null && currentRide.netPrice != currentRide.price
+                            if (hasCommission) {
+                                Column {
+                                    Text("${stringResource(R.string.label_gross)}: ${formatCurrency(currentRide.price)}", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                    Text("${stringResource(R.string.label_net)}: ${formatCurrency(currentRide.netPrice!!)}", color = Color(0xFF10B981), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                Text("Precio: ${formatCurrency(currentRide.price)}", color = PrimaryBlue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text("Método de pago: ${currentRide.paymentMethod}", color = Color.White, fontSize = 16.sp)
+                            
+                            currentRide.servicePlatform?.let {
+                                Text("Plataforma: ${it.uppercase()}", color = Color.White, fontSize = 16.sp)
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            InlineTicketPhoto(photoPath = currentRide.ticketPhotoPath)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = { showDeleteConfirmDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentRed),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.delete), color = Color.White)
+                        }
+                        
+                        Button(
+                            onClick = {
+                                val route = AppScreens.TaxiRideForm.createRouteWithDateAndId(currentRide.date.time, currentRide.id)
+                                navController.navigate(route)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.edit), color = Color.White)
+                        }
+                    }
+                }
+            } ?: run {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryBlue)
+                }
+            }
+        }
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            containerColor = DarkCard,
+            title = { Text(stringResource(R.string.delete_ride_title), color = Color.White) },
+            text = { Text(stringResource(R.string.delete_ride_confirm), color = Color.White.copy(0.8f)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmDialog = false
+                    ride?.let { 
+                        scope.launch { 
+                            taxiRideViewModel.delete(it) 
+                            navController.popBackStack()
+                        } 
+                    }
+                }) { Text(stringResource(R.string.delete), color = AccentRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = Color.White)
+                }
+            }
+        )
+    }
+}

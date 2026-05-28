@@ -10,6 +10,7 @@ import java.util.Date
  */
 enum class ExpenseType {
     FUEL,
+    MAINTENANCE,
     OTHER
 }
 
@@ -32,8 +33,11 @@ data class Expense(
     val id: Long = 0,
     val type: ExpenseType,
     val description: String?,
+    val maintenanceKilometers: Int? = null,
+    val maintenanceDetails: String? = null,
     val amount: Double,
-    val date: Date = Date()
+    val date: Date = Date(),
+    val ticketPhotoPath: String? = null
 ) {
     /**
      * Valida que los datos del gasto sean correctos

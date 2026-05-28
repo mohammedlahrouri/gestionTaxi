@@ -6,16 +6,19 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,32 +36,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Edit
 
 import androidx.compose.material.icons.filled.Euro
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MoneyOff
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.Balance
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -94,14 +103,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
 import com.moham.taxi.data.model.Expense
+import com.moham.taxi.ui.components.AutoSizeText
 import com.moham.taxi.ui.components.FinancialDetail
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
@@ -112,6 +125,7 @@ import com.moham.taxi.ui.theme.IncomeIconColor
 import com.moham.taxi.ui.theme.ExpenseIconColor
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
+import com.moham.taxi.utils.DateUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -132,6 +146,26 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     // Scope para operaciones de coroutine
     val scope = rememberCoroutineScope()
+    
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    val enabled = application.isOnlineBackupEnabled().first()
+                    val signedIn = application.googleDriveAuthManager.isSignedIn()
+                    val pending = application.isPendingBackup().first()
+                    if (enabled && signedIn && pending) {
+                        application.scheduleOnlineBackupImmediate()
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Usar los datos precargados si existen
     val initialSelectedDate = preloadData?.selectedDate ?: Date()
@@ -159,17 +193,23 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     var monthFuelExpenses by remember { mutableStateOf(preloadData?.monthFuelExpenses ?: 0.0) }
     var paymentMethodBreakdown by remember { mutableStateOf(preloadData?.paymentMethodBreakdown ?: emptyMap()) }
     
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")) }
-    val dayOfWeekFormat = remember { SimpleDateFormat("EEEE", Locale("es", "ES")) }
+    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val dayOfWeekFormat = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
     val formattedDate = remember(selectedDate) { dateFormat.format(selectedDate) }
     val dayOfWeek = remember(selectedDate) { 
         dayOfWeekFormat.format(selectedDate).replaceFirstChar { 
-            if (it.isLowerCase()) it.titlecase(Locale("es", "ES")) else it.toString() 
+            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
         } 
     }
     
     // Estado para controlar el diálogo de selección de fecha
     var showDatePicker by remember { mutableStateOf(false) }
+
+    var showTargetDialog by remember { mutableStateOf(false) }
+    var targetInput by rememberSaveable(key = "daily_target_input") { mutableStateOf("") }
+    var targetInputError by remember { mutableStateOf(false) }
+    
+    val dailyChallengeEnabled by application.isDailyChallengeEnabled().collectAsState(initial = false)
     
     // ViewModels
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
@@ -177,6 +217,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             repository = application.taxiRideRepository
         )
     )
+    
+    val targetAmount by taxiRideViewModel.dailyTarget.collectAsState(initial = null)
     
     val expenseViewModel: ExpenseViewModel = viewModel(
         factory = ExpenseViewModel.ExpenseViewModelFactory(
@@ -297,13 +339,14 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 saveState = true
                 inclusive = false
             }
+            // Las animaciones se manejan en AppNavigation.kt
         }
     }
     
     // Diálogo de selección de fecha
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = normalizeDate(selectedDate).time
+            initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(selectedDate)
         )
         
         DatePickerDialog(
@@ -312,8 +355,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = Date(millis)
-                            selectedDate = normalizeDate(newDate)
+                            selectedDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
                             refreshKey++
                             scope.launch {
                                 application.saveSelectedDate(selectedDate)
@@ -322,12 +364,12 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         showDatePicker = false
                     }
                 ) {
-                    Text("Confirmar")
+                    Text(stringResource(R.string.confirm))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         ) {
@@ -353,871 +395,903 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             )
         }
     }
-    
 
-    
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Logo minimalista
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            PrimaryBlue.copy(alpha = 0.3f),
-                                            Color.Transparent
-                                        ),
-                                        radius = 50f
-                                    ),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                 imageVector = Icons.Filled.DirectionsCar,
-                                 contentDescription = "Logo",
-                                 tint = Color.White,
-                                 modifier = Modifier.size(18.dp)
-                             )
-                        }
-                        
-                        // Título con tipografía elegante
+    if (showTargetDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showTargetDialog = false
+                targetInputError = false
+            },
+            title = { Text(stringResource(R.string.define_challenge)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = targetInput,
+                        onValueChange = {
+                            targetInput = it
+                            targetInputError = false
+                        },
+                        label = { Text(stringResource(R.string.daily_goal)) },
+                        isError = targetInputError,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (targetInputError) {
                         Text(
-                            "GESTION TAXI",
-                            fontWeight = FontWeight.Light,
-                            fontSize = 20.sp,
-                            letterSpacing = 2.sp,
-                            color = Color.White
+                            text = stringResource(R.string.enter_valid_amount),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
-                },
-                navigationIcon = {}, // Sin botón de atrás
-                actions = {
-                    IconButton(
-                        onClick = { 
-                            navController.navigate(AppScreens.Settings.route) {
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val parsed = targetInput.replace(',', '.').toDoubleOrNull()
+                        if (parsed != null && parsed > 0.0) {
+                            taxiRideViewModel.setDailyTarget(parsed)
+                            showTargetDialog = false
+                            targetInputError = false
+                        } else {
+                            targetInputError = true
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showTargetDialog = false
+                        targetInputError = false
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+    
+    // Estado para controlar la navegación inferior
+    var selectedNavItem by remember { mutableStateOf(0) }
+
+    Scaffold(
+        containerColor = DarkBackground,
+        bottomBar = {
+            BottomNavBar(
+                selectedItem = selectedNavItem,
+                onItemSelected = { index ->
+                    selectedNavItem = index
+                    when (index) {
+                        0 -> {} // Ya estamos en Home
+                        1 -> navigateWithDate(AppScreens.TaxiRideList)
+                        2 -> navController.navigate(AppScreens.Statistics.route)
+                        3 -> {
+                            // Navegar a la pantalla de Otras opciones
+                            navController.navigate(AppScreens.Other.route) {
                                 popUpTo(AppScreens.Home.route) {
                                     saveState = true
                                 }
                                 launchSingleTop = true
                             }
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Ajustes",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = Color.White
-                )
+                }
             )
-        },
-        containerColor = DarkBackground
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .background(DarkBackground),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Botones de acción principales
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PrimaryBlue.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DirectionsCar,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Text(
+                        text = "Taxi Management",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+                
+                IconButton(
+                    onClick = { 
+                        navController.navigate(AppScreens.Settings.route) {
+                            popUpTo(AppScreens.Home.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color.Transparent)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = stringResource(R.string.settings_title),
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Quick Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Botón Añadir Ingreso
-                ModernButton(
-                    text = "Añadir Ingreso",
+                // Ingreso Button
+                QuickActionButton(
+                    text = stringResource(R.string.quick_action_add_income),
                     icon = Icons.Filled.AttachMoney,
-                    colors = listOf(
-                        IncomeButtonColor,
-                        IncomeButtonColor.copy(alpha = 0.8f)
-                    ),
+                    backgroundColor = PrimaryBlue,
                     onClick = { navigateWithDate(AppScreens.TaxiRideForm) },
                     modifier = Modifier.weight(1f)
                 )
                 
-                // Botón Añadir Gasto
-                ModernButton(
-                    text = "Añadir Gasto",
-                    icon = Icons.Filled.MoneyOff,
-                    colors = listOf(
-                        ExpenseButtonColor,
-                        ExpenseButtonColor.copy(alpha = 0.8f)
-                    ),
+                // Gasto Button
+                QuickActionButton(
+                    text = stringResource(R.string.quick_action_add_expense),
+                    icon = Icons.Filled.TrendingDown,
+                    backgroundColor = AccentRed, // Using defined red for destructive
                     onClick = { navigateWithDate(AppScreens.ExpenseForm) },
                     modifier = Modifier.weight(1f)
                 )
             }
-            
-            // Botones secundarios
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón de Carreras
-                ModernButton(
-                    text = "Carreras",
-                    icon = Icons.Filled.DirectionsCar,
-                    colors = listOf(
-                        RidesButtonColor,
-                        RidesButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navigateWithDate(AppScreens.TaxiRideList) },
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Botón de Estadísticas
-                ModernButton(
-                    text = "Estadísticas",
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
-                    colors = listOf(
-                        StatsButtonColor,
-                        StatsButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navController.navigate(AppScreens.Statistics.route) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            // Nuevos botones de funciones próximas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón de Facturas
-                ModernButton(
-                    text = "Facturas",
-                    icon = Icons.Filled.Description,
-                    colors = listOf(
-                        InvoiceButtonColor,
-                        InvoiceButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navController.navigate(AppScreens.Invoice.route) },
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Botón de Precio
-                ModernButton(
-                    text = "Precio",
-                    icon = Icons.Filled.Euro,
-                    colors = listOf(
-                        PriceButtonColor,
-                        PriceButtonColor.copy(alpha = 0.8f)
-                    ),
-                    onClick = { navController.navigate(AppScreens.Price.route) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
 
-            
-            // Fecha con calendario mejorado - Diseño más moderno
+            // Date Selector Card
             Card(
-                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
-                shape = RoundedCornerShape(24.dp), // Bordes más redondeados
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp), // Mayor elevación
-                modifier = Modifier.fillMaxWidth()
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    CalendarBackground,
-                                    CalendarBackground.copy(alpha = 0.95f),
-                                    CalendarBackground.copy(alpha = 0.9f)
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            )
-                        )
-                ) {
-                    // Cabecera con día actual
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Header Day/Date
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column {
                             Text(
                                 text = dayOfWeek,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CalendarText
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
                             )
                             Text(
                                 text = formattedDate,
-                                fontSize = 16.sp,
-                                color = CalendarText.copy(alpha = 0.8f)
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.6f)
                             )
-                            
-                            // Indicador si no es la fecha actual
-                            if (!isToday) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier
-                                        .background(
-                                            Warning.copy(alpha = 0.2f),
-                                            shape = RoundedCornerShape(4.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Warning,
-                                        contentDescription = "Advertencia",
-                                        tint = Warning,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = "Fecha diferente a la actual",
-                                        fontSize = 12.sp,
-                                        color = Warning,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
                         }
-                        
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                        TextButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Transparent)
+                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                         ) {
-                            // Botón para ver calendario completo - Diseño moderno
-                            Surface(
-                                onClick = { showDatePicker = true },
-                                modifier = Modifier.size(44.dp),
-                                shape = CircleShape,
-                                color = CalendarAccent.copy(alpha = 0.2f),
-                                tonalElevation = 4.dp
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CalendarToday,
-                                        contentDescription = "Ver calendario",
-                                        tint = CalendarAccent,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
+                            Icon(
+                                imageVector = Icons.Filled.CalendarToday,
+                                contentDescription = stringResource(R.string.calendar),
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.action_change_date),
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
-                    
-                    // Selector de fechas horizontal (siempre visible)
+
+                    if (!isToday) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .padding(bottom = 16.dp)
+                                .clip(RoundedCornerShape(100.dp))
+                                .background(Color(0xFFF59E0B).copy(alpha = 0.1f)) // Amber-500 approx
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF59E0B))
+                            )
+                            Text(
+                                text = stringResource(R.string.date_different_warning),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFFF59E0B)
+                            )
+                        }
+                    }
+
+                    // Horizontal Days List
                     Row(
                         modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        // Cargar el primer día de la semana configurado
+                         // Cargar el primer día de la semana configurado
                         var firstDayOfWeek by remember { mutableStateOf(2) } // Por defecto, lunes (2)
                         
                         // Cargar la configuración del primer día de la semana
                         LaunchedEffect(Unit) {
-                            // Usar collectAsState en lugar de first() para estar al tanto de cambios
                             application.getFirstDayOfWeek().collect { newFirstDay ->
                                 firstDayOfWeek = newFirstDay
                             }
                         }
                         
-                        // Calcular el inicio de la semana del día seleccionado usando la misma lógica que los cálculos de ingresos
                         val selectedWeekRange = remember(selectedDate, firstDayOfWeek) {
                             com.moham.taxi.utils.DateUtils.getWeekRange(selectedDate, firstDayOfWeek)
                         }
                         
-                        val selectedWeekStartCalendar = remember(selectedWeekRange) {
+                         val selectedWeekStartCalendar = remember(selectedWeekRange) {
                             Calendar.getInstance().apply {
                                 time = selectedWeekRange.first
                             }
                         }
-                        
-                        // Mostrar los 7 días de la semana del día seleccionado
+
                         for (dayOffset in 0..6) {
-                            val calendar = Calendar.getInstance()
+                             val calendar = Calendar.getInstance()
                             calendar.time = selectedWeekStartCalendar.time
                             calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
-                            
-                            // Verificar si este día está dentro del rango de la semana calculada
-                            val dayTime = calendar.time
-                            val isWithinWeekRange = dayTime >= selectedWeekRange.first && dayTime <= selectedWeekRange.second
-                            
-                            // Solo mostrar días que están dentro del rango de la semana
-                            if (!isWithinWeekRange && dayOffset > 0) {
-                                break
-                            }
                             
                             val isSelected = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().apply { 
                                 time = selectedDate 
                             }.get(Calendar.DAY_OF_MONTH) &&
                             calendar.get(Calendar.MONTH) == Calendar.getInstance().apply { 
                                 time = selectedDate 
-                            }.get(Calendar.MONTH) &&
-                            calendar.get(Calendar.YEAR) == Calendar.getInstance().apply { 
-                                time = selectedDate 
-                            }.get(Calendar.YEAR)
+                            }.get(Calendar.MONTH)
                             
-                            val isToday = calendar.get(Calendar.DAY_OF_MONTH) == Calendar.getInstance().get(Calendar.DAY_OF_MONTH) &&
-                                       calendar.get(Calendar.MONTH) == Calendar.getInstance().get(Calendar.MONTH) &&
-                                       calendar.get(Calendar.YEAR) == Calendar.getInstance().get(Calendar.YEAR)
-                            
-                            val dayFormat = SimpleDateFormat("dd", Locale("es"))
-                            val weekDayFormat = SimpleDateFormat("E", Locale("es"))
+                            val dayFormat = SimpleDateFormat("dd", Locale.getDefault())
                             
                             val day = dayFormat.format(calendar.time)
-                            val weekDay = weekDayFormat.format(calendar.time).take(1).uppercase()
                             
-                            // Estado para almacenar los ingresos del día
                             var dayIncome by remember { mutableStateOf(0.0) }
                             val calendarTime = calendar.time
                             
-                            // Obtener ingresos para este día usando LaunchedEffect
                             LaunchedEffect(calendarTime) {
                                 dayIncome = taxiRideViewModel.getIncomeForDate(calendarTime)
                             }
-                            
-                            Surface(
+
+                            val symbol = com.moham.taxi.utils.CurrencyUtils.getCurrencySymbol()
+                            val formattedAmount = if (com.moham.taxi.utils.CurrencyUtils.isEuCountry()) {
+                                "${dayIncome.toInt()} $symbol"
+                            } else {
+                                "$symbol${dayIncome.toInt()}"
+                            }
+
+                            DayItem(
+                                dayNumber = day,
+                                amount = if (dayIncome > 0) formattedAmount else "",
+                                isSelected = isSelected,
                                 onClick = {
                                     selectedDate = normalizeDate(calendar.time)
                                     refreshKey++
-                                    // Guardar la fecha seleccionada
                                     scope.launch {
                                         application.saveSelectedDate(selectedDate)
                                     }
-                                },
-                                modifier = Modifier.animateContentSize(),
-                                shape = RoundedCornerShape(16.dp), // Bordes más redondeados
-                                color = when {
-                                    isSelected -> CalendarAccent
-                                    isToday -> CalendarAccent.copy(alpha = 0.7f)
-                                    else -> CalendarDayBackground.copy(alpha = 0.6f)
-                                },
-                                tonalElevation = when {
-                                    isSelected -> 6.dp
-                                    isToday -> 4.dp
-                                    else -> 2.dp
-                                },
-                                shadowElevation = when {
-                                    isSelected -> 4.dp
-                                    isToday -> 2.dp
-                                    else -> 1.dp
                                 }
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Daily Challenge
+            if (dailyChallengeEnabled) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                 Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(PrimaryBlue.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CenterFocusStrong, // Make sure Target is imported or use similar
+                                        contentDescription = stringResource(R.string.daily_challenge),
+                                        tint = PrimaryBlue,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                                 Text(
-                                    text = weekDay,
-                                    fontSize = 12.sp,
-                                    color = when {
-                                        isSelected || isToday -> CalendarText
-                                        else -> CalendarDayText
-                                    }
+                                    stringResource(R.string.daily_challenge),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
                                 )
-                                Text(
-                                    text = day,
-                                    fontSize = 18.sp,
-                                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
-                                    color = when {
-                                        isSelected || isToday -> CalendarText
-                                        else -> CalendarDayText
-                                    }
-                                )
-                                Text(
-                                    text = if (dayIncome > 0) "${dayIncome.toInt()}€" else "-",
-                                    fontSize = 12.sp,
-                                    fontWeight = if (dayIncome > 0) FontWeight.Bold else FontWeight.Normal,
-                                    color = when {
-                                        dayIncome > 0 && (isSelected || isToday) -> CalendarText.copy(alpha = 0.9f)
-                                        dayIncome > 0 -> CalendarText.copy(alpha = 0.9f)
-                                        isSelected || isToday -> CalendarText.copy(alpha = 0.6f)
-                                        else -> CalendarDayText.copy(alpha = 0.6f)
-                                    }
-                                )
+                            }
+                            
+                            Button(
+                                onClick = {
+                                    targetInput = targetAmount?.toString() ?: ""
+                                    showTargetDialog = true
+                                },
+                                 colors = ButtonDefaults.buttonColors(
+                                    containerColor = PrimaryBlue,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text(stringResource(R.string.define_challenge), fontSize = 11.sp)
+                            }
+                        }
+    
+                        val target = targetAmount ?: 0.0
+                        val progressValue = if (target > 0) (dateIncome / target).coerceIn(0.0, 1.0).toFloat() else 0f
+                        val progressPercent = (progressValue * 100).toInt()
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.progress),
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                            Text(
+                                text = "$progressPercent%",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+    
+                        Spacer(modifier = Modifier.height(6.dp))
+    
+                        LinearProgressIndicator(
+                            progress = progressValue,
+                            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(5.dp)),
+                            color = PrimaryBlue,
+                            trackColor = Color.White.copy(alpha = 0.1f)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        val diff = target - dateIncome
+                        if (target > 0) {
+                             Text(
+                                text = if (diff > 0) stringResource(R.string.goal_remaining, formatCurrency(diff)) else stringResource(R.string.goal_exceeded, formatCurrency(-diff)),
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                        }
+    
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                stringResource(R.string.income) to formatCurrency(dateIncome),
+                                stringResource(R.string.goal) to formatCurrency(target),
+                                stringResource(R.string.status) to if (target > 0) {
+                                    if (diff > 0) stringResource(R.string.on_track) else stringResource(R.string.achieved)
+                                } else {
+                                    stringResource(R.string.no_goal)
+                                }
+                            ).forEach { (label, value) ->
+                                Column(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 10.sp,
+                                        color = Color.White.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        text = value,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+
+            ResumenCard(
+                items = listOf(
+                    ResumenRow(
+                        label = stringResource(R.string.tab_day),
+                        icon = Icons.Filled.CalendarToday,
+                        income = formatCurrency(dateIncome),
+                        expenses = formatCurrency(dateExpenses)
+                    ),
+                    ResumenRow(
+                        label = stringResource(R.string.tab_week),
+                        icon = Icons.Filled.BarChart,
+                        income = formatCurrency(weekIncome),
+                        expenses = formatCurrency(weekExpenses)
+                    ),
+                    ResumenRow(
+                        label = stringResource(R.string.tab_month),
+                        icon = Icons.Filled.CalendarMonth,
+                        income = formatCurrency(monthIncome),
+                        expenses = formatCurrency(monthExpenses)
+                    )
+                )
+            )
             
-            // Tarjeta de ingresos
-            Card(
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+data class ResumenRow(
+    val label: String,
+    val icon: ImageVector,
+    val income: String,
+    val expenses: String
+)
+
+@Composable
+fun ResumenCard(
+    items: List<ResumenRow>
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = IncomeWidgetBackground),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    IncomeWidgetBackground, // Fondo similar al calendario
-                                    IncomeWidgetBackground.copy(alpha = 0.9f)  // Ligeramente más oscuro
-                                )
-                            )
-                        )
-                        .padding(16.dp)
-                ) {
+                Icon(
+                    imageVector = Icons.Filled.Balance,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.home_summary_title),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Filled.SyncAlt,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.weight(0.45f))
+                Text(
+                    text = stringResource(R.string.income),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentGreen,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(0.275f)
+                )
+                Text(
+                    text = stringResource(R.string.expenses),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentRed,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(0.275f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items.forEachIndexed { index, item ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Ingresos",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White
+                        Row(
+                            modifier = Modifier.weight(0.45f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = item.label,
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                        AutoSizeText(
+                            text = item.income,
+                            modifier = Modifier.weight(0.275f),
+                            maxFontSize = 14.sp,
+                            minFontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.9f),
+                            textAlign = TextAlign.End
                         )
-                        Icon(
-                            imageVector = Icons.Filled.AttachMoney,
-                            contentDescription = "Ingresos",
-                            tint = IncomeIconColor,
-                            modifier = Modifier.size(24.dp)
+                        AutoSizeText(
+                            text = item.expenses,
+                            modifier = Modifier.weight(0.275f),
+                            maxFontSize = 14.sp,
+                            minFontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.9f),
+                            textAlign = TextAlign.End
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Ingresos del día
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Today,
-                                contentDescription = "Día",
-                                tint = IncomeIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Día",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(dateIncome),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (dateIncome > 0) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
-                                contentDescription = "Tendencia",
-                                tint = if (dateIncome > 0) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Ingresos de la semana
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.DateRange,
-                                contentDescription = "Semana",
-                                tint = IncomeIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Semana",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(weekIncome),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (weekIncome > dateIncome * 7) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
-                                contentDescription = "Tendencia",
-                                tint = if (weekIncome > dateIncome * 7) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Ingresos del mes
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CalendarMonth,
-                                contentDescription = "Mes",
-                                tint = IncomeIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Mes",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(monthIncome),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (monthIncome > weekIncome * 4) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
-                                contentDescription = "Tendencia",
-                                tint = if (monthIncome > weekIncome * 4) IncomeIconColor.copy(alpha = 0.8f) else IncomeIconColor.copy(alpha = 0.5f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
+                    if (index < items.size - 1) {
+                        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
                     }
                 }
             }
-            
-            // Tarjeta de gastos
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = ExpenseWidgetBackground),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    ExpenseWidgetBackground, // Fondo similar al calendario
-                                    ExpenseWidgetBackground.copy(alpha = 0.9f)  // Ligeramente más oscuro
-                                )
-                            )
-                        )
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Gastos",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White
-                        )
-                        Icon(
-                            imageVector = Icons.Filled.MoneyOff,
-                            contentDescription = "Gastos",
-                            tint = ExpenseIconColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Gastos del día
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Today,
-                                contentDescription = "Día",
-                                tint = ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Día",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(dateExpenses),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (dateExpenses > 0) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
-                                contentDescription = "Tendencia",
-                                tint = if (dateExpenses > 0) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Gastos de la semana
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.DateRange,
-                                contentDescription = "Semana",
-                                tint = ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Semana",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(weekExpenses),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (weekExpenses > dateExpenses * 7) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
-                                contentDescription = "Tendencia",
-                                tint = if (weekExpenses > dateExpenses * 7) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Gastos del mes
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CalendarMonth,
-                                contentDescription = "Mes",
-                                tint = ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "Mes",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = formatCurrency(monthExpenses),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = if (monthExpenses > weekExpenses * 4) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp,
-                                contentDescription = "Tendencia",
-                                tint = if (monthExpenses > weekExpenses * 4) ExpenseIconColor.copy(alpha = 0.6f) else ExpenseIconColor.copy(alpha = 0.8f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Espacio adicional al final para asegurar que todo sea visible
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun ModernButton(
+fun QuickActionButton(
     text: String,
     icon: ImageVector,
-    colors: List<Color>,
+    backgroundColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     val haptic = LocalHapticFeedback.current
-    val isPressed = interactionSource.collectIsPressedAsState()
-    
-    // Animación de escala al presionar
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed.value) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "scale"
-    )
-    
-    // Animación de elevación
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed.value) 2.dp else 6.dp,
-        animationSpec = tween(durationMillis = 150),
-        label = "elevation"
-    )
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(90.dp) // Altura ligeramente reducida para un aspecto más moderno
-            .scale(scale) // Aplicar escala animada
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null, // Quitamos el ripple por defecto para usar nuestras animaciones
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onClick()
-                }
-            ),
-        shape = RoundedCornerShape(20.dp), // Bordes más redondeados
-        color = colors[0],
-        tonalElevation = 0.dp,
-        shadowElevation = elevation // Elevación animada
+    Button(
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
+        modifier = modifier.heightIn(min = 128.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp, pressedElevation = 2.dp),
+        contentPadding = PaddingValues(0.dp) // Reset padding
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = colors,
-                        start = Offset(0f, 0f),
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
-                        tileMode = TileMode.Clamp
-                    )
-                )
+                .padding(16.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            // Efecto de brillo en la esquina
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.15f),
-                                Color.Transparent
-                            ),
-                            center = Offset(0f, 0f),
-                            radius = 400f
-                        )
-                    )
-            )
-            
-            // Contenido del botón
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp)
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
             ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.weight(1f, fill = true))
+            Text(
+                text = text,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 18.sp,
+                color = Color.White,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun DayItem(
+    dayNumber: String,
+    amount: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    Column(
+        modifier = Modifier
+            .width(66.dp)
+            .height(96.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) PrimaryBlue else Color.White.copy(alpha = 0.05f))
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+    ) {
+        Text(
+            text = dayNumber,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) Color.White else Color.White
+        )
+        AutoSizeText(
+            text = amount,
+            modifier = Modifier.fillMaxWidth(),
+            maxFontSize = 13.sp,
+            minFontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White.copy(alpha = 0.9f),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun SummaryCard(
+    title: String,
+    icon: ImageVector,
+    iconColor: Color,
+    items: List<Triple<String, String, String>>
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            color = Color.White.copy(alpha = 0.15f),
-                            shape = CircleShape
-                        ),
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(iconColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = text,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = text,
-                    fontWeight = FontWeight.SemiBold, // Menos pesado para un aspecto más moderno
-                    fontSize = 12.sp, // Tamaño más pequeño para evitar que se corten las letras
-                    color = Color.White,
-                    letterSpacing = 0.5.sp, // Mejor espaciado de letras
-                    maxLines = 1 // Asegurar que el texto esté en una sola línea
-                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items.forEachIndexed { index, item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(item.third, fontSize = 20.sp) // Emoji or Icon
+                            Text(
+                                item.first,
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                        AutoSizeText(
+                            text = item.second,
+                            maxFontSize = 14.sp,
+                            minFontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            textAlign = TextAlign.End
+                        )
+                    }
+                    if (index < items.size - 1) {
+                        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavBar(
+    selectedItem: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val items = listOf(
+        Triple(stringResource(R.string.nav_home), Icons.Filled.Home, 0),
+        Triple(stringResource(R.string.nav_edit), Icons.Filled.Edit, 1),
+        Triple(stringResource(R.string.nav_stats), Icons.Filled.BarChart, 2),
+        Triple(stringResource(R.string.nav_other), Icons.Filled.MoreHoriz, 3)
+    )
+    
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
+    ) {
+        Surface(
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            color = DarkBackground.copy(alpha = 0.94f),
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 6.dp,
+            shadowElevation = 10.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEachIndexed { index, (text, icon, _) ->
+                    val isSelected = selectedItem == index
+
+                    val contentColor by animateColorAsState(
+                        targetValue = if (isSelected) PrimaryBlue else Color.White.copy(alpha = 0.65f),
+                        animationSpec = tween(180),
+                        label = "nav_color"
+                    )
+                    val backgroundColor by animateColorAsState(
+                        targetValue = if (isSelected) PrimaryBlue.copy(alpha = 0.16f) else Color.Transparent,
+                        animationSpec = tween(180),
+                        label = "nav_bg"
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.08f else 1f,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        label = "nav_scale"
+                    )
+                    val underlineAlpha by animateFloatAsState(
+                        targetValue = if (isSelected) 1f else 0f,
+                        animationSpec = tween(180),
+                        label = "nav_underline"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 56.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(backgroundColor)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = rememberRipple(bounded = true, color = PrimaryBlue.copy(alpha = 0.35f))
+                            ) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onItemSelected(index)
+                            }
+                            .padding(horizontal = 6.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = text,
+                                tint = contentColor,
+                                modifier = Modifier.size(22.dp).scale(iconScale)
+                            )
+                            AutoSizeText(
+                                text = text,
+                                color = contentColor,
+                                maxFontSize = 11.sp,
+                                minFontSize = 8.sp,
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 2.dp)
+                                    .size(width = 22.dp, height = 2.dp)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                PrimaryBlue.copy(alpha = underlineAlpha),
+                                                PrimaryBlue.copy(alpha = 0.6f * underlineAlpha)
+                                            )
+                                        ),
+                                        shape = RoundedCornerShape(2.dp)
+                                    )
+                            )
+                        }
+                    }
+                }
             }
         }
     }

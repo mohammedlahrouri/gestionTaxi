@@ -35,7 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -56,8 +58,12 @@ fun TaxiButton(
     icon: @Composable (() -> Unit)? = null,
     backgroundColor: Color = MaterialTheme.colorScheme.primary
 ) {
+    val haptic = LocalHapticFeedback.current
     Button(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         enabled = enabled,
@@ -171,21 +177,28 @@ fun TaxiDropdown(
     onOptionSelected: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     isError: Boolean = false,
     errorMessage: String = "",
-    leadingIcon: @Composable (() -> Unit)? = null
+    leadingIcon: @Composable (() -> Unit)? = null,
+    emptyMessage: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     
     Column(modifier = modifier) {
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
+            onExpandedChange = {
+                if (!enabled) return@ExposedDropdownMenuBox
+                if (options.size <= 1) return@ExposedDropdownMenuBox
+                expanded = !expanded
+            }
         ) {
             OutlinedTextField(
                 value = selectedOption,
                 onValueChange = {},
                 readOnly = true,
+                enabled = enabled,
                 label = { 
                     Text(
                         text = label,
@@ -215,20 +228,36 @@ fun TaxiDropdown(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { 
-                            Text(
-                                text = option,
-                                style = MaterialTheme.typography.bodyMedium
-                            ) 
-                        },
-                        onClick = {
-                            onOptionSelected(option)
-                            expanded = false
-                        },
-                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                    )
+                if (options.isEmpty()) {
+                    emptyMessage?.let { message ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = message,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            onClick = { expanded = false },
+                            enabled = false,
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
+                } else {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            onClick = {
+                                onOptionSelected(option)
+                                expanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                        )
+                    }
                 }
             }
         }
@@ -250,7 +279,7 @@ fun SummaryCard(
     amount: Double,
     modifier: Modifier = Modifier
 ) {
-    val formattedAmount = NumberFormat.getCurrencyInstance(Locale("es", "ES")).format(amount)
+    val formattedAmount = NumberFormat.getCurrencyInstance(Locale.getDefault()).format(amount)
     
     Card(
         modifier = modifier.fillMaxWidth(),

@@ -11,6 +11,18 @@ import kotlinx.coroutines.launch
 class PaymentMethodViewModel(private val repository: PaymentMethodRepository) : ViewModel() {
     
     val allPaymentMethods: Flow<List<PaymentMethod>> = repository.allPaymentMethods
+
+    fun paymentMethodsForPlatform(platformId: Long): Flow<List<PaymentMethod>> {
+        return repository.getPaymentMethodsForPlatform(platformId)
+    }
+
+    fun setPaymentMethodsForPlatform(platformId: Long, paymentMethodIds: List<Long>) = viewModelScope.launch {
+        repository.setPaymentMethodsForPlatform(platformId, paymentMethodIds)
+    }
+
+    suspend fun getOrCreatePaymentMethodId(name: String): Long {
+        return repository.getOrCreatePaymentMethodId(name)
+    }
     
     fun insert(paymentMethod: PaymentMethod) = viewModelScope.launch {
         repository.insert(paymentMethod)

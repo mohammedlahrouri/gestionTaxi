@@ -1,9 +1,16 @@
 package com.moham.taxi.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,22 +24,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
+import androidx.compose.ui.text.font.FontFamily
+import com.moham.taxi.ui.components.AutoSizeText
 import com.moham.taxi.ui.components.FinancialDetail
 import com.moham.taxi.ui.components.formatCurrency
-import com.moham.taxi.ui.theme.CalendarBackground
-import com.moham.taxi.ui.theme.ChartBackgroundColor
-import com.moham.taxi.ui.theme.ChartExpenseColor
-import com.moham.taxi.ui.theme.ChartGridColor
-import com.moham.taxi.ui.theme.ChartIncomeColor
-import com.moham.taxi.ui.theme.DarkBackground
-import com.moham.taxi.ui.theme.GreenAccent
-import com.moham.taxi.ui.theme.RedAccent
+import com.moham.taxi.ui.theme.*
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import kotlinx.coroutines.Dispatchers
@@ -42,13 +46,26 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import com.moham.taxi.ui.navigation.AppScreens
+import com.moham.taxi.ui.screens.BottomNavBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(navController: NavHostController) {
+    // Configurar el manejo del botón Atrás para volver a Home
+    BackHandler {
+        navController.navigate(AppScreens.Home.route) {
+            popUpTo(AppScreens.Home.route) {
+                inclusive = false
+            }
+            launchSingleTop = true
+            // Las animaciones se manejan en AppNavigation.kt
+        }
+    }
+    
     // Obtener el contexto y la aplicación
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
+    val tipsEnabled by application.isTipsEnabled().collectAsState(initial = false)
     
     // Scope para operaciones de coroutine
     val scope = rememberCoroutineScope()
@@ -89,9 +106,30 @@ fun StatisticsScreen(navController: NavHostController) {
     var paymentMethodBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var weekPaymentMethodBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var monthPaymentMethodBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var appPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var totalPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var netPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var weekAppPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var weekTotalPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var weekNetPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var monthAppPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var monthTotalPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var monthNetPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var dateMeterIncome by remember { mutableStateOf(0.0) }
+    var dateFixedIncome by remember { mutableStateOf(0.0) }
+    var weekMeterIncome by remember { mutableStateOf(0.0) }
+    var weekFixedIncome by remember { mutableStateOf(0.0) }
+    var monthMeterIncome by remember { mutableStateOf(0.0) }
+    var monthFixedIncome by remember { mutableStateOf(0.0) }
+    var dateTips by remember { mutableStateOf(0.0) }
+    var weekTips by remember { mutableStateOf(0.0) }
+    var monthTips by remember { mutableStateOf(0.0) }
+    var tipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var weekTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var monthTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     
     // Cargar datos financieros
-    LaunchedEffect(Unit) {
+    LaunchedEffect(tipsEnabled) {
         withContext(Dispatchers.IO) {
             // Cargar la fecha seleccionada desde DataStore
             selectedDate = application.getSelectedDate().first() ?: Date()
@@ -99,1416 +137,802 @@ fun StatisticsScreen(navController: NavHostController) {
             // Datos diarios
             dateIncome = taxiRideViewModel.getIncomeForDate(selectedDate)
             dateExpenses = expenseViewModel.getExpensesTotalForDate(selectedDate)
-            dateNet = dateIncome - dateExpenses
+            dateNet = dateIncome
             rideCount = taxiRideViewModel.getRideCountForDate(selectedDate)
             expenseCount = expenseViewModel.getExpenseCountForDate(selectedDate)
             fuelExpenses = expenseViewModel.getFuelExpensesForDate(selectedDate)
             paymentMethodBreakdown = taxiRideViewModel.getIncomeByPaymentMethodForDate(selectedDate)
+            appPlatformBreakdown = taxiRideViewModel.getAppIncomeByPlatformForDate(selectedDate)
+            totalPlatformBreakdown = taxiRideViewModel.getIncomeByPlatformForDate(selectedDate)
+            netPlatformBreakdown = taxiRideViewModel.getNetIncomeByPlatformForDate(selectedDate)
+            if (tipsEnabled) {
+                dateTips = taxiRideViewModel.getTipsForDate(selectedDate)
+                tipsByMethod = taxiRideViewModel.getTipsByMethodForDate(selectedDate)
+            } else {
+                dateTips = 0.0
+                tipsByMethod = emptyMap()
+            }
+            taxiRideViewModel.getServiceTypeTotalsForDate(selectedDate).let { totals ->
+                dateMeterIncome = totals.first
+                dateFixedIncome = totals.second
+            }
             
             // Datos semanales basados en la fecha seleccionada
             weekIncome = taxiRideViewModel.getWeekIncomeForDate(selectedDate)
             weekExpenses = expenseViewModel.getWeekExpensesForDate(selectedDate)
-            weekNet = weekIncome - weekExpenses
+            weekNet = weekIncome
             weekRideCount = taxiRideViewModel.getWeekRideCountForDate(selectedDate)
             weekExpenseCount = expenseViewModel.getWeekExpenseCountForDate(selectedDate)
             weekFuelExpenses = expenseViewModel.getWeekFuelExpensesForDate(selectedDate)
             weekPaymentMethodBreakdown = taxiRideViewModel.getWeekIncomeByPaymentMethodForDate(selectedDate)
+            weekAppPlatformBreakdown = taxiRideViewModel.getWeekAppIncomeByPlatformForDate(selectedDate)
+            weekTotalPlatformBreakdown = taxiRideViewModel.getWeekIncomeByPlatformForDate(selectedDate)
+            weekNetPlatformBreakdown = taxiRideViewModel.getWeekNetIncomeByPlatformForDate(selectedDate)
+            if (tipsEnabled) {
+                weekTips = taxiRideViewModel.getWeekTipsForDate(selectedDate)
+                weekTipsByMethod = taxiRideViewModel.getWeekTipsByMethodForDate(selectedDate)
+            } else {
+                weekTips = 0.0
+                weekTipsByMethod = emptyMap()
+            }
+            taxiRideViewModel.getWeekServiceTypeTotalsForDate(selectedDate).let { totals ->
+                weekMeterIncome = totals.first
+                weekFixedIncome = totals.second
+            }
             
             // Datos mensuales basados en la fecha seleccionada
             monthIncome = taxiRideViewModel.getMonthIncomeForDate(selectedDate)
             monthExpenses = expenseViewModel.getMonthExpensesForDate(selectedDate)
-            monthNet = monthIncome - monthExpenses
+            monthNet = monthIncome
             monthRideCount = taxiRideViewModel.getMonthRideCountForDate(selectedDate)
             monthExpenseCount = expenseViewModel.getMonthExpenseCountForDate(selectedDate)
             monthFuelExpenses = expenseViewModel.getMonthFuelExpensesForDate(selectedDate)
             monthPaymentMethodBreakdown = taxiRideViewModel.getMonthIncomeByPaymentMethodForDate(selectedDate)
+            monthAppPlatformBreakdown = taxiRideViewModel.getMonthAppIncomeByPlatformForDate(selectedDate)
+            monthTotalPlatformBreakdown = taxiRideViewModel.getMonthIncomeByPlatformForDate(selectedDate)
+            monthNetPlatformBreakdown = taxiRideViewModel.getMonthNetIncomeByPlatformForDate(selectedDate)
+            if (tipsEnabled) {
+                monthTips = taxiRideViewModel.getMonthTipsForDate(selectedDate)
+                monthTipsByMethod = taxiRideViewModel.getMonthTipsByMethodForDate(selectedDate)
+            } else {
+                monthTips = 0.0
+                monthTipsByMethod = emptyMap()
+            }
+            taxiRideViewModel.getMonthServiceTypeTotalsForDate(selectedDate).let { totals ->
+                monthMeterIncome = totals.first
+                monthFixedIncome = totals.second
+            }
         }
     }
     
-    // Formato para las fechas
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES"))
+    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val formattedDate = remember(selectedDate) { dateFormat.format(selectedDate) }
-    
+    val dayFormat = remember { SimpleDateFormat("dd", Locale.getDefault()) }
+    val weekFormat = remember { SimpleDateFormat("dd/MM", Locale.getDefault()) }
+    val monthFormat = remember { SimpleDateFormat("MMM", Locale.getDefault()) }
+
+    val firstDayOfWeek = application.getFirstDayOfWeek().collectAsState(initial = Calendar.MONDAY).value
+    val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(selectedDate, firstDayOfWeek)
+    val weekRangeText = "${dateFormat.format(startOfWeek)} - ${dateFormat.format(endOfWeek)}"
+
+    val calMonth = Calendar.getInstance().apply { time = selectedDate }
+    calMonth.set(Calendar.DAY_OF_MONTH, 1)
+    val startOfMonth = calMonth.time
+    calMonth.set(Calendar.DAY_OF_MONTH, calMonth.getActualMaximum(Calendar.DAY_OF_MONTH))
+    val endOfMonth = calMonth.time
+    val monthRangeText = "${dateFormat.format(startOfMonth)} - ${dateFormat.format(endOfMonth)}"
+
+    var lastSevenDaysIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenDaysExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenWeeksIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenWeeksExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenMonthsIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenMonthsExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+
+    LaunchedEffect(selectedDate) {
+        withContext(Dispatchers.IO) {
+            val incData = mutableListOf<Pair<Date, Double>>()
+            val expData = mutableListOf<Pair<Date, Double>>()
+            val cal = Calendar.getInstance().apply { time = selectedDate; add(Calendar.DAY_OF_MONTH, -6) }
+            repeat(7) {
+                val d = cal.time
+                incData.add(d to taxiRideViewModel.getIncomeForDate(d))
+                expData.add(d to expenseViewModel.getExpensesTotalForDate(d))
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+            lastSevenDaysIncome = incData
+            lastSevenDaysExpenses = expData
+        }
+    }
+
+    LaunchedEffect(selectedDate) {
+        withContext(Dispatchers.IO) {
+            val incData = mutableListOf<Pair<Date, Double>>()
+            val expData = mutableListOf<Pair<Date, Double>>()
+            val cal = Calendar.getInstance().apply { time = selectedDate; add(Calendar.WEEK_OF_YEAR, -6) }
+            repeat(7) {
+                val d = cal.time
+                incData.add(d to taxiRideViewModel.getWeekIncomeForDate(d))
+                expData.add(d to expenseViewModel.getWeekExpensesForDate(d))
+                cal.add(Calendar.WEEK_OF_YEAR, 1)
+            }
+            lastSevenWeeksIncome = incData
+            lastSevenWeeksExpenses = expData
+        }
+    }
+
+    LaunchedEffect(selectedDate) {
+        withContext(Dispatchers.IO) {
+            val incData = mutableListOf<Pair<Date, Double>>()
+            val expData = mutableListOf<Pair<Date, Double>>()
+            val cal = Calendar.getInstance().apply { time = selectedDate; add(Calendar.MONTH, -6) }
+            repeat(7) {
+                val d = cal.time
+                incData.add(d to taxiRideViewModel.getMonthIncomeForDate(d))
+                expData.add(d to expenseViewModel.getMonthExpensesForDate(d))
+                cal.add(Calendar.MONTH, 1)
+            }
+            lastSevenMonthsIncome = incData
+            lastSevenMonthsExpenses = expData
+        }
+    }
+
+    var selectedTab by remember { mutableIntStateOf(0) }
+
+    val dayTrend = buildTrendPoints(lastSevenDaysIncome, lastSevenDaysExpenses, dayFormat)
+    val weekTrend = buildTrendPoints(lastSevenWeeksIncome, lastSevenWeeksExpenses, weekFormat)
+    val monthTrend = buildTrendPoints(lastSevenMonthsIncome, lastSevenMonthsExpenses, monthFormat)
+
+    val dayGross = totalPlatformBreakdown.values.sum()
+    val weekGross = weekTotalPlatformBreakdown.values.sum()
+    val monthGross = monthTotalPlatformBreakdown.values.sum()
+
+    val dayCommission = (dayGross - dateIncome).coerceAtLeast(0.0)
+    val weekCommission = (weekGross - weekIncome).coerceAtLeast(0.0)
+    val monthCommission = (monthGross - monthIncome).coerceAtLeast(0.0)
+
+    val periodData = when (selectedTab) {
+        0 -> StatsPeriodData(
+            period = stringResource(R.string.chart_title_day),
+            range = formattedDate,
+            gross = dayGross,
+            commissions = dayCommission,
+            net = dateNet,
+            expenses = dateExpenses,
+            fuel = fuelExpenses,
+            otherExpenses = dateExpenses - fuelExpenses,
+            paymentMethods = buildPaymentMethods(paymentMethodBreakdown, appPlatformBreakdown),
+            platforms = buildPlatformItems(totalPlatformBreakdown, netPlatformBreakdown),
+            meterTotal = dateMeterIncome,
+            fixedTotal = dateFixedIncome,
+            tipsTotal = dateTips,
+            tipsByMethod = tipsByMethod,
+            trend = dayTrend,
+            trendTitle = stringResource(R.string.trend_daily)
+        )
+        1 -> StatsPeriodData(
+            period = stringResource(R.string.chart_title_week),
+            range = weekRangeText,
+            gross = weekGross,
+            commissions = weekCommission,
+            net = weekNet,
+            expenses = weekExpenses,
+            fuel = weekFuelExpenses,
+            otherExpenses = weekExpenses - weekFuelExpenses,
+            paymentMethods = buildPaymentMethods(weekPaymentMethodBreakdown, weekAppPlatformBreakdown),
+            platforms = buildPlatformItems(weekTotalPlatformBreakdown, weekNetPlatformBreakdown),
+            meterTotal = weekMeterIncome,
+            fixedTotal = weekFixedIncome,
+            tipsTotal = weekTips,
+            tipsByMethod = weekTipsByMethod,
+            trend = weekTrend,
+            trendTitle = stringResource(R.string.trend_weekly)
+        )
+        else -> StatsPeriodData(
+            period = stringResource(R.string.chart_title_month),
+            range = monthRangeText,
+            gross = monthGross,
+            commissions = monthCommission,
+            net = monthNet,
+            expenses = monthExpenses,
+            fuel = monthFuelExpenses,
+            otherExpenses = monthExpenses - monthFuelExpenses,
+            paymentMethods = buildPaymentMethods(monthPaymentMethodBreakdown, monthAppPlatformBreakdown),
+            platforms = buildPlatformItems(monthTotalPlatformBreakdown, monthNetPlatformBreakdown),
+            meterTotal = monthMeterIncome,
+            fixedTotal = monthFixedIncome,
+            tipsTotal = monthTips,
+            tipsByMethod = monthTipsByMethod,
+            trend = monthTrend,
+            trendTitle = stringResource(R.string.trend_monthly)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "Estadísticas Detalladas",
+                        stringResource(R.string.statistics_title),
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = Color.White
+                    containerColor = StatsBackground,
+                    titleContentColor = StatsTextPrimary
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        bottomBar = {
+            BottomNavBar(
+                selectedItem = 2,
+                onItemSelected = { index ->
+                    when (index) {
+                        0 -> navController.navigate(AppScreens.Home.route) {
+                            popUpTo(AppScreens.Home.route) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
+                        2 -> {}
+                        3 -> navController.navigate(AppScreens.Other.route)
+                    }
+                }
+            )
+        },
+        containerColor = StatsBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .background(StatsBackground)
                 .padding(paddingValues)
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Sección de estadísticas diarias
             Card(
-                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
+                colors = CardDefaults.cardColors(containerColor = StatsCardBackground),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, StatsBorder),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
+                        .fillMaxWidth()
+                        .padding(4.dp)
                 ) {
-                    Text(
-                        text = "Estadísticas del Día (${formattedDate})",
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Resumen principal
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Ingresos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(dateIncome),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = GreenAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Gastos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(dateExpenses),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Neto
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Neto",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(dateNet),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (dateNet >= 0) GreenAccent else RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Detalles adicionales - Mostrar solo los valores monetarios
-                    FinancialDetail(
-                        label = "Gastos en combustible",
-                        amount = fuelExpenses,
-                        icon = Icons.Filled.LocalGasStation
-                    )
-                    
-                    FinancialDetail(
-                        label = "Otros gastos",
-                        amount = dateExpenses - fuelExpenses,
-                        icon = Icons.Filled.Receipt
-                    )
-                    
-                    // Añadir sección de métodos de pago en la misma tarjeta
-                    if (paymentMethodBreakdown.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "Desglose por Métodos de Pago",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Mostrar cada método de pago y su valor
-                        paymentMethodBreakdown.entries.sortedByDescending { it.value }.forEach { (method, amount) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = when (method.lowercase(Locale.getDefault())) {
-                                            "efectivo" -> Icons.Filled.Money
-                                            "tarjeta" -> Icons.Filled.CreditCard
-                                            else -> Icons.Filled.Payment
-                                        },
-                                        contentDescription = method,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = method,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White
-                                    )
-                                }
-                                
-                                Text(
-                                    text = formatCurrency(amount),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "No hay datos de métodos de pago para esta fecha",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-                    
-                    // Añadir gráfica de tendencia de los últimos 7 días dentro de la Card de estadísticas diarias
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Tendencia de los últimos 7 días",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Variables para almacenar datos históricos
-                    var lastSevenDaysIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    var lastSevenDaysExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    
-                    // Cargar datos de los últimos 7 días
-                    LaunchedEffect(selectedDate) {
-                        withContext(Dispatchers.IO) {
-                            val lastSevenDaysData = mutableListOf<Pair<Date, Double>>()
-                            val lastSevenDaysExpensesData = mutableListOf<Pair<Date, Double>>()
-                            
-                            // Calendario para iterar por los últimos 7 días
-                            val calendar = Calendar.getInstance().apply { time = selectedDate }
-                            
-                            // Retroceder al inicio (6 días atrás)
-                            calendar.add(Calendar.DAY_OF_MONTH, -6)
-                            
-                            // Recopilar datos de los últimos 7 días
-                            repeat(7) {
-                                val currentDate = calendar.time
-                                val dayIncome = taxiRideViewModel.getIncomeForDate(currentDate)
-                                val dayExpenses = expenseViewModel.getExpensesTotalForDate(currentDate)
-                                
-                                // Solo agregar días con actividad (ingresos o gastos > 0)
-                                if (dayIncome > 0 || dayExpenses > 0) {
-                                    lastSevenDaysData.add(Pair(currentDate, dayIncome))
-                                    lastSevenDaysExpensesData.add(Pair(currentDate, dayExpenses))
-                                }
-                                
-                                // Avanzar al siguiente día
-                                calendar.add(Calendar.DAY_OF_MONTH, 1)
-                            }
-                            
-                            lastSevenDaysIncome = lastSevenDaysData
-                            lastSevenDaysExpenses = lastSevenDaysExpensesData
-                        }
-                    }
-                    
-                    // Gráfica de líneas para la tendencia
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(8.dp)
-                    ) {
-                        Canvas(
+                    listOf(
+                        stringResource(R.string.tab_day),
+                        stringResource(R.string.tab_week),
+                        stringResource(R.string.tab_month)
+                    ).forEachIndexed { index, title ->
+                        val selected = selectedTab == index
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(ChartBackgroundColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            val canvasWidth = size.width
-                            val canvasHeight = size.height
-                            
-                            // Evitar división por cero o datos vacíos
-                            if (lastSevenDaysIncome.isNotEmpty() && lastSevenDaysExpenses.isNotEmpty()) {
-                                // Encontrar el valor máximo para la escala
-                                val allValues = lastSevenDaysIncome.map { it.second } + lastSevenDaysExpenses.map { it.second }
-                                val maxValue = allValues.maxOrNull() ?: 1.0
-                                
-                                // Dibujar ejes
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, canvasHeight),
-                                    end = Offset(canvasWidth, canvasHeight),
-                                    strokeWidth = 2f
+                                .weight(1f)
+                                .background(
+                                    if (selected) StatsBackground else Color.Transparent,
+                                    RoundedCornerShape(16.dp)
                                 )
-                                
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(0f, canvasHeight),
-                                    strokeWidth = 2f
-                                )
-                                
-                                // Dibujar líneas de cuadrícula horizontales
-                                val gridCount = 4
-                                for (i in 1..gridCount) {
-                                    val y = canvasHeight - (i * (canvasHeight / gridCount))
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(0f, y),
-                                        end = Offset(canvasWidth, y),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Dibujar líneas verticales para cada día con actividad
-                                val dayWidth = canvasWidth / (lastSevenDaysIncome.size - 1)
-                                for (i in 1 until lastSevenDaysIncome.size) {
-                                    val x = i * dayWidth
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(x, 0f),
-                                        end = Offset(x, canvasHeight),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Factor de escala
-                                val scaleFactor = 0.85f
-                                
-                                // Dibujar línea de ingresos
-                                val incomePoints = lastSevenDaysIncome.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / (lastSevenDaysIncome.size - 1))
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor)
-                                    Offset(x, y.toFloat())
-                                }
-                                
-                                for (i in 0 until incomePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartIncomeColor,
-                                        start = incomePoints[i],
-                                        end = incomePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para ingresos
-                                incomePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartIncomeColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                                
-                                // Dibujar línea de gastos
-                                val expensePoints = lastSevenDaysExpenses.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / (lastSevenDaysExpenses.size - 1))
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor)
-                                    Offset(x, y.toFloat())
-                                }
-                                
-                                for (i in 0 until expensePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartExpenseColor,
-                                        start = expensePoints[i],
-                                        end = expensePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para gastos
-                                expensePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartExpenseColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Leyenda para la gráfica de tendencia
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                                .clickable { selectedTab = index }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Formato para las fechas abreviadas
-                            val dayFormat = SimpleDateFormat("dd/MM", Locale("es", "ES"))
-                            
-                            // Mostrar fechas como eje X
-                            if (lastSevenDaysIncome.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    lastSevenDaysIncome.forEachIndexed { index, (date, _) ->
-                                        Text(
-                                            text = dayFormat.format(date),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Leyenda específica para la gráfica de tendencia
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // Leyenda de Ingresos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartIncomeColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                        }
-                        
-                        // Leyenda de Gastos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartExpenseColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
+                                text = title,
+                                color = if (selected) StatsTextPrimary else StatsTextSecondary,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                             )
                         }
                     }
                 }
             }
-            
-            // Sección de la semana actual
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
-                ) {
-                    // Calcular el rango de fechas de la semana usando la misma lógica que los repositorios
-                    val firstDayOfWeek = application.getFirstDayOfWeek().collectAsState(initial = Calendar.MONDAY).value
-                    val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(selectedDate, firstDayOfWeek)
-                    
-                    val weekRangeText = "${dateFormat.format(startOfWeek)} - ${dateFormat.format(endOfWeek)}"
-                    
-                    Text(
-                        text = "Estadísticas de la Semana ($weekRangeText)",
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Resumen principal
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Ingresos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(weekIncome),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = GreenAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Gastos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(weekExpenses),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Neto
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Neto",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(weekNet),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (weekNet >= 0) GreenAccent else RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Detalles adicionales
-                    FinancialDetail(
-                        label = "Gastos en combustible",
-                        amount = weekFuelExpenses,
-                        icon = Icons.Filled.LocalGasStation
-                    )
-                    
-                    FinancialDetail(
-                        label = "Otros gastos",
-                        amount = weekExpenses - weekFuelExpenses,
-                        icon = Icons.Filled.Receipt
-                    )
-                    
-                    // Añadir sección de métodos de pago para la semana
-                    if (weekPaymentMethodBreakdown.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "Desglose por Métodos de Pago",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Mostrar cada método de pago y su valor
-                        weekPaymentMethodBreakdown.entries.sortedByDescending { it.value }.forEach { (method, amount) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = when (method.lowercase(Locale.getDefault())) {
-                                            "efectivo" -> Icons.Filled.Money
-                                            "tarjeta" -> Icons.Filled.CreditCard
-                                            else -> Icons.Filled.Payment
-                                        },
-                                        contentDescription = method,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = method,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White
-                                    )
-                                }
-                                
-                                Text(
-                                    text = formatCurrency(amount),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Añadir gráfica de tendencia de las últimas 7 semanas
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Tendencia de las últimas 7 semanas",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Variables para almacenar datos históricos de semanas
-                    var lastSevenWeeksIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    var lastSevenWeeksExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    
-                    // Cargar datos de las últimas 7 semanas
-                    LaunchedEffect(selectedDate) {
-                        withContext(Dispatchers.IO) {
-                            val lastSevenWeeksIncomeData = mutableListOf<Pair<Date, Double>>()
-                            val lastSevenWeeksExpensesData = mutableListOf<Pair<Date, Double>>()
-                            
-                            // Calendario para iterar por las últimas 7 semanas
-                            val calendar = Calendar.getInstance().apply { time = selectedDate }
-                            
-                            // Retroceder al inicio (6 semanas atrás)
-                            calendar.add(Calendar.WEEK_OF_YEAR, -6)
-                            
-                            // Recopilar datos de las últimas 7 semanas
-                            repeat(7) {
-                                val weekStart = calendar.time
-                                // Guardar el inicio de semana para la etiqueta
-                                val weekLabel = calendar.time
-                                
-                                // Calcular ingresos y gastos para esta semana
-                                val weekIncome = taxiRideViewModel.getWeekIncomeForDate(weekStart)
-                                val weekExpenses = expenseViewModel.getWeekExpensesForDate(weekStart)
-                                
-                                lastSevenWeeksIncomeData.add(Pair(weekLabel, weekIncome))
-                                lastSevenWeeksExpensesData.add(Pair(weekLabel, weekExpenses))
-                                
-                                // Avanzar a la siguiente semana
-                                calendar.add(Calendar.WEEK_OF_YEAR, 1)
-                            }
-                            
-                            lastSevenWeeksIncome = lastSevenWeeksIncomeData
-                            lastSevenWeeksExpenses = lastSevenWeeksExpensesData
-                        }
-                    }
-                    
-                    // Gráfica de líneas para la tendencia semanal
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(8.dp)
-                    ) {
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(ChartBackgroundColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            val canvasWidth = size.width
-                            val canvasHeight = size.height
-                            
-                            // Evitar división por cero o datos vacíos
-                            if (lastSevenWeeksIncome.isNotEmpty() && lastSevenWeeksExpenses.isNotEmpty()) {
-                                // Encontrar el valor máximo para la escala
-                                val allValues = lastSevenWeeksIncome.map { it.second } + lastSevenWeeksExpenses.map { it.second }
-                                val maxValue = allValues.maxOrNull() ?: 1.0
-                                
-                                // Dibujar ejes
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, canvasHeight),
-                                    end = Offset(canvasWidth, canvasHeight),
-                                    strokeWidth = 2f
-                                )
-                                
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(0f, canvasHeight),
-                                    strokeWidth = 2f
-                                )
-                                
-                                // Dibujar líneas de cuadrícula horizontales
-                                val gridCount = 4
-                                for (i in 1..gridCount) {
-                                    val y = canvasHeight - (i * (canvasHeight / gridCount))
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(0f, y),
-                                        end = Offset(canvasWidth, y),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Dibujar líneas verticales para cada semana
-                                val weekWidth = canvasWidth / 7
-                                for (i in 1..6) {
-                                    val x = i * weekWidth
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(x, 0f),
-                                        end = Offset(x, canvasHeight),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Factor de escala
-                                val scaleFactor = 0.85f
-                                
-                                // Dibujar línea de ingresos
-                                val incomePoints = lastSevenWeeksIncome.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / 6)
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor).toFloat()
-                                    Offset(x, y)
-                                }
-                                
-                                for (i in 0 until incomePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartIncomeColor,
-                                        start = incomePoints[i],
-                                        end = incomePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para ingresos
-                                incomePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartIncomeColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                                
-                                // Dibujar línea de gastos
-                                val expensePoints = lastSevenWeeksExpenses.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / 6)
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor).toFloat()
-                                    Offset(x, y)
-                                }
-                                
-                                for (i in 0 until expensePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartExpenseColor,
-                                        start = expensePoints[i],
-                                        end = expensePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para gastos
-                                expensePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartExpenseColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Leyenda para la gráfica de tendencia
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            // Formato para las fechas abreviadas
-                            val weekFormat = SimpleDateFormat("dd/MM", Locale("es", "ES"))
-                            
-                            // Mostrar fechas como eje X
-                            if (lastSevenWeeksIncome.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    lastSevenWeeksIncome.forEachIndexed { index, (date, _) ->
-                                        Text(
-                                            text = weekFormat.format(date),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Leyenda específica para la gráfica de tendencia
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // Leyenda de Ingresos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartIncomeColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                        }
-                        
-                        // Leyenda de Gastos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartExpenseColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
+
+            StatsHeroCard(
+                net = periodData.net,
+                gross = periodData.gross,
+                commissions = periodData.commissions,
+                expenses = periodData.expenses,
+                period = periodData.period,
+                dates = periodData.range
+            )
+            StatsPaymentMethods(methods = periodData.paymentMethods)
+            StatsPlatformBreakdown(
+                platforms = periodData.platforms,
+                meterTotal = periodData.meterTotal,
+                fixedTotal = periodData.fixedTotal
+            )
+            StatsExpenseDetails(
+                fuel = periodData.fuel,
+                otherExpenses = periodData.otherExpenses
+            )
+            StatsTrendChart(points = periodData.trend, title = periodData.trendTitle)
+            if (tipsEnabled) {
+                StatsTipsDetails(total = periodData.tipsTotal, byMethod = periodData.tipsByMethod)
             }
-            
-            // Sección del mes actual
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CalendarBackground),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
-                ) {
-                    // Calcular el rango de fechas del mes (similar a getMonthIncomeForDate)
-                    val calendar = Calendar.getInstance().apply { time = selectedDate }
-                    
-                    // Ajustar al primer día del mes
-                    calendar.set(Calendar.DAY_OF_MONTH, 1)
-                    val startOfMonth = calendar.time
-                    
-                    // Ajustar al último día del mes
-                    calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
-                    val endOfMonth = calendar.time
-                    
-                    val monthRangeText = "${dateFormat.format(startOfMonth)} - ${dateFormat.format(endOfMonth)}"
-                    
-                    Text(
-                        text = "Estadísticas del Mes ($monthRangeText)",
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Resumen principal
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Ingresos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(monthIncome),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = GreenAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Gastos
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(monthExpenses),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        
-                        // Neto
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Neto",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                            Text(
-                                text = formatCurrency(monthNet),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (monthNet >= 0) GreenAccent else RedAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Detalles adicionales
-                    FinancialDetail(
-                        label = "Gastos en combustible",
-                        amount = monthFuelExpenses,
-                        icon = Icons.Filled.LocalGasStation
-                    )
-                    
-                    FinancialDetail(
-                        label = "Otros gastos",
-                        amount = monthExpenses - monthFuelExpenses,
-                        icon = Icons.Filled.Receipt
-                    )
-                    
-                    // Añadir sección de métodos de pago para el mes
-                    if (monthPaymentMethodBreakdown.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Text(
-                            text = "Desglose por Métodos de Pago",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Mostrar cada método de pago y su valor
-                        monthPaymentMethodBreakdown.entries.sortedByDescending { it.value }.forEach { (method, amount) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = when (method.lowercase(Locale.getDefault())) {
-                                            "efectivo" -> Icons.Filled.Money
-                                            "tarjeta" -> Icons.Filled.CreditCard
-                                            else -> Icons.Filled.Payment
-                                        },
-                                        contentDescription = method,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = method,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White
-                                    )
-                                }
-                                
-                                Text(
-                                    text = formatCurrency(amount),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Añadir gráfica de tendencia de los últimos 7 meses
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Tendencia de los últimos 7 meses",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Variables para almacenar datos históricos de meses
-                    var lastSevenMonthsIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    var lastSevenMonthsExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
-                    
-                    // Cargar datos de los últimos 7 meses
-                    LaunchedEffect(selectedDate) {
-                        withContext(Dispatchers.IO) {
-                            val lastSevenMonthsIncomeData = mutableListOf<Pair<Date, Double>>()
-                            val lastSevenMonthsExpensesData = mutableListOf<Pair<Date, Double>>()
-                            
-                            // Calendario para iterar por los últimos 7 meses
-                            val calendar = Calendar.getInstance().apply { time = selectedDate }
-                            
-                            // Retroceder al inicio (6 meses atrás)
-                            calendar.add(Calendar.MONTH, -6)
-                            
-                            // Recopilar datos de los últimos 7 meses
-                            repeat(7) {
-                                val monthStart = calendar.time
-                                // Guardar el inicio de mes para la etiqueta
-                                val monthLabel = calendar.time
-                                
-                                // Calcular ingresos y gastos para este mes
-                                val monthIncome = taxiRideViewModel.getMonthIncomeForDate(monthStart)
-                                val monthExpenses = expenseViewModel.getMonthExpensesForDate(monthStart)
-                                
-                                lastSevenMonthsIncomeData.add(Pair(monthLabel, monthIncome))
-                                lastSevenMonthsExpensesData.add(Pair(monthLabel, monthExpenses))
-                                
-                                // Avanzar al siguiente mes
-                                calendar.add(Calendar.MONTH, 1)
-                            }
-                            
-                            lastSevenMonthsIncome = lastSevenMonthsIncomeData
-                            lastSevenMonthsExpenses = lastSevenMonthsExpensesData
-                        }
-                    }
-                    
-                    // Gráfica de líneas para la tendencia mensual
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp)
-                            .padding(8.dp)
-                    ) {
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(ChartBackgroundColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            val canvasWidth = size.width
-                            val canvasHeight = size.height
-                            
-                            // Evitar división por cero o datos vacíos
-                            if (lastSevenMonthsIncome.isNotEmpty() && lastSevenMonthsExpenses.isNotEmpty()) {
-                                // Encontrar el valor máximo para la escala
-                                val allValues = lastSevenMonthsIncome.map { it.second } + lastSevenMonthsExpenses.map { it.second }
-                                val maxValue = allValues.maxOrNull() ?: 1.0
-                                
-                                // Dibujar ejes
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, canvasHeight),
-                                    end = Offset(canvasWidth, canvasHeight),
-                                    strokeWidth = 2f
-                                )
-                                
-                                drawLine(
-                                    color = ChartGridColor.copy(alpha = 0.7f),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(0f, canvasHeight),
-                                    strokeWidth = 2f
-                                )
-                                
-                                // Dibujar líneas de cuadrícula horizontales
-                                val gridCount = 4
-                                for (i in 1..gridCount) {
-                                    val y = canvasHeight - (i * (canvasHeight / gridCount))
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(0f, y),
-                                        end = Offset(canvasWidth, y),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Dibujar líneas verticales para cada mes
-                                val monthWidth = canvasWidth / 7
-                                for (i in 1..6) {
-                                    val x = i * monthWidth
-                                    drawLine(
-                                        color = ChartGridColor.copy(alpha = 0.3f),
-                                        start = Offset(x, 0f),
-                                        end = Offset(x, canvasHeight),
-                                        strokeWidth = 1f
-                                    )
-                                }
-                                
-                                // Factor de escala
-                                val scaleFactor = 0.85f
-                                
-                                // Dibujar línea de ingresos
-                                val incomePoints = lastSevenMonthsIncome.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / 6)
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor).toFloat()
-                                    Offset(x, y)
-                                }
-                                
-                                for (i in 0 until incomePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartIncomeColor,
-                                        start = incomePoints[i],
-                                        end = incomePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para ingresos
-                                incomePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartIncomeColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                                
-                                // Dibujar línea de gastos
-                                val expensePoints = lastSevenMonthsExpenses.mapIndexed { index, (_, value) ->
-                                    val x = index * (canvasWidth / 6)
-                                    val y = canvasHeight - ((value / maxValue) * canvasHeight * scaleFactor).toFloat()
-                                    Offset(x, y)
-                                }
-                                
-                                for (i in 0 until expensePoints.size - 1) {
-                                    drawLine(
-                                        color = ChartExpenseColor,
-                                        start = expensePoints[i],
-                                        end = expensePoints[i + 1],
-                                        strokeWidth = 5f
-                                    )
-                                }
-                                
-                                // Dibujar puntos para gastos
-                                expensePoints.forEach { point ->
-                                    drawCircle(
-                                        color = ChartExpenseColor,
-                                        radius = 8f,
-                                        center = point
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Leyenda para la gráfica de tendencia
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            // Formato para las fechas abreviadas (mes/año)
-                            val monthFormat = SimpleDateFormat("MM/yy", Locale("es", "ES"))
-                            
-                            // Mostrar fechas como eje X
-                            if (lastSevenMonthsIncome.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    lastSevenMonthsIncome.forEachIndexed { index, (date, _) ->
-                                        Text(
-                                            text = monthFormat.format(date),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Leyenda específica para la gráfica de tendencia
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // Leyenda de Ingresos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartIncomeColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Ingresos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                        }
-                        
-                        // Leyenda de Gastos
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        ) {
-                            Canvas(modifier = Modifier.size(12.dp)) {
-                                drawCircle(
-                                    color = ChartExpenseColor,
-                                    radius = size.minDimension / 2
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Gastos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Espacio adicional al final
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
-/*
 @Composable
-fun StatisticsSection(
+fun NewStatisticsCard(
     title: String,
-    incomes: Double,
+    subtitle: String,
+    income: Double,
     expenses: Double,
     net: Double,
-    rideCount: Int,
-    expenseCount: Int,
     fuelExpenses: Double,
-    color: Color
+    otherExpenses: Double,
+    paymentMethods: Map<String, Double> = emptyMap(),
+    appPlatformBreakdown: Map<String, Double> = emptyMap(),
+    totalPlatformBreakdown: Map<String, Double> = emptyMap(),
+    serviceTypeMeterTotal: Double = 0.0,
+    serviceTypeFixedTotal: Double = 0.0,
+    chartData: List<Pair<Date, Double>>? = null,
+    chartExpensesData: List<Pair<Date, Double>>? = null,
+    chartLabels: List<String> = emptyList(),
+    chartTitle: String? = null
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = color),
+        colors = CardDefaults.cardColors(containerColor = NewStatsCardBackground),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        border = BorderStroke(1.dp, NewStatsBorder)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                color = NewStatsTextPrimary,
                 fontWeight = FontWeight.Bold
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Resumen principal
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = NewStatsTextSecondary,
+                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
+            )
+
+            // Main Stats Grid
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Ingresos
+                // Income
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Ingresos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        text = stringResource(R.string.income),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NewStatsTextSecondary,
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    Text(
-                        text = formatCurrency(incomes),
+                    AutoSizeText(
+                        text = formatCurrency(income),
+                        modifier = Modifier.fillMaxWidth(),
+                        maxFontSize = 16.sp,
+                        minFontSize = 10.sp,
                         style = MaterialTheme.typography.titleMedium,
-                        color = GreenAccent,
-                        fontWeight = FontWeight.Bold
+                        color = NewStatsIncome,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
-                
-                // Gastos
+
+                // Divider
+                Box(modifier = Modifier.width(1.dp).height(40.dp).background(NewStatsBorder))
+
+                // Expenses
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Gastos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        text = stringResource(R.string.expenses),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NewStatsTextSecondary,
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    Text(
+                    AutoSizeText(
                         text = formatCurrency(expenses),
+                        modifier = Modifier.fillMaxWidth(),
+                        maxFontSize = 16.sp,
+                        minFontSize = 10.sp,
                         style = MaterialTheme.typography.titleMedium,
-                        color = RedAccent,
-                        fontWeight = FontWeight.Bold
+                        color = NewStatsExpense,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
-                
-                // Neto
+
+                // Divider
+                Box(modifier = Modifier.width(1.dp).height(40.dp).background(NewStatsBorder))
+
+                // Net
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Neto",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        text = stringResource(R.string.net),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NewStatsTextSecondary,
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    Text(
+                    AutoSizeText(
                         text = formatCurrency(net),
+                        modifier = Modifier.fillMaxWidth(),
+                        maxFontSize = 16.sp,
+                        minFontSize = 10.sp,
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (net >= 0) GreenAccent else RedAccent,
-                        fontWeight = FontWeight.Bold
+                        color = NewStatsIncome,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }
-            
+
+            // Expense Breakdown
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(color = NewStatsBorder)
             Spacer(modifier = Modifier.height(16.dp))
-            Divider(color = Color.White.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Detalles adicionales
-            FinancialDetail(
-                label = "Carreras realizadas",
-                amount = rideCount.toDouble(),
-                icon = Icons.Filled.DirectionsCar
-            )
-            
-            FinancialDetail(
-                label = "Gastos registrados",
-                amount = expenseCount.toDouble(),
-                icon = Icons.Filled.Receipt
-            )
-            
-            FinancialDetail(
-                label = "Gastos en combustible",
-                amount = fuelExpenses,
-                icon = Icons.Filled.LocalGasStation
-            )
-            
-            if (incomes > 0 && rideCount > 0) {
-                FinancialDetail(
-                    label = "Ingreso promedio por carrera",
-                    amount = incomes / rideCount,
-                    icon = Icons.Filled.ShowChart
+
+            // Fuel
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(36.dp).background(NewStatsFuelBg, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.LocalGasStation, contentDescription = null, tint = NewStatsFuelIcon, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        stringResource(R.string.fuel_expenses),
+                        color = NewStatsTextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                AutoSizeText(
+                    text = formatCurrency(fuelExpenses),
+                    maxFontSize = 14.sp,
+                    minFontSize = 10.sp,
+                    color = NewStatsTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
                 )
+            }
+
+            // Others
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(36.dp).background(NewStatsOtherBg, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Receipt, contentDescription = null, tint = NewStatsOtherIcon, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        stringResource(R.string.other_expenses),
+                        color = NewStatsTextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                AutoSizeText(
+                    text = formatCurrency(otherExpenses),
+                    maxFontSize = 14.sp,
+                    minFontSize = 10.sp,
+                    color = NewStatsTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+
+            // Payment Methods
+            if (paymentMethods.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = NewStatsBorder)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    stringResource(R.string.breakdown_payment_methods),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = NewStatsTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                paymentMethods.entries.sortedByDescending { it.value }.forEach { (method, amount) ->
+                    val methodLower = method.lowercase(Locale.getDefault())
+                    val (bg, iconColor, icon) = when {
+                        methodLower.contains("efectivo") -> Triple(NewStatsCashBg, NewStatsCashIcon, Icons.Default.Money) // Banknote equivalent
+                        methodLower.contains("tarjeta") -> Triple(NewStatsCardBg, NewStatsCardIcon, Icons.Default.CreditCard)
+                        else -> Triple(NewStatsAppBg, NewStatsAppIcon, Icons.Default.Smartphone) // Frenow/App
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(36.dp).background(bg, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(method, color = NewStatsTextSecondary, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        AutoSizeText(
+                            text = formatCurrency(amount),
+                            maxFontSize = 14.sp,
+                            minFontSize = 10.sp,
+                            color = iconColor,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
+                    if (method.equals("Via App", ignoreCase = true) && appPlatformBreakdown.isNotEmpty()) {
+                        Column(modifier = Modifier.padding(start = 32.dp, top = 4.dp, bottom = 4.dp)) {
+                            appPlatformBreakdown.entries.sortedByDescending { it.value }.forEach { (platform, platformAmount) ->
+                                PlatformRow(platform, platformAmount, isNested = true)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (totalPlatformBreakdown.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = NewStatsBorder)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    stringResource(R.string.breakdown_platform),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = NewStatsTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                totalPlatformBreakdown.entries.sortedByDescending { it.value }.forEach { (platform, amount) ->
+                    PlatformRow(platform, amount, isNested = false)
+                }
+            }
+            
+            // Chart Section
+            if (chartData != null && chartData.isNotEmpty() && chartTitle != null) {
+                 Spacer(modifier = Modifier.height(16.dp)) 
+                 // Chart implementation similar to design
+                 Card(
+                    colors = CardDefaults.cardColors(containerColor = NewStatsCardBackground), // Same bg
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top=8.dp),
+                    border = BorderStroke(1.dp, NewStatsBorder)
+                 ) {
+                     Column(modifier = Modifier.padding(16.dp)) {
+                         Text(chartTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = NewStatsTextPrimary)
+                         Spacer(modifier = Modifier.height(16.dp))
+                         
+                         // Legend
+                         Row(modifier = Modifier.padding(bottom = 16.dp)) {
+                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                 Box(Modifier.size(8.dp).background(NewStatsIncome, CircleShape))
+                                 Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.income),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = NewStatsTextSecondary
+                                )
+                             }
+                             Spacer(Modifier.width(16.dp))
+                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                 Box(Modifier.size(8.dp).background(NewStatsExpense, CircleShape))
+                                 Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.expenses),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = NewStatsTextSecondary
+                                )
+                             }
+                         }
+
+                         Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                             Canvas(modifier = Modifier.fillMaxSize()) {
+                                 val w = size.width
+                                 val h = size.height
+                                 
+                                 if (chartData.isNotEmpty()) {
+                                     // Calculate Max
+                                     val maxVal = (chartData + (chartExpensesData ?: emptyList())).maxOfOrNull { it.second } ?: 1.0
+                                      
+                                     // Draw Grid
+                                     val lines = 5
+                                     for (i in 0..lines) {
+                                         val y = h * (i.toFloat() / lines)
+                                         drawLine(
+                                             color = NewStatsBorder,
+                                             start = Offset(0f, y),
+                                             end = Offset(w, y),
+                                             strokeWidth = 1f
+                                         )
+                                     }
+                                     
+                                     // Function to draw line
+                                     fun drawTrend(data: List<Pair<Date, Double>>, color: Color) {
+                                         if (data.isEmpty()) return
+                                         val stepX = w / (data.size - 1).coerceAtLeast(1)
+                                         
+                                         val points = data.mapIndexed { index, pair ->
+                                             val x = index * stepX
+                                             val y = h - ((pair.second / maxVal) * h).toFloat()
+                                             Offset(x, y)
+                                         }
+                                         
+                                         // Draw lines
+                                         for (i in 0 until points.size - 1) {
+                                             drawLine(
+                                                 color = color,
+                                                 start = points[i],
+                                                 end = points[i+1],
+                                                 strokeWidth = 5f,
+                                                 cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                             )
+                                         }
+                                         // Draw points
+                                         points.forEach { 
+                                             drawCircle(color = color, center = it, radius = 6f)
+                                         }
+                                     }
+                                     
+                                     if (!chartExpensesData.isNullOrEmpty()) {
+                                         drawTrend(chartExpensesData, NewStatsExpense)
+                                     }
+                                     drawTrend(chartData, NewStatsIncome)
+                                 }
+                             }
+                             
+                            // X Labels
+                            Row(
+                               modifier = Modifier.fillMaxSize().align(Alignment.BottomCenter),
+                               horizontalArrangement = Arrangement.SpaceBetween,
+                               verticalAlignment = Alignment.Bottom
+                            ) {
+                                // Simple logic to show labels
+                                chartLabels.forEach { label ->
+                                    Text(label, style = MaterialTheme.typography.bodySmall, color = NewStatsTextSecondary, fontSize = 10.sp)
+                                }
+                            }
+                         }
+                     }
+                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.total_taximeter),
+                        color = NewStatsTextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    AutoSizeText(
+                        text = formatCurrency(serviceTypeMeterTotal),
+                        maxFontSize = 14.sp,
+                        minFontSize = 10.sp,
+                        color = NewStatsTextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.total_fixed_price),
+                        color = NewStatsTextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    AutoSizeText(
+                        text = formatCurrency(serviceTypeFixedTotal),
+                        maxFontSize = 14.sp,
+                        minFontSize = 10.sp,
+                        color = NewStatsTextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End
+                    )
+                }
             }
         }
     }
 }
-*/
+
+@Composable
+fun PlatformRow(platform: String, amount: Double, isNested: Boolean) {
+    val directLabel = stringResource(R.string.platform_direct)
+    val displayPlatform = if (
+        platform.equals(directLabel, ignoreCase = true) ||
+        platform.equals("Directo", ignoreCase = true) ||
+        platform.equals("Direct", ignoreCase = true)
+    ) {
+        directLabel
+    } else {
+        platform
+    }
+
+    val (bg, iconColor, icon) = when (displayPlatform) {
+        "FreeNow" -> Triple(Color(0xFFFF6B00).copy(alpha = 0.1f), Color(0xFFFF6B00), Icons.Filled.Smartphone)
+        "Cabify" -> Triple(Color(0xFF6B00FF).copy(alpha = 0.1f), Color(0xFF6B00FF), Icons.Filled.DirectionsCar)
+        "Uber" -> Triple(Color(0xFF000000).copy(alpha = 0.1f), Color(0xFF000000), Icons.Filled.DirectionsCar)
+        directLabel -> Triple(Color(0xFF059669).copy(alpha = 0.1f), Color(0xFF059669), Icons.Filled.LocationOn)
+        else -> Triple(Color(0xFF8B5CF6).copy(alpha = 0.1f), Color(0xFF8B5CF6), Icons.Filled.Apps)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = if (isNested) 4.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isNested) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(24.dp)
+                        .background(iconColor.copy(alpha = 0.3f))
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            Box(
+                modifier = Modifier.size(36.dp).background(bg, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(16.dp))
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(displayPlatform, color = NewStatsTextSecondary, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        AutoSizeText(
+            text = formatCurrency(amount),
+            maxFontSize = 14.sp,
+            minFontSize = 10.sp,
+            color = if (isNested) iconColor else NewStatsTextPrimary,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
+    }
+}

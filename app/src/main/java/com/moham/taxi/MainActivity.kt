@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.moham.taxi.ui.navigation.AppNavigation
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            Toast.makeText(this, "Permisos concedidos para exportar datos", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_permissions_granted), Toast.LENGTH_SHORT).show()
         } else {
             handlePermissionDenied(permissions)
         }
@@ -50,6 +51,38 @@ class MainActivity : ComponentActivity() {
         requestStoragePermissions()
         
         setContent {
+            val context = LocalContext.current
+            val application = context.applicationContext as GestionTaxiApplication
+            val appTheme by application.getAppTheme().collectAsState(initial = "blue")
+            
+            LaunchedEffect(appTheme) {
+                if (appTheme == "green") {
+                    val green = androidx.compose.ui.graphics.Color(0xFF2E7D32)
+                    com.moham.taxi.ui.theme.PrimaryBlue = green
+                    com.moham.taxi.ui.theme.BlueAccent = green
+                    com.moham.taxi.ui.theme.PurpleAccent = green
+                    com.moham.taxi.ui.theme.YellowAccent = green
+                    com.moham.taxi.ui.theme.OrangeAccent = green
+                    com.moham.taxi.ui.theme.RidesButtonColor = green
+                    com.moham.taxi.ui.theme.StatsButtonColor = green
+                    com.moham.taxi.ui.theme.InvoiceButtonColor = green
+                    com.moham.taxi.ui.theme.PriceButtonColor = green
+                    com.moham.taxi.ui.theme.CalendarAccent = green
+                } else {
+                    val blue = androidx.compose.ui.graphics.Color(0xFF1565C0)
+                    com.moham.taxi.ui.theme.PrimaryBlue = blue
+                    com.moham.taxi.ui.theme.BlueAccent = blue
+                    com.moham.taxi.ui.theme.PurpleAccent = blue
+                    com.moham.taxi.ui.theme.YellowAccent = blue
+                    com.moham.taxi.ui.theme.OrangeAccent = blue
+                    com.moham.taxi.ui.theme.RidesButtonColor = blue
+                    com.moham.taxi.ui.theme.StatsButtonColor = blue
+                    com.moham.taxi.ui.theme.InvoiceButtonColor = blue
+                    com.moham.taxi.ui.theme.PriceButtonColor = blue
+                    com.moham.taxi.ui.theme.CalendarAccent = blue
+                }
+            }
+
             GestionTaxiTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -107,8 +140,8 @@ class MainActivity : ComponentActivity() {
         if (shouldShowRationale) {
             // Mostrar explicación antes de solicitar permisos
             Toast.makeText(
-                this, 
-                "La aplicación necesita permisos de almacenamiento para exportar datos. Por favor, concede los permisos.", 
+                this,
+                getString(R.string.toast_permissions_rationale),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -146,8 +179,8 @@ class MainActivity : ComponentActivity() {
         
         if (permanentlyDenied) {
             Toast.makeText(
-                this, 
-                "Los permisos fueron denegados permanentemente. Para habilitar la exportación de datos, ve a Configuración > Aplicaciones > Gestión Taxi > Permisos y activa los permisos de almacenamiento.", 
+                this,
+                getString(R.string.toast_permissions_permanently_denied, getString(R.string.app_name)),
                 Toast.LENGTH_LONG
             ).show()
             
@@ -155,8 +188,8 @@ class MainActivity : ComponentActivity() {
             // El usuario puede ir manualmente si lo desea
         } else {
             Toast.makeText(
-                this, 
-                "Se necesitan permisos de almacenamiento para exportar datos. La aplicación funcionará normalmente, pero no podrás exportar datos hasta conceder los permisos.", 
+                this,
+                getString(R.string.toast_permissions_denied),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -172,7 +205,7 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, "No se pudo abrir la configuración", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_open_settings_error), Toast.LENGTH_SHORT).show()
         }
     }
 }

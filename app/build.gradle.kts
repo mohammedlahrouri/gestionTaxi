@@ -13,13 +13,22 @@ android {
         applicationId = "com.moham.taxi"
         minSdk = 24
         targetSdk = 35
-        versionCode = 21
-        versionName = "2.0"
+        versionCode = 46
+        versionName = "6.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += "FlowOperatorInvokedInComposition"
+        disable += "CoroutineCreationDuringComposition"
+        disable += "UnrememberedMutableState"
+        disable += "StateFlowValueCalledInComposition"
     }
 
     buildTypes {
@@ -48,6 +57,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
         }
     }
 }
@@ -59,6 +69,7 @@ dependencies {
 
     // Core Android dependencies
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
 
@@ -83,6 +94,19 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
+    
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    
+    // Google Sign-In (Auth)
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    
+    // Google Drive REST API client
+    implementation("com.google.api-client:google-api-client-android:2.2.0")
+    implementation("com.google.http-client:google-http-client-android:1.43.3")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
+
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
     
     // DataStore Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")

@@ -74,4 +74,18 @@ class PaymentMethodRepository(private val paymentMethodDao: PaymentMethodDao, pr
     suspend fun paymentMethodExists(name: String): Boolean {
         return paymentMethodDao.paymentMethodExists(name)
     }
+
+    fun getPaymentMethodsForPlatform(platformId: Long): Flow<List<PaymentMethod>> {
+        return database.platformPaymentMethodDao().getPaymentMethodsForPlatform(platformId)
+    }
+
+    suspend fun setPaymentMethodsForPlatform(platformId: Long, paymentMethodIds: List<Long>) = withContext(Dispatchers.IO) {
+        database.platformPaymentMethodDao().replaceForPlatform(platformId, paymentMethodIds)
+    }
+
+    suspend fun getOrCreatePaymentMethodId(name: String): Long = withContext(Dispatchers.IO) {
+        val existing = paymentMethodDao.getPaymentMethodByName(name)
+        if (existing != null) return@withContext existing.id
+        insert(PaymentMethod(name = name))
+    }
 }

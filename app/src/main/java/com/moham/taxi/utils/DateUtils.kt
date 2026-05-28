@@ -4,6 +4,10 @@ import android.content.Context
 import com.moham.taxi.GestionTaxiApplication
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -154,7 +158,7 @@ object DateUtils {
      * Formatea una fecha en el formato especificado
      * Si la fecha no es hoy y el patrón contiene HH:mm, reemplaza la hora con "SH" (sin hora)
      */
-    fun formatDate(date: Date, pattern: String = "dd/MM/yyyy", locale: Locale = Locale("es", "ES")): String {
+    fun formatDate(date: Date, pattern: String = "dd/MM/yyyy", locale: Locale = Locale.getDefault()): String {
         // Si el patrón contiene formato de hora y la fecha no es hoy, mostrar "SH" en lugar de la hora
         if (pattern.contains("HH:mm") && !isToday(date)) {
             // Extraer solo la parte de la fecha del patrón (sin la hora)
@@ -179,6 +183,24 @@ object DateUtils {
         return today.get(Calendar.YEAR) == dateCalendar.get(Calendar.YEAR) &&
                today.get(Calendar.MONTH) == dateCalendar.get(Calendar.MONTH) &&
                today.get(Calendar.DAY_OF_MONTH) == dateCalendar.get(Calendar.DAY_OF_MONTH)
+    }
+
+    fun dateToUtcStartOfDayMillis(date: Date, zoneId: ZoneId = ZoneId.systemDefault()): Long {
+        val localDate = date.toInstant().atZone(zoneId).toLocalDate()
+        return localDateToUtcStartOfDayMillis(localDate)
+    }
+
+    fun localDateToUtcStartOfDayMillis(localDate: LocalDate): Long {
+        return localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    }
+
+    fun utcMillisToLocalDate(millis: Long): LocalDate {
+        return Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+    }
+
+    fun utcStartOfDayMillisToLocalDate(millis: Long, zoneId: ZoneId = ZoneId.systemDefault()): Date {
+        val localDate = utcMillisToLocalDate(millis)
+        return Date.from(localDate.atStartOfDay(zoneId).toInstant())
     }
     
     /**
@@ -214,7 +236,7 @@ object DateUtils {
     /**
      * Obtiene el nombre del día de la semana para una fecha dada
      */
-    fun getDayOfWeekName(date: Date, locale: Locale = Locale("es", "ES")): String {
+    fun getDayOfWeekName(date: Date, locale: Locale = Locale.getDefault()): String {
         val dayFormat = SimpleDateFormat("EEEE", locale)
         return dayFormat.format(date).replaceFirstChar { 
             if (it.isLowerCase()) it.titlecase(locale) else it.toString() 

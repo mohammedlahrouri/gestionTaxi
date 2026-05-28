@@ -18,6 +18,7 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     val allExpenses: Flow<List<Expense>> = repository.allExpenses
     val todayExpenses: Flow<List<Expense>> = repository.getTodayExpenses()
     val monthExpenses: Flow<List<Expense>> = repository.getMonthExpenses()
+    val maintenanceExpenses: Flow<List<Expense>> = repository.getExpensesByType(ExpenseType.MAINTENANCE)
     
     // Función para obtener los gastos de una fecha específica
     fun getSelectedDateExpenses(date: Date): Flow<List<Expense>> {
@@ -103,7 +104,10 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         val expensesByCategory = mutableMapOf<String, Double>()
         
         expenses.forEach { expense ->
-            val category = expense.type.name
+            val category = when (expense.type) {
+                ExpenseType.FUEL -> ExpenseType.FUEL.name
+                else -> ExpenseType.OTHER.name
+            }
             expensesByCategory[category] = (expensesByCategory[category] ?: 0.0) + expense.amount
         }
         
@@ -116,7 +120,10 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
         val expensesByCategory = mutableMapOf<String, Double>()
         
         expenses.forEach { expense ->
-            val category = expense.type.name
+            val category = when (expense.type) {
+                ExpenseType.FUEL -> ExpenseType.FUEL.name
+                else -> ExpenseType.OTHER.name
+            }
             expensesByCategory[category] = (expensesByCategory[category] ?: 0.0) + expense.amount
         }
         

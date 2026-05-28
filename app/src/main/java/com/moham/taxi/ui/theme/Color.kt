@@ -1,9 +1,12 @@
 package com.moham.taxi.ui.theme
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 
 // Colores principales - Paleta profesional sobria
-val PrimaryBlue = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación/neutro principal
+var PrimaryBlue by mutableStateOf(Color(0xFF1565C0))  // Azul profesional más oscuro para navegación/neutro principal
 val SecondaryPurple = Color(0xFF8B5CF6)  // Violeta suave (mantener para compatibilidad)
 val AccentGreen = Color(0xFF2E7D32)  // Verde profesional más oscuro para ingresos/positivo
 val AccentRed = Color(0xFFD32F2F)  // Rojo profesional más oscuro para gastos/negativo
@@ -33,21 +36,21 @@ val ChartGridColor = Color(0xFF9E9E9E)  // Gris medio para líneas de cuadrícul
 val ChartBackgroundColor = Color(0xFF121212)  // Fondo gris muy oscuro para gráficas
 
 // Colores de acento específicos - Paleta profesional sobria
-val BlueAccent = Color(0xFF1565C0)  // Azul profesional para navegación/acciones
-val PurpleAccent = Color(0xFF1565C0)  // Azul profesional para estadísticas
+var BlueAccent by mutableStateOf(Color(0xFF1565C0))  // Azul profesional para navegación/acciones
+var PurpleAccent by mutableStateOf(Color(0xFF1565C0))  // Azul profesional para estadísticas
 val GreenAccent = Color(0xFF2E7D32)  // Verde profesional exclusivo para ingresos
 val RedAccent = Color(0xFFD32F2F)  // Rojo profesional exclusivo para gastos
-val YellowAccent = Color(0xFF1565C0)  // Azul profesional para precio
+var YellowAccent by mutableStateOf(Color(0xFF1565C0))  // Azul profesional para precio
 val TealAccent = Color(0xFF009688)  // Verde azulado para elementos especiales
-val OrangeAccent = Color(0xFF1565C0)  // Azul profesional para acciones
+var OrangeAccent by mutableStateOf(Color(0xFF1565C0))  // Azul profesional para acciones
 
 // Colores específicos para botones del menú principal - Paleta profesional sobria
 val IncomeButtonColor = Color(0xFF2E7D32)  // Verde profesional más oscuro para ingresos
 val ExpenseButtonColor = Color(0xFFD32F2F)  // Rojo profesional más oscuro para gastos
-val RidesButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación
-val StatsButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para acciones principales
-val InvoiceButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para navegación
-val PriceButtonColor = Color(0xFF1565C0)  // Azul profesional más oscuro para acciones principales
+var RidesButtonColor by mutableStateOf(Color(0xFF1565C0))  // Azul profesional más oscuro para navegación
+var StatsButtonColor by mutableStateOf(Color(0xFF1565C0))  // Azul profesional más oscuro para acciones principales
+var InvoiceButtonColor by mutableStateOf(Color(0xFF1565C0))  // Azul profesional más oscuro para navegación
+var PriceButtonColor by mutableStateOf(Color(0xFF1565C0))  // Azul profesional más oscuro para acciones principales
 
 // Colores para widgets/tarjetas - Fondo similar al calendario con iconos de colores
 val IncomeWidgetBackground = Color(0xFF1E1E1E)  // Fondo similar al calendario
@@ -57,7 +60,7 @@ val ExpenseIconColor = Color(0xFFD32F2F)  // Rojo profesional para iconos de gas
 
 // Colores para el calendario - Paleta profesional funcional
 val CalendarBackground = Color(0xFF1E1E1E)  // Consistente con DarkSurface
-val CalendarAccent = Color(0xFF1565C0)  // Azul profesional para acciones principales
+var CalendarAccent by mutableStateOf(Color(0xFF1565C0))  // Azul profesional para acciones principales
 val CalendarText = Color(0xFFFFFFFF)  // Texto blanco para mejor legibilidad
 val CalendarDayBackground = Color(0xFF9E9E9E)  // Gris medio para días
 val CalendarDayText = Color(0xFFFFFFFF)  // Texto blanco para días
@@ -97,3 +100,40 @@ val md_theme_dark_secondaryContainer = Color(0xFF3A2A71)
 val md_theme_dark_onSecondaryContainer = Color(0xFFEFDDFF)
 val md_theme_dark_background = DarkBackground  // Gris muy oscuro
 val md_theme_dark_surface = DarkCard  // Gris oscuro para superficies
+
+// New Design Colors (Statistics Redesign)
+val StatsBackground = Color(0xFF121212) // Keeping pure black/dark grey for consistency with app theme, or use new design:
+// From Oklch(0.12 0.005 285) ~ Dark Purple Grey
+val NewStatsBackground = Color(0xFF1E1B24)
+// From Oklch(0.16 0.005 285)
+val NewStatsCardBackground = Color(0xFF26232E)
+// From Oklch(0.72 0.19 160) - Emerald Green
+val NewStatsIncome = Color(0xFF00D29F)
+// From Oklch(0.65 0.22 25) - Coral Red
+val NewStatsExpense = Color(0xFFFF525E)
+// From Oklch(0.97 0 0)
+val NewStatsTextSecondary = Color(0xFFF7F7F7).copy(alpha = 0.6f)
+val NewStatsTextPrimary = Color.White
+val NewStatsBorder = Color(0xFFFFFFFF).copy(alpha = 0.1f)
+
+// Icon Backgrounds
+val NewStatsFuelBg = Color(0xFFF59E0B).copy(alpha = 0.1f) // Amber/Orange
+val NewStatsFuelIcon = Color(0xFFF59E0B)
+val NewStatsOtherBg = Color(0xFF0EA5E9).copy(alpha = 0.1f) // Sky/Info
+val NewStatsOtherIcon = Color(0xFF0EA5E9)
+
+// Payment Methods
+val NewStatsCashBg = Color(0xFF2E7D32).copy(alpha = 0.1f) // Primary/Green ish
+val NewStatsCashIcon = Color(0xFF2E7D32)
+val NewStatsCardBg = Color(0xFF0EA5E9).copy(alpha = 0.1f) // Info
+val NewStatsCardIcon = Color(0xFF0EA5E9)
+val NewStatsAppBg = Color(0xFF8B5CF6).copy(alpha = 0.1f) // Accent/Purple
+val NewStatsAppIcon = Color(0xFF8B5CF6)
+
+// Others Screen Gradients
+val PriceGradientStart = Color(0xFF2563EB) // Blue 600
+val PriceGradientEnd = Color(0xFF06B6D4) // Cyan 500
+val InvoiceGradientStart = Color(0xFF4F46E5) // Indigo 600
+val InvoiceGradientEnd = Color(0xFF8B5CF6) // Purple 500
+val TipBackground = Color(0xFF8B5CF6).copy(alpha = 0.1f) // Secondary/30 approx
+val TipIconBg = Color(0xFF1565C0).copy(alpha = 0.1f) // Primary/10 approx

@@ -1,8 +1,648 @@
 <resources>
-    <string name="app_name">Gestion de Taxi</string>
+    <string name="app_name">Gestion Taxi</string>
     <string name="language_settings">Langue</string>
     <string name="language_spanish">Espagnol</string>
     <string name="language_english">Anglais</string>
     <string name="language_french">Français</string>
     <string name="language_german">Allemand</string>
+    <string name="language_system_default">Système (par défaut)</string>
+
+    <!-- General -->
+    <string name="app_title">GESTION TAXI</string>
+    <string name="cancel">Annuler</string>
+    <string name="confirm">Confirmer</string>
+    <string name="save">Enregistrer</string>
+    <string name="save_upper">ENREGISTRER</string>
+    <string name="saving">ENREGISTREMENT...</string>
+    <string name="update">Mettre à jour</string>
+    <string name="update_upper">METTRE À JOUR</string>
+    <string name="close">Fermer</string>
+    <string name="edit">Modifier</string>
+    <string name="delete">Supprimer</string>
+    <string name="error">Erreur</string>
+    <string name="warning">Attention</string>
+    <string name="date">Date</string>
+    <string name="time">Heure</string>
+    <string name="price">Prix</string>
+    <string name="price_symbol">Prix (€)</string>
+    <string name="amount">Montant</string>
+    <string name="options">Options</string>
+    
+    <!-- Home Screen -->
+    <string name="quick_action_add_income">Ajouter Revenu</string>
+    <string name="quick_action_add_expense">Ajouter Dépense</string>
+    <string name="date_different_warning">Date différente d\'aujourd\'hui</string>
+    <string name="daily_challenge">Défi quotidien</string>
+    <string name="define_challenge">Définir Défi</string>
+    <string name="daily_goal">Objectif du jour</string>
+    <string name="progress">Progression</string>
+    <string name="enter_valid_amount">Entrez un montant valide</string>
+    <string name="calendar">Calendrier</string>
+    <string name="action_change_date">Changer la date</string>
+
+    <!-- Taxi Ride List -->
+    <string name="rides_title">Courses</string>
+    <string name="showing_data_for">Données du : %1$s</string>
+    <string name="no_rides_registered">Aucune course enregistrée</string>
+    <string name="no_expenses_registered">Aucune dépense enregistrée</string>
+    <string name="delete_ride_title">Supprimer Course</string>
+    <string name="delete_ride_confirm">Êtes-vous sûr de vouloir supprimer cette course ?</string>
+    <string name="ride_deleted_success">Course supprimée</string>
+    <string name="delete_expense_title">Supprimer Dépense</string>
+    <string name="delete_expense_confirm">Êtes-vous sûr de vouloir supprimer cette dépense ?</string>
+    <string name="expense_deleted_success">Dépense supprimée</string>
+    <string name="no_origin">Sans origine</string>
+    <string name="no_destination">Sans destination</string>
+
+    <!-- Taxi Ride Form -->
+    <string name="new_ride_title">Nouvelle Course</string>
+    <string name="edit_ride_title">Modifier Course</string>
+    <string name="warning_date_mismatch">Attention : vous enregistrez une course pour le %1$s</string>
+    <string name="label_origin">Origine</string>
+    <string name="placeholder_origin">Adresse d\'origine</string>
+    <string name="label_destination">Destination</string>
+    <string name="placeholder_destination">Adresse de destination</string>
+    <string name="label_service_type">Type de Service</string>
+    <string name="option_taximeter">Taximètre</string>
+    <string name="option_fixed_price">Prix Fixe</string>
+    <string name="label_platform">Plateforme</string>
+    <string name="platform_direct">Direct</string>
+    <string name="platform_empty_msg">Aucune plateforme configurée. Ajoutez-les dans Paramètres > Plateformes.</string>
+    <string name="label_payment_method">Méthode de Paiement</string>
+    <string name="payment_cash">Espèces</string>
+    <string name="payment_card">Carte</string>
+    <string name="payment_via_app">Via App</string>
+    <string name="error_select_payment">Veuillez sélectionner une méthode de paiement</string>
+    <string name="error_valid_price">Veuillez entrer un prix valide</string>
+    <string name="label_amount_with_commission">Montant avec commission</string>
+    <string name="label_gross">Brut</string>
+    <string name="label_net">Net</string>
+    <string name="tip">Pourboire</string>
+    <string name="total">Total</string>
+    <string name="ride_saved_success">Course enregistrée avec succès</string>
+    <string name="ride_updated_success">Course mise à jour avec succès</string>
+    <string name="commission_error">La commission doit être inférieure à 100%</string>
+
+    <!-- Expense Form -->
+    <string name="new_expense_title">Nouvelle Dépense</string>
+    <string name="edit_expense_title">Modifier Dépense</string>
+    <string name="expense_warning_today">Vous enregistrez une dépense pour aujourd\'hui</string>
+    <string name="expense_warning_date">Vous enregistrez une dépense pour %1$s</string>
+    <string name="expense_type_label">Type de Dépense</string>
+    <string name="expense_type_fuel">Carburant</string>
+    <string name="expense_type_maintenance">Maintenance</string>
+    <string name="expense_type_other">Autres</string>
+    <string name="label_description">Description</string>
+    <string name="label_maintenance_details">Détails de maintenance</string>
+    <string name="error_description_required">Veuillez entrer une description</string>
+    <string name="error_valid_kilometers">Veuillez entrer des kilomètres valides</string>
+    <string name="error_maintenance_details_required">Veuillez entrer les détails de maintenance</string>
+    <string name="label_amount_euro">Montant (€)</string>
+    <string name="error_valid_amount">Veuillez entrer un montant valide</string>
+    <string name="update_expense_button">Mettre à jour Dépense</string>
+    <string name="save_expense_button">Enregistrer Dépense</string>
+    <string name="expense_updated_success">Dépense mise à jour avec succès</string>
+    <string name="expense_saved_success">Dépense enregistrée avec succès</string>
+    <string name="expense_save_error">Erreur lors de l\'enregistrement : %1$s</string>
+
+    <!-- Summary Screen -->
+    <string name="summary_title">Résumé et Totaux</string>
+    <string name="tab_day">Journée</string>
+    <string name="tab_week">Semaine</string>
+    <string name="tab_month">Mois</string>
+    <string name="gross_income_day">Revenus Bruts (Hoy)</string>
+    <string name="gross_income_week">Revenus Bruts (Semaine)</string>
+    <string name="gross_income_month">Revenus Bruts (Mois)</string>
+    <string name="total_expenses_title">Dépenses Totales</string>
+    <string name="net_income_day">Net (Aujourd\'hui)</string>
+    <string name="net_income_week">Net (Semaine)</string>
+    <string name="net_income_month">Net (Mois)</string>
+    <string name="breakdown_payment_day">Par Moyen de Paiement (Aujourd\'hui)</string>
+    <string name="breakdown_payment_week">Par Moyen de Paiement (Semaine)</string>
+    <string name="breakdown_payment_month">Par Moyen de Paiement (Mois)</string>
+    <string name="view_full_details">Voir Détails</string>
+    <string name="no_data_available">Aucune donnée disponible</string>
+
+    <!-- Statistics Screen -->
+    <string name="statistics_title">Avance</string>
+    <string name="trend_daily">Tendance quotidienne (7 jours)</string>
+    <string name="trend_weekly">Tendance hebdomadaire (7 semaines)</string>
+    <string name="trend_monthly">Tendance mensuelle (7 mois)</string>
+    <string name="income">Revenus</string>
+    <string name="expenses">Dépenses</string>
+    <string name="net">Net</string>
+    <string name="fuel_expenses">Dépenses carburant</string>
+    <string name="other_expenses">Autres dépenses</string>
+    <string name="breakdown_payment_methods">Répartition par méthode de paiement</string>
+    <string name="breakdown_platform">Répartition par plateforme</string>
+    <string name="total_taximeter">Total Taximètre</string>
+    <string name="total_fixed_price">Total Prix Fixe</string>
+    <!-- Statistics Screen Extra -->
+    <string name="trend_positive">Positif</string>
+    <string name="trend_negative">Négatif</string>
+    <string name="trend_neutral">Neutre</string>
+    <string name="net_take_home">Ce que vous ramenez chez vous</string>
+    <string name="gross_income_total">Total facturé (brut)</string>
+    <string name="commissions">Commissions</string>
+    <string name="apps_and_platforms">Apps et plateformes</string>
+    <string name="fuel_and_others">Carburant et autres</string>
+    <string name="no_expenses_recorded">Aucune dépense enregistrée</string>
+    <string name="no_tips_recorded">Aucun pourboire enregistré</string>
+    <string name="expense_details">Détails des dépenses</string>
+    <string name="tips">Pourboires</string>
+    <string name="tip_method_format">Pourboire %1$s</string>
+    <string name="label_commission">Commission</string>
+    <string name="commission_suffix">commission</string>
+    <string name="percent_of_total">%1$d%% du total</string>
+    <string name="commission_percent_label">· %1$d%% commission</string>
+
+    <!-- Invoice Screen -->
+    <string name="invoice_title">Facture</string>
+    <string name="invoice_billing_data_missing">Vous devez remplir les données de facturation dans les paramètres pour créer des factures.</string>
+    <string name="go_to_billing_data">Aller aux données de facturation</string>
+    <string name="invoice_number">Numéro de Facture</string>
+    <string name="ride_origin">Origine de la Course</string>
+    <string name="ride_destination">Destination de la Course</string>
+    <string name="client_name_label">Nom du Client ou Raison Sociale</string>
+    <string name="client_nif_label">NIF/CIF du Client</string>
+    <string name="client_address_label">Adresse du Client</string>
+    <string name="generate_invoice_button">Générer Facture</string>
+    <string name="invoice_number_display">N° Facture : %1$s</string>
+    <string name="owner_label">Propriétaire : %1$s</string>
+    <string name="license_label">Licence : %1$s</string>
+    <string name="address_label">Adresse : %1$s</string>
+    <string name="client_label">Client : %1$s</string>
+    <string name="base_amount_label">Base Imposable : %1$s €</string>
+    <string name="vat_amount_label">TVA (10%%) : %1$s €</string>
+    <string name="total_amount_label">Total : %1$s €</string>
+    <string name="generating_pdf">Génération...</string>
+    <string name="generate_pdf_button">Générer PDF</string>
+    <string name="share_button">Partager</string>
+    <string name="pdf_generated_success">PDF généré avec succès</string>
+    <string name="pdf_generation_error">Erreur lors de la génération du PDF : %1$s</string>
+    <string name="pdf_file_not_exists">Le fichier PDF n\'existe pas</string>
+    <string name="pdf_no_file_to_share">Aucun PDF à partager</string>
+    <string name="pdf_share_error">Erreur lors du partage du PDF : %1$s</string>
+    <string name="share_invoice_title">Partager la facture</string>
+    <string name="share_invoice_message">Voulez-vous partager la facture générée ?</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_general_title">Configuration Générale</string>
+    <string name="settings_data_management_title">Gestion des Données</string>
+    <string name="translation_notice_message">Veuillez noter que des erreurs de traduction peuvent exister dans les langues récemment ajoutées ; elles seront corrigées progressivement.</string>
+    
+    <string name="settings_payment_methods_title">Méthodes de Paiement</string>
+    <string name="settings_payment_methods_desc">Gérer les méthodes de paiement disponibles</string>
+    <string name="settings_payment_methods_content_desc">Méthodes de Paiement</string>
+    <string name="settings_payment_methods_arrow_desc">Aller aux méthodes de paiement</string>
+    
+    <string name="settings_service_platforms_title">Plateformes de Service</string>
+    <string name="settings_service_platforms_desc">Gérez vos plateformes (FreeNow, Imbric, JoinApp...etc)</string>
+    <string name="settings_service_platforms_content_desc">Plateformes de Service</string>
+    <string name="settings_service_platforms_arrow_desc">Aller aux plateformes</string>
+    
+    <string name="settings_billing_data_title">Données de Facturation</string>
+    <string name="settings_billing_data_desc">Gérez vos données fiscales pour la facturation</string>
+    <string name="settings_billing_data_content_desc">Données de Facturation</string>
+    
+    <string name="settings_data_export_title">Exportation des Données</string>
+    <string name="settings_export_data_card_title">Exporter les données</string>
+    <string name="settings_export_data_card_desc">Télécharger le résumé des données financières</string>
+    <string name="settings_export_data_content_desc">Exporter les données</string>
+    <string name="settings_export_data_arrow_desc">Options d\'exportation</string>
+    
+    <string name="settings_backup_title">Sauvegardes</string>
+    <string name="settings_local_backup_title">Sauvegarde Locale</string>
+    <string name="settings_local_backup_desc">Créer ou restaurer des sauvegardes locales</string>
+    <string name="settings_local_backup_content_desc">Sauvegarde Locale</string>
+    <string name="settings_local_backup_arrow_desc">Options de sauvegarde locale</string>
+    
+    <string name="settings_online_backup_title">Sauvegarde Automatique en Ligne</string>
+    <string name="settings_online_backup_desc">Sauvegarde sur Google Drive</string>
+    <string name="settings_online_backup_content_desc">Sauvegarde Automatique en Ligne</string>
+    <string name="settings_online_backup_arrow_desc">Aller à la sauvegarde en ligne</string>
+    
+    <string name="settings_about_title">À propos</string>
+    <string name="settings_acknowledgment_title">Remerciements</string>
+    <string name="settings_acknowledgment_desc">À propos du développeur et du projet</string>
+    <string name="settings_acknowledgment_content_desc">Remerciements</string>
+    <string name="settings_acknowledgment_arrow_desc">Aller aux remerciements</string>
+    
+    <string name="settings_app_version_title">Version de l\'application</string>
+    <string name="settings_app_version_content_desc">Version</string>
+    <string name="settings_app_version_desc">v%1$s - Group fasata &amp; M.lahrouri</string>
+    <string name="settings_default_version">4.2.1</string>
+
+    <!-- Export Dialogs -->
+    <string name="dialog_export_title">Exporter les données</string>
+    <string name="dialog_export_select_period">Sélectionnez la période à exporter :</string>
+    <string name="dialog_export_selected_date">Date sélectionnée</string>
+    <string name="dialog_export_day">Exporter la journée</string>
+    <string name="dialog_export_week">Exporter la semaine</string>
+    <string name="dialog_export_month">Exporter le mois</string>
+    <string name="dialog_export_range">Exporter période</string>
+    <string name="dialog_export_range_title">Exporter période</string>
+    <string name="dialog_export_range_msg">Les données financières du %1$s au %2$s seront exportées (les deux jours inclus). Le fichier sera enregistré dans le dossier de téléchargements.</string>
+    <string name="dialog_export_select_start_date">Date de début</string>
+    <string name="dialog_export_select_end_date">Date de fin</string>
+    <string name="dialog_export_format_title">Format</string>
+    <string name="dialog_export_format_pdf">PDF</string>
+    <string name="dialog_export_format_csv">CSV</string>
+    <string name="dialog_cancel">Annuler</string>
+    <string name="dialog_date_select_desc">Sélectionner une date</string>
+    <string name="dialog_date_change_desc">Changer la date</string>
+    
+    <string name="dialog_export_day_title">Exporter les données du jour</string>
+    <string name="dialog_export_day_msg">Les données financières du jour %1$s seront exportées. Le fichier sera enregistré dans le dossier de téléchargements.</string>
+    
+    <string name="dialog_export_week_title">Exporter les données de la semaine</string>
+    <string name="dialog_export_week_msg">Les données financières de la semaine contenant le jour %1$s seront exportées. Le fichier sera enregistré dans le dossier de téléchargements.</string>
+    
+    <string name="dialog_export_month_title">Exporter les données du mois</string>
+    <string name="dialog_export_month_msg">Les données financières du mois contenant le jour %1$s seront exportées. Le fichier sera enregistré dans le dossier de téléchargements.</string>
+    
+    <string name="dialog_exporting">Exportation des données, veuillez patienter...</string>
+    <string name="dialog_button_export">Exporter</string>
+    
+    <string name="export_success">Données exportées avec succès</string>
+    <string name="export_share_error">Fichier exporté mais erreur lors du partage : %1$s</string>
+    <string name="export_error">Erreur lors de l\'exportation : %1$s</string>
+    <string name="error_unexpected">Erreur inattendue : %1$s</string>
+    
+    <!-- MainActivity Permissions Toast -->
+    <string name="toast_permissions_granted">Permissions accordées pour l\'exportation des données</string>
+    <string name="toast_permissions_rationale">L\'application a besoin de permissions de stockage pour exporter les données. Veuillez accorder les permissions.</string>
+    <string name="toast_permissions_permanently_denied">Les permissions ont été refusées de façon permanente. Pour activer l\'exportation des données, allez dans Paramètres > Applications > %1$s > Permissions et activez les permissions de stockage.</string>
+    <string name="toast_permissions_denied">Des permissions de stockage sont nécessaires pour exporter les données. L\'application fonctionnera normalement, mais vous ne pourrez pas exporter de données tant que les permissions ne seront pas accordées.</string>
+    <string name="toast_open_settings_error">Impossible d\'ouvrir les paramètres</string>
+
+
+    <!-- Backup Dialogs -->
+    <string name="dialog_backup_options_title">Options de sauvegarde</string>
+    <string name="dialog_backup_options_message">Sélectionnez une option de sauvegarde :</string>
+    <string name="backup_option_monthly">Créer sauvegarde mensuelle</string>
+    <string name="backup_option_full">Créer sauvegarde complète</string>
+    <string name="backup_option_import">Importer sauvegarde</string>
+
+    <string name="dialog_backup_monthly_title">Sauvegarde Mensuelle</string>
+    <string name="dialog_backup_monthly_message">Une sauvegarde des données du mois sélectionné sera créée.</string>
+    <string name="backup_progress_message">Traitement de la sauvegarde, veuillez patienter...</string>
+    <string name="action_create">Créer</string>
+
+    <string name="dialog_backup_full_title">Sauvegarde Complète</string>
+    <string name="dialog_backup_full_message">Une sauvegarde de TOUTES les données de l\'application sera créée.</string>
+    <string name="dialog_backup_full_note">Remarque : Ce processus peut prendre quelques secondes selon la quantité de données.</string>
+
+    <string name="snackbar_backup_monthly_success">Sauvegarde mensuelle créée avec succès</string>
+    <string name="snackbar_backup_monthly_error">Erreur lors de la création de la sauvegarde mensuelle</string>
+    <string name="snackbar_backup_full_success">Sauvegarde complète créée avec succès</string>
+    <string name="snackbar_backup_full_error">Erreur lors de la création de la sauvegarde complète</string>
+    <string name="snackbar_generic_error">Erreur : %1$s</string>
+
+    <string name="dialog_backup_import_title">Importer Sauvegarde</string>
+    <string name="dialog_backup_import_message">Les données du fichier sélectionné seront importées.</string>
+    <string name="dialog_backup_import_note">Remarque : Les données existantes correspondant à la sauvegarde seront écrasées.</string>
+    <string name="dialog_backup_import_warning">Attention : Cette action est irréversible.</string>
+    <string name="backup_import_progress_message">Importation des données, veuillez patienter...</string>
+    <string name="action_import_yes">Oui, importer</string>
+    <string name="snackbar_backup_import_success">Sauvegarde importée avec succès</string>
+    <string name="snackbar_backup_import_error">Erreur lors de l\'importation de la sauvegarde</string>
+    <string name="action_accept">Accepter</string>
+
+    <!-- Home Screen Extra -->
+    <string name="goal">Objectif</string>
+    <string name="status">Statut</string>
+    <string name="on_track">En bonne voie</string>
+    <string name="achieved">Dépassé</string>
+    <string name="no_goal">Pas d\'objectif</string>
+    <string name="goal_remaining">Reste %1$s pour votre objectif</string>
+    <string name="goal_exceeded">Objectif dépassé de %1$s !</string>
+
+    <!-- Update Dialog -->
+    <string name="update_dialog_title">Nouveautés de la Version 4.1 !</string>
+    <string name="update_dialog_message">Nous avons amélioré l\'application pour vous :\n• 🌍 Nouvelles langues : Disponible en anglais, allemand et français.\n• 🧮 Plateformes : Si votre plateforme ne correspond pas au calcul Brut/Net, corrigez-le via Paramètres > Plateformes.\n• ☁️ Sauvegarde en ligne : Synchronisez vos données avec Google Drive.</string>
+    <string name="understood">Compris</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Accueil</string>
+    <string name="nav_edit">Éditer</string>
+    <string name="nav_stats">Avance</string>
+    <string name="nav_other">Autre</string>
+
+    <!-- Invoice Extra -->
+    <string name="nif_display">NIF : %1$s</string>
+    <string name="nif_cif_display">NIF/CIF : %1$s</string>
+    <string name="address_display">Adresse : %1$s</string>
+    <string name="origin_display">Origine : %1$s</string>
+    <string name="destination_display">Destination : %1$s</string>
+    <string name="pdf_not_found">Le fichier PDF n\'existe pas</string>
+    <string name="pdf_no_file">Aucun PDF à partager</string>
+    <string name="pdf_share_error_msg">Erreur lors du partage du PDF : %1$s</string>
+    <string name="invoice_number_label">Numéro de Facture</string>
+    <string name="label_expenses_total">Total Dépenses</string>
+    <string name="chart_title_day">Aujourd\'hui</string>
+    <string name="chart_title_week">Cette semaine</string>
+    <string name="chart_title_month">Ce mois</string>
+    <string name="short_fuel">CARB</string>
+    <string name="short_other">DIVERS</string>
+    <string name="label_fuel">Carburant</string>
+    <string name="label_misc">Divers</string>
+    <string name="info">Information</string>
+
+    <!-- Service Platform Screen -->
+    <string name="title_available_platforms">Plateformes disponibles</string>
+    <string name="empty_platforms_msg">Aucune plateforme configurée</string>
+    <string name="help_add_more_platforms">Pour ajouter plus de plateformes : FreeNow, Imbric, JoinApp</string>
+    <string name="dialog_new_platform_title">Nouvelle Plateforme</string>
+    <string name="dialog_edit_platform_title">Modifier Plateforme</string>
+    <string name="dialog_delete_platform_title">Supprimer Plateforme</string>
+    <string name="dialog_delete_platform_msg">Êtes-vous sûr de vouloir supprimer la plateforme \'%1$s\' ?</string>
+    <string name="label_enter_platform_name">Entrez le nom de la plateforme :</string>
+    <string name="label_update_platform_info">Mettez à jour le nom et la commission :</string>
+    <string name="label_name">Nom</string>
+    <string name="error_name_empty">Le nom ne peut pas être vide</string>
+    <string name="label_apply_commission">Applique une commission ?</string>
+    <string name="label_commission_percentage">Porcentage de Commission</string>
+    <string name="error_commission_invalid">Le pourcentage doit être un nombre valide</string>
+    <string name="label_vat_percentage">TVA (%)</string>
+    <string name="error_vat_invalid">La TVA doit être un nombre valide</string>
+    <string name="help_vat_info" formatted="false">Si votre plateforme vous facture la TVA sur la commission, indiquez le % de TVA de votre pays (Espagne normalement 21%)</string>
+    <string name="msg_platform_added">Plateforme ajoutée</string>
+    <string name="msg_platform_updated">Plateforme mise à jour</string>
+    <string name="msg_platform_deleted">Plateforme supprimée</string>
+    <string name="label_no_commission">Sans commission</string>
+    <string name="cd_add_platform">Ajouter plateforme</string>
+    <string name="cd_delete_platform">Supprimer Plateforme</string>
+    <string name="action_save_changes">Enregistrer Modifications</string>
+
+    <!-- Payment Method Screen -->
+    <string name="title_payment_methods">Méthodes de Paiement</string>
+    <string name="title_available_payment_methods">Méthodes de paiement disponibles</string>
+    <string name="empty_payment_methods_msg">Aucune méthode de paiement configurée</string>
+    <string name="dialog_new_payment_method_title">Nouvelle Méthode de Paiement</string>
+    <string name="dialog_delete_payment_method_title">Eliminer Méthode de Paiement</string>
+    <string name="dialog_delete_payment_method_msg">Êtes-vous sûr de vouloir supprimer la méthode de paiement \'%1$s\' ?</string>
+    <string name="label_enter_payment_method_name">Entrez le nom de la méthode de paiement :</string>
+    <string name="msg_payment_method_added">Méthode de paiement ajoutée</string>
+    <string name="msg_payment_method_deleted">Méthode de paiement supprimée</string>
+    <string name="cd_add_payment_method">Ajouter Méthode de Paiement</string>
+    <string name="cd_delete_payment_method">Eliminer Méthode de Paiement</string>
+
+    <!-- Online Backup Screen -->
+    <string name="title_online_backup">Sauvegarde Automatique en Ligne</string>
+    <string name="status_connected">Connecté</string>
+    <string name="status_disconnected">Déconnecté</string>
+    <string name="label_last_backup_available">Dernière sauvegarde disponible</string>
+    <string name="label_backup_not_available">Non disponible</string>
+    <string name="action_connect_google">Se connecter avec Google</string>
+    <string name="action_sign_out">Se déconnecter</string>
+    <string name="label_auto_backup">Sauvegarde automatique</string>
+    <string name="desc_auto_backup">Jusqu\'à 5 points de restauration sont créés</string>
+    <string name="action_create_point_now">Créer point maintenant</string>
+    <string name="action_restore_latest">Restaurer dernier point</string>
+    <string name="label_restore_points">Points de restauration</string>
+    <string name="label_latest_point">Dernier : %1$s</string>
+    <string name="action_restore">Restaurar</string>
+    <string name="dialog_restore_confirm_title">Confirmer restauration</string>
+    <string name="dialog_restore_confirm_msg">Attention : En restaurant la sauvegarde, toutes les données actuelles de l\'appareil seront effacées. Voulez-vous continuer ?</string>
+    <string name="action_yes_restore">Oui, restaurer</string>
+    <string name="dialog_permissions_title">Permissions Requises</string>
+    <string name="dialog_permissions_msg">Pour que la sauvegarde fonctionne correctement, il est impératif de cocher toutes les cases que Google affichera. Si vous ne sélectionnez pas toutes les permissions, l\'application ne pourra pas sauvegarder vos données.</string>
+    <string name="action_understood_continue">Compris, Continuer</string>
+    <string name="error_google_connection">Impossible de se connecter à Google.</string>
+
+    <!-- Expense List Screen -->
+    <string name="title_expenses">Dépenses</string>
+    <string name="msg_showing_data_for">Affichage des données du : %1$s</string>
+    <string name="tab_expenses">Dépenses</string>
+    <string name="tab_rides">Courses</string>
+    <string name="msg_no_rides">Aucune course enregistrée</string>
+    <string name="msg_no_expenses">Aucune dépense enregistrée</string>
+    <string name="msg_ride_deleted">Course supprimée avec succès</string>
+    <string name="msg_expense_deleted">Dépense supprimée avec succès</string>
+    <string name="label_rate">Tarif : %1$s</string>
+    <string name="label_date_format">Date : %1$s</string>
+    <string name="label_time_format">Heure : %1$s</string>
+    <string name="cd_delete_ride">Supprimer course</string>
+
+    <!-- Billing Data Screen -->
+    <string name="title_billing_data">Données de Facturation</string>
+    <string name="label_name_surname">Nom et prénom</string>
+    <string name="label_owner_nif">NIF du propriétaire</string>
+    <string name="label_license">Licence</string>
+    <string name="label_street_number">Nom de la rue et numéro</string>
+    <string name="label_city">Ville</string>
+    <string name="label_owner_postal_code">Code postal du propriétaire</string>
+    <string name="msg_data_saved">Données enregistrées avec succès.</string>
+
+    <!-- Detailed Summary Screen -->
+    <string name="title_detailed_summary">Résumé Financier Détaillé</string>
+    <string name="expenses_day">Dépenses Journée</string>
+    <string name="expenses_week">Dépenses Semaine</string>
+    <string name="expenses_month">Dépenses Mois</string>
+
+    <!-- Price Screen -->
+    <string name="title_calculate_price">Calculer le prix</string>
+    <string name="card_madrid_rates_title">Tarifs de %1$s</string>
+    <string name="configurar_otras_ciudades_msg">Pour configurer d\'autres villes, allez dans Paramètres > Tarifs et prix</string>
+    <string name="label_select_tariff">Sélectionnez le tarif</string>
+    <string name="label_workday">Ouvrable (+ Tarif 1)</string>
+    <string name="label_holiday">Férié/Nuit (+ Tarif 2)</string>
+    <string name="cd_workday">Ouvrable</string>
+    <string name="cd_holiday">Férié</string>
+    <string name="label_kilometers">Kilomètres</string>
+    <string name="label_traffic_level">Niveau de trafic</string>
+    <string name="action_calculate_price">Calculer prix</string>
+    <string name="label_estimated_price">Prix estimé</string>
+    <string name="tariff_1">Tarif 1</string>
+    <string name="tariff_2">Tarif 2</string>
+    <string name="tariff_3">Tarif 3</string>
+    <string name="tariff_4">Tarif 4</string>
+    <string name="tariff_7">Tarif 7</string>
+    <string name="traffic_none">Sans trafic</string>
+    <string name="traffic_light">Léger</string>
+    <string name="traffic_moderate">Dense</string>
+    <string name="traffic_heavy">Très dense</string>
+
+    <!-- Other Screen -->
+    <string name="title_other_options">Autres options</string>
+    <string name="label_select_option">Sélectionnez une option</string>
+    <string name="option_prices">Prix</string>
+    <string name="desc_prices">Calculer prix des trajets</string>
+    <string name="option_invoices">Factures</string>
+    <string name="desc_invoices">Générer factures pour clients</string>
+    <string name="option_whatsapp">Aide WhatsApp</string>
+    <string name="desc_whatsapp">Ouvrir chat WhatsApp</string>
+    <string name="option_maintenance">Maintenance</string>
+    <string name="option_community">Communauté</string>
+    <string name="desc_community">Ouvrir la communauté WhatsApp</string>
+    <string name="region_not_available">Non disponible dans votre région</string>
+    <string name="community_dialog_title">Communauté externe</string>
+    <string name="community_dialog_message">Vous allez quitter l\'application vers une communauté externe qui ne m\'appartient pas. Je ne suis pas responsable de son contenu.</string>
+    <string name="community_dialog_open">Ouvrir WhatsApp</string>
+    <string name="option_donations">Dons</string>
+    <string name="desc_donations">Soutenir le projet</string>
+    <string name="donations_title">Dons</string>
+    <string name="donations_subtitle">Choisissez un don pour soutenir le développement de l\'application.</string>
+    <string name="donation_action">Faire un don</string>
+    <string name="donation_thanks">Merci pour votre soutien</string>
+    <string name="donation_canceled">Don annulé</string>
+    <string name="donation_failed">Impossible de terminer le don</string>
+    <string name="donation_499_title">Don 4,99 €</string>
+    <string name="donation_199_title">Don 1,99 €</string>
+    <string name="donation_099_title">Don 0,99 €</string>
+    <string name="card_tip_title">Conseil du jour</string>
+    <string name="card_tip_content">Tenez un registre quotidien de vos courses pour optimiser vos itinéraires et maximiser vos gains.</string>
+
+    <string name="tariff_prefix">Tarif %1$s</string>
+
+    <!-- Splash Screen -->
+    <string name="app_name_title">GESTION TAXI</string>
+    <string name="app_subtitle">Solution professionnelle pour taxistes</string>
+    <string name="group_fasata">GROUP FASATA</string>
+    <string name="loading_error">Erreur de chargement. Redémarrage...</string>
+    <string name="tip_1">Cette application est gratuite. Si elle vous aide, soutenez-nous avec un don (Autres &gt; Don) et un avis.</string>
+    <string name="tip_2">Faites vos factures depuis ici dans la section AUTRES > Factures</string>
+    <string name="tip_3">Pour éditer ou supprimer revenus et dépenses appuyez sur la barre de navigation : Éditer</string>
+    <string name="tip_4">Vos données ne seront pas seulement sur votre appareil, mais aussi sur votre compte Drive : sécurité maximale</string>
+    <string name="tip_5">100%% gratuit : par des taxistes pour des taxistes</string>
+
+    <!-- Acknowledgment Screen -->
+    <string name="title_acknowledgment">Remerciements</string>
+    <string name="thanks_title">Merci de faire confiance à cette appli !</string>
+    <string name="thanks_p1">Cette application est née de la passion et de l\'engagement d\'un taxiste également développeur. Ici, pas de grandes entreprises ni d\'intérêts cachés : juste le désir d\'apporter quelque chose d\'utile et d\'honnête à notre communauté.</string>
+    <string name="thanks_p2">Votre confiance et votre soutien nous permettent de continuer à grandir ensemble, en améliorant le quotidien du taxi, avec indépendance et professionnalisme. Cette appli est la vôtre autant que la mienne : un outil fait par et pour les taxistes.</string>
+    <string name="thanks_p3">Le taxi est bien plus qu\'un travail : c\'est un mode de vie, une communauté et une famille. Continuons d\'avancer, de nous soutenir et de défendre ce qui est à nous avec les meilleurs outils.</string>
+    <string name="thanks_community">Merci de faire partie de cette communauté.</string>
+    <string name="thanks_road">On continue sur la route !</string>
+
+    <!-- PDF Generator -->
+    <string name="invoice_title_upper">FACTURE</string>
+    <string name="invoice_number_pdf">N° Facture</string>
+    <string name="issuer_data_title">DONNÉES DE L\'ÉMETTEUR</string>
+    <string name="name_label">Nom</string>
+    <string name="nif_label">NIF</string>
+    <string name="license_label_pdf">Licence</string>
+    <string name="address_label_pdf">Adresse</string>
+    <string name="client_data_title">DONNÉES DU CLIENT</string>
+    <string name="nif_cif_label">NIF/CIF</string>
+    <string name="service_details_title">DÉTAILS DU SERVICE</string>
+    <string name="origin_label">Origine</string>
+    <string name="destination_label">Destination</string>
+    <string name="concept_header">Concept</string>
+    <string name="amount_header">Montant</string>
+    <string name="taxi_service_concept">SERVICE DE TAXI</string>
+    <string name="base_amount_row">Base Imposable</string>
+    <string name="vat_row">TVA (10%)</string>
+    <string name="total_row">Total</string>
+    <string name="invoice_footer_note">Ce document doit être accompagné du ticket de taximètre</string>
+    <string name="title_add_tariff">Ajouter un tarif</string>
+    <string name="title_edit_tariff">Modifier le tarif</string>
+    <string name="label_tariff_name">Nom du tarif</string>
+    <string name="label_is_fixed_price">Prix fixe ?</string>
+    <string name="label_fixed_price">Prix fixe</string>
+    <string name="label_base_fare">Prix de base</string>
+    <string name="label_price_per_km">Prix au km</string>
+    <string name="label_surcharge">Supplément</string>
+    <string name="action_save">Enregistrer</string>
+    <string name="title_tariffs">Tarifs et prix</string>
+    <string name="action_add_tariff">Ajouter un tarif</string>
+    <string name="empty_tariffs_msg">Aucun tarif configuré</string>
+    <string name="dialog_delete_tariff_title">Supprimer le tarif</string>
+    <string name="dialog_delete_tariff_msg">Êtes-vous sûr de vouloir supprimer le tarif %1$s ?</string>
+    <string name="settings_tariffs_title">Tarifs et prix</string>
+    <string name="settings_tariffs_desc">Gérez vos tarifs fixes ou variables</string>
+    <string name="settings_tariffs_content_desc">Icône des tarifs</string>
+    <string name="city_label">Ville actuelle : %1$s</string>
+    <string name="action_change_city">Changer de ville</string>
+    <string name="action_restore_defaults">Tarifs par défaut</string>
+    <string name="dialog_change_city_title">Changer de ville</string>
+    <string name="dialog_change_city_msg">Changer de ville supprimera tous les tarifs de la ville actuelle. Continuer ?</string>
+    <string name="label_new_city">Nouvelle ville</string>
+    <string name="dialog_restore_defaults_title">Restaurer les tarifs</string>
+    <string name="dialog_restore_defaults_msg">Cela supprimera tous les tarifs actuels et restaurera les tarifs par défaut de Madrid. Continuer ?</string>
+
+    <string name="settings_themes_title">Thèmes</string>
+    <string name="settings_themes_change_desc">Changer le thème</string>
+    <string name="settings_themes_dialog_title">Sélectionner un thème</string>
+    <string name="theme_blue_name">Bleu (nouveau)</string>
+    <string name="theme_green_name">Vert (classique)</string>
+    <string name="settings_active_options_title">Options actives</string>
+    <string name="settings_active_options_desc">Activer ou désactiver des fonctions</string>
+    <string name="settings_daily_challenge_desc">Afficher le défi quotidien sur l’écran d’accueil</string>
+    <string name="settings_origin_destination_title">Origine et destination</string>
+    <string name="settings_origin_destination_desc">Afficher l’origine et la destination lors de l’ajout d’une course</string>
+    <string name="settings_tips_desc">Afficher les pourboires dans l’application</string>
+    <string name="home_summary_title">Résumé</string>
+
+    <string name="onboarding_welcome_step_title">Bienvenue (%1$d/%2$d)</string>
+    <string name="onboarding_continue">Continuer</string>
+    <string name="onboarding_next">Suivant</string>
+    <string name="onboarding_skip">Ignorer</string>
+    <string name="onboarding_add">Ajouter</string>
+    <string name="onboarding_finish">Terminer</string>
+
+    <string name="onboarding_data_source_title">Source des données</string>
+    <string name="onboarding_data_source_subtitle">Choisissez une option pour commencer.</string>
+    <string name="onboarding_restore_drive_title">Restaurer depuis Drive</string>
+    <string name="onboarding_restore_drive_subtitle">Connectez-vous et restaurez votre sauvegarde depuis Google Drive.</string>
+    <string name="onboarding_import_local_title">Importer en local</string>
+    <string name="onboarding_import_local_subtitle">Sélectionnez un fichier de sauvegarde locale sur votre appareil.</string>
+    <string name="onboarding_setup_scratch_title">Configurer depuis zéro</string>
+    <string name="onboarding_setup_scratch_subtitle">Configurez l’application étape par étape.</string>
+
+    <string name="onboarding_smart_platforms_title">Plateformes intelligentes</string>
+    <string name="onboarding_smart_platforms_subtitle">Suggestions selon votre pays. Vous pouvez ajouter ou ignorer cette étape.</string>
+    <string name="onboarding_platform_dialog_title">Nouvelle plateforme</string>
+    <string name="onboarding_platform_name_label">Nom de la plateforme</string>
+    <string name="onboarding_platform_name_error">Saisissez un nom</string>
+    <string name="onboarding_platform_apply_commission">Appliquer une commission ?</string>
+    <string name="onboarding_platform_commission_percent_label">Commission (%)</string>
+    <string name="onboarding_platform_commission_error">Saisissez un nombre valide</string>
+    <string name="onboarding_platform_tax_percent_label">TVA/Taxes % (optionnel)</string>
+    <string name="onboarding_platform_tax_hint">Laissez vide si la plateforme ne facture pas de TVA.</string>
+    <string name="onboarding_platform_us_math">Méthode de calcul US</string>
+    <string name="onboarding_payment_methods_title">Méthodes de paiement</string>
+    <string name="onboarding_other_title">Autres</string>
+    <string name="onboarding_other_label">Autre</string>
+
+    <string name="platform_direct_no_platform">Direct / Sans plateforme</string>
+    <string name="platform_commission_format">Commission %1$s%% + %2$s%%</string>
+    <string name="platform_commission_only_format">Commission %1$s%%</string>
+    <string name="platform_vat_only_format">TVA %1$s%%</string>
+
+    <string name="onboarding_billing_title">Informations de facturation</string>
+    <string name="onboarding_billing_subtitle">Champs optionnels. Vous pourrez les modifier plus tard dans Paramètres.</string>
+    <string name="onboarding_billing_name_label">Nom / Raison sociale</string>
+    <string name="onboarding_billing_nif_label">Identifiant fiscal</string>
+    <string name="onboarding_billing_license_label">Licence</string>
+    <string name="onboarding_billing_street_label">Rue et numéro</string>
+    <string name="onboarding_billing_city_label">Ville</string>
+    <string name="onboarding_billing_postal_code_label">Code postal</string>
+
+    <string name="onboarding_rates_city_title">Tarifs et ville</string>
+    <string name="onboarding_current_city_format">Ville actuelle : %1$s</string>
+    <string name="onboarding_city_label">Ville</string>
+    <string name="onboarding_rates_info">Info : plus tard, veuillez créer les tarifs manuellement car ils ne sont pas disponibles dans notre base pour la calculatrice.</string>
+
+    <string name="onboarding_completion_title">Finalisation</string>
+    <string name="onboarding_drive_link_question">Souhaitez-vous lier Google Drive maintenant ou plus tard ?</string>
+    <string name="onboarding_drive_connect_now">Connecter maintenant</string>
+    <string name="onboarding_drive_later">Plus tard</string>
+    <string name="onboarding_drive_connected">Drive connecté</string>
+    <string name="onboarding_drive_connect">Connecter Drive</string>
+    <string name="onboarding_drive_linked">Drive lié</string>
+
+    <string name="onboarding_restore_drive_failed">Impossible de restaurer depuis Drive</string>
+    <string name="onboarding_restore_local_failed">Impossible de restaurer la sauvegarde locale</string>
+    <string name="onboarding_sign_in_cancelled">Connexion annulée</string>
+    <string name="onboarding_save_platform_failed">Impossible d\'enregistrer la plateforme</string>
+
+    <string name="payment_subscribers">Compte</string>
+    <string name="payment_pending">En attente</string>
+    <string name="label_service_mode">Type de service autorisé</string>
+    <string name="service_mode_both">Taximètre et Prix fixe</string>
+    <string name="service_mode_meter_only">Taximètre seulement</string>
+    <string name="service_mode_fixed_only">Prix fixe seulement</string>
 </resources>
