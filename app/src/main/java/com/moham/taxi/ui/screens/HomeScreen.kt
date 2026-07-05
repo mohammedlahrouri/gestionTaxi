@@ -240,13 +240,17 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         )
     )
     
-    val recentActivity by remember(taxiRideViewModel, expenseViewModel) {
+    val recentActivity by remember(taxiRideViewModel, expenseViewModel, selectedDate) {
         kotlinx.coroutines.flow.combine(
             taxiRideViewModel.allTaxiRides,
             expenseViewModel.allExpenses
         ) { rides, expenses ->
             val activities = mutableListOf<ActivityItem>()
-            rides.forEach { ride ->
+            val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(selectedDate)
+            val dayRides = rides.filter { it.date.time >= dayRange.first.time && it.date.time <= dayRange.second.time }
+            val dayExpenses = expenses.filter { it.date.time >= dayRange.first.time && it.date.time <= dayRange.second.time }
+            
+            dayRides.forEach { ride ->
                 val hasRoute = ride.origin.isNotBlank() || ride.destination.isNotBlank()
                 val (title, description) = if (hasRoute) {
                     val routeStr = if (ride.origin.isNotBlank() && ride.destination.isNotBlank()) {
@@ -266,11 +270,11 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         title = title,
                         description = description,
                         amount = ride.price,
-                        date = ride.date
+                        date = ride.realDate
                     )
                 )
             }
-            expenses.forEach { expense ->
+            dayExpenses.forEach { expense ->
                 val title = when (expense.type) {
                     com.moham.taxi.data.model.ExpenseType.FUEL -> application.getString(R.string.expense_type_fuel)
                     com.moham.taxi.data.model.ExpenseType.MAINTENANCE -> application.getString(R.string.expense_type_maintenance)
@@ -296,11 +300,11 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         title = title,
                         description = description,
                         amount = expense.amount,
-                        date = expense.date
+                        date = expense.realDate
                     )
                 )
             }
-            activities.sortedByDescending { it.date }.take(5)
+            activities.sortedWith(compareByDescending<ActivityItem> { it.date }.thenByDescending { it.id }).take(5)
         }
     }.collectAsState(initial = emptyList())
     

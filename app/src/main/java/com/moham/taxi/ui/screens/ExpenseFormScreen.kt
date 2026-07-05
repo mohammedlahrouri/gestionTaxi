@@ -148,6 +148,7 @@ fun ExpenseFormScreen(
     var maintenanceDetails by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var ticketPhotoPath by remember { mutableStateOf<String?>(null) }
+    var existingRealDate by remember { mutableStateOf<Date?>(null) }
     var tempPhotoFile by remember { mutableStateOf<File?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -192,6 +193,7 @@ fun ExpenseFormScreen(
                 maintenanceDetails = expense.maintenanceDetails ?: ""
                 amount = expense.amount.toString()
                 ticketPhotoPath = expense.ticketPhotoPath
+                existingRealDate = expense.realDate
             }
         }
     }
@@ -243,7 +245,8 @@ fun ExpenseFormScreen(
                         maintenanceDetails = if (selectedExpenseType == ExpenseType.MAINTENANCE) maintenanceDetails else null,
                         amount = amount.toDouble(),
                         date = finalDate,
-                        ticketPhotoPath = ticketPhotoPath
+                        ticketPhotoPath = ticketPhotoPath,
+                        realDate = existingRealDate ?: Date()
                     )
                     
                     if (expenseId > 0) {

@@ -159,6 +159,7 @@ fun TaxiRideFormScreen(
     var price by remember { mutableStateOf("") }
     var tip by remember { mutableStateOf("") }
     var existingTip by remember { mutableStateOf<Double?>(null) }
+    var existingRealDate by remember { mutableStateOf<Date?>(null) }
     var rideTime by remember { mutableStateOf(timeFormat.format(Date())) }
     var selectedPaymentMethod by remember { mutableStateOf("") }
     var selectedServiceType by remember { mutableStateOf(TaxiRide.SERVICE_TYPE_METER) }
@@ -294,6 +295,7 @@ fun TaxiRideFormScreen(
                     selectedServicePlatform = toPlatformDisplayName(storedPlatform)
                     rideTime = it.rideTime
                     ticketPhotoPath = it.ticketPhotoPath
+                    existingRealDate = it.realDate
                 }
             }
         }
@@ -396,7 +398,8 @@ fun TaxiRideFormScreen(
                         rideTime = finalRideTime,
                         serviceType = selectedServiceType,
                         servicePlatform = toPlatformStoredName(selectedServicePlatform).ifBlank { directStoredName },
-                        ticketPhotoPath = ticketPhotoPath
+                        ticketPhotoPath = ticketPhotoPath,
+                        realDate = existingRealDate ?: Date()
                     )
 
                     if (rideId > 0) {

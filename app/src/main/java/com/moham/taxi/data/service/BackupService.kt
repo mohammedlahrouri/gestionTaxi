@@ -108,6 +108,7 @@ class BackupService(
                 rideJson.put("price", ride.price)
                 ride.tip?.let { rideJson.put("tip", it) }
                 rideJson.put("date", ride.date.time)
+                rideJson.put("real_date", ride.realDate.time)
                 rideJson.put("payment_method", ride.paymentMethod)
                 ride.netPrice?.let { rideJson.put("net_price", it) }
                 ride.commissionPercentAtTime?.let { rideJson.put("commission_percent_at_time", it) }
@@ -129,6 +130,7 @@ class BackupService(
                 expenseJson.put("id", expense.id)
                 expenseJson.put("amount", expense.amount)
                 expenseJson.put("date", expense.date.time)
+                expenseJson.put("real_date", expense.realDate.time)
                 expenseJson.put("type", expense.type.toString())
                 expenseJson.put("description", expense.description ?: "")
                 expense.maintenanceKilometers?.let { expenseJson.put("maintenance_kilometers", it) }
@@ -176,6 +178,7 @@ class BackupService(
                 rideJson.put("price", ride.price)
                 ride.tip?.let { rideJson.put("tip", it) }
                 rideJson.put("date", ride.date.time)
+                rideJson.put("real_date", ride.realDate.time)
                 rideJson.put("payment_method", ride.paymentMethod)
                 ride.netPrice?.let { rideJson.put("net_price", it) }
                 ride.commissionPercentAtTime?.let { rideJson.put("commission_percent_at_time", it) }
@@ -197,6 +200,7 @@ class BackupService(
                 expenseJson.put("id", expense.id)
                 expenseJson.put("amount", expense.amount)
                 expenseJson.put("date", expense.date.time)
+                expenseJson.put("real_date", expense.realDate.time)
                 expenseJson.put("type", expense.type.toString())
                 expenseJson.put("description", expense.description ?: "")
                 expense.maintenanceKilometers?.let { expenseJson.put("maintenance_kilometers", it) }
@@ -418,7 +422,8 @@ class BackupService(
                 servicePlatform = rideJson.optString("service_platform").takeIf { it.isNotBlank() },
                 serviceType = rideJson.optString("service_type").takeIf { it.isNotBlank() },
                 rideTime = rideJson.optString("ride_time", "00:00"),
-                ticketPhotoPath = rideJson.optString("ticket_photo_path").takeIf { it.isNotBlank() }
+                ticketPhotoPath = rideJson.optString("ticket_photo_path").takeIf { it.isNotBlank() },
+                realDate = if (rideJson.has("real_date")) Date(rideJson.getLong("real_date")) else Date(rideJson.getLong("date"))
             )
             taxiRideRepository.insertTaxiRide(ride)
         }
@@ -435,7 +440,8 @@ class BackupService(
                 description = expenseJson.optString("description"),
                 maintenanceKilometers = if (expenseJson.has("maintenance_kilometers")) expenseJson.getInt("maintenance_kilometers") else null,
                 maintenanceDetails = expenseJson.optString("maintenance_details").takeIf { it.isNotBlank() },
-                ticketPhotoPath = expenseJson.optString("ticket_photo_path").takeIf { it.isNotBlank() }
+                ticketPhotoPath = expenseJson.optString("ticket_photo_path").takeIf { it.isNotBlank() },
+                realDate = if (expenseJson.has("real_date")) Date(expenseJson.getLong("real_date")) else Date(expenseJson.getLong("date"))
             )
             expenseRepository.insertExpense(expense)
         }

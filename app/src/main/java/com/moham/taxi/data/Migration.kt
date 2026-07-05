@@ -241,3 +241,13 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
         database.execSQL("ALTER TABLE `expenses` ADD COLUMN `ticketPhotoPath` TEXT")
     }
 }
+
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `realDate` INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("UPDATE `taxi_rides` SET `realDate` = `date` WHERE `realDate` = 0")
+        database.execSQL("ALTER TABLE `expenses` ADD COLUMN `realDate` INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("UPDATE `expenses` SET `realDate` = `date` WHERE `realDate` = 0")
+    }
+}
+

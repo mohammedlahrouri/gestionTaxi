@@ -206,6 +206,7 @@ class OnlineBackupRepository(
             obj.put("price", r.price)
             r.tip?.let { obj.put("tip", it) }
             obj.put("date", r.date.time)
+            obj.put("real_date", r.realDate.time)
             obj.put("payment_method", r.paymentMethod)
             obj.put("origin", r.origin)
             obj.put("destination", r.destination)
@@ -223,6 +224,7 @@ class OnlineBackupRepository(
             obj.put("id", e.id)
             obj.put("amount", e.amount)
             obj.put("date", e.date.time)
+            obj.put("real_date", e.realDate.time)
             obj.put("type", e.type.name)
             e.description?.let { obj.put("description", it) }
             e.maintenanceKilometers?.let { obj.put("maintenance_kilometers", it) }
@@ -298,6 +300,7 @@ class OnlineBackupRepository(
             obj.put("price", r.price)
             r.tip?.let { obj.put("tip", it) }
             obj.put("date", r.date.time)
+            obj.put("real_date", r.realDate.time)
             obj.put("payment_method", r.paymentMethod)
             obj.put("origin", r.origin)
             obj.put("destination", r.destination)
@@ -323,6 +326,7 @@ class OnlineBackupRepository(
             obj.put("id", e.id)
             obj.put("amount", e.amount)
             obj.put("date", e.date.time)
+            obj.put("real_date", e.realDate.time)
             obj.put("type", e.type.name)
             e.description?.let { obj.put("description", it) }
             e.maintenanceKilometers?.let { obj.put("maintenance_kilometers", it) }
@@ -422,6 +426,7 @@ class OnlineBackupRepository(
                     val tip = r.optDouble("tip", Double.NaN).takeIf { !it.isNaN() }
                     val paymentMethod = r.getString("payment_method")
                     val date = Date(r.getLong("date"))
+                    val realDate = if (r.has("real_date")) Date(r.getLong("real_date")) else date
                     val serviceType = r.optString("service_type", TaxiRide.SERVICE_TYPE_METER)
                     val servicePlatform = r.optString("service_platform", "Directo")
                     val rideTime = r.optString("ride_time", "00:00")
@@ -450,7 +455,8 @@ class OnlineBackupRepository(
                             rideTime = rideTime,
                             netPrice = r.optDouble("net_price", Double.NaN).takeIf { !it.isNaN() },
                             commissionPercentAtTime = r.optDouble("commission_percent_at_time", Double.NaN).takeIf { !it.isNaN() },
-                            commissionVatAtTime = r.optDouble("commission_vat_at_time", Double.NaN).takeIf { !it.isNaN() }
+                            commissionVatAtTime = r.optDouble("commission_vat_at_time", Double.NaN).takeIf { !it.isNaN() },
+                            realDate = realDate
                         )
                         database.taxiRideDao().insert(ride)
                     }
@@ -459,6 +465,7 @@ class OnlineBackupRepository(
                     val e = expenses.getJSONObject(i)
                     val amount = e.getDouble("amount")
                     val date = Date(e.getLong("date"))
+                    val realDate = if (e.has("real_date")) Date(e.getLong("real_date")) else date
                     val type = com.moham.taxi.data.model.ExpenseType.valueOf(e.getString("type"))
                     val description = e.optString("description", "").ifBlank { null }
                     val maintenanceKilometers = if (e.has("maintenance_kilometers") && !e.isNull("maintenance_kilometers")) {
@@ -481,7 +488,8 @@ class OnlineBackupRepository(
                             maintenanceKilometers = maintenanceKilometers,
                             maintenanceDetails = maintenanceDetails,
                             amount = amount,
-                            date = date
+                            date = date,
+                            realDate = realDate
                         )
                         database.expenseDao().insert(expense)
                     }

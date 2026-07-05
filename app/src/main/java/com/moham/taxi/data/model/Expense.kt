@@ -37,7 +37,8 @@ data class Expense(
     val maintenanceDetails: String? = null,
     val amount: Double,
     val date: Date = Date(),
-    val ticketPhotoPath: String? = null
+    val ticketPhotoPath: String? = null,
+    val realDate: Date = Date()
 ) {
     /**
      * Valida que los datos del gasto sean correctos

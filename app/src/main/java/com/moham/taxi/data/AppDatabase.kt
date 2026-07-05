@@ -36,13 +36,14 @@ import com.moham.taxi.data.MIGRATION_14_15
 import com.moham.taxi.data.MIGRATION_15_16
 import com.moham.taxi.data.MIGRATION_16_17
 import com.moham.taxi.data.MIGRATION_17_18
+import com.moham.taxi.data.MIGRATION_18_19
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
     entities = [TaxiRide::class, Expense::class, PaymentMethod::class, ServicePlatform::class, Tariff::class, Surcharge::class, PlatformPaymentMethodCrossRef::class, RideSurchargeCrossRef::class],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -83,7 +84,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_14_15,
                         MIGRATION_15_16,
                         MIGRATION_16_17,
-                        MIGRATION_17_18
+                        MIGRATION_17_18,
+                        MIGRATION_18_19
                     )
                     .fallbackToDestructiveMigration() // Keep as fallback for other migrations
                     .addCallback(AppDatabaseCallback(scope))

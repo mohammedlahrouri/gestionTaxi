@@ -43,7 +43,8 @@ data class TaxiRide(
     val servicePlatformId: Long? = null,
     val tariffId: Long? = null,
     val rideDurationMinutes: Int? = null,
-    val ticketPhotoPath: String? = null
+    val ticketPhotoPath: String? = null,
+    val realDate: Date = Date()
 ) {
     companion object {
         const val SERVICE_TYPE_METER = "METER"
