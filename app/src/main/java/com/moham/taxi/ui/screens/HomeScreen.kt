@@ -16,6 +16,10 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.TileMode
@@ -319,6 +323,18 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         today == selected
     }
     
+    var showDateWarningNotification by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedDate) {
+        if (!isToday && !oldVersionEnabled) {
+            showDateWarningNotification = true
+            kotlinx.coroutines.delay(4000)
+            showDateWarningNotification = false
+        } else {
+            showDateWarningNotification = false
+        }
+    }
+    
     // Verificar si es la fecha de ayer
     val isYesterday = remember(selectedDate) {
         val yesterday = Calendar.getInstance().apply { 
@@ -583,6 +599,43 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
+            // Discrete Top Notification Banner
+            AnimatedVisibility(
+                visible = showDateWarningNotification,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp)
+                    .zIndex(99f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF2C2C2E).copy(alpha = 0.95f))
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .clickable { showDateWarningNotification = false }
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.date_different_warning),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -648,50 +701,46 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                     }
                 }
                 
-                IconButton(
-                    onClick = { 
-                        navController.navigate(AppScreens.Settings.route) {
-                            popUpTo(AppScreens.Home.route) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.Transparent)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = stringResource(R.string.settings_title),
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            if (!isToday && !oldVersionEnabled) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF59E0B).copy(alpha = 0.1f))
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(
+                    if (!isToday && !oldVersionEnabled) {
+                        IconButton(
+                            onClick = { showDateWarningNotification = !showDateWarningNotification },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Warning,
+                                contentDescription = stringResource(R.string.date_different_warning),
+                                tint = Color(0xFFF59E0B),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { 
+                            navController.navigate(AppScreens.Settings.route) {
+                                popUpTo(AppScreens.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                            }
+                        },
                         modifier = Modifier
-                            .size(6.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF59E0B))
-                    )
-                    Text(
-                        text = stringResource(R.string.date_different_warning),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFF59E0B)
-                    )
+                            .background(Color.Transparent)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
@@ -1673,25 +1722,14 @@ fun TodaySummaryCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Main Income Display (Large)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            AutoSizeText(
+                text = income,
+                maxFontSize = 36.sp,
+                minFontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
                 modifier = Modifier.padding(horizontal = 4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.TrendingUp,
-                    contentDescription = null,
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(24.dp)
-                )
-                AutoSizeText(
-                    text = income,
-                    maxFontSize = 36.sp,
-                    minFontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
-            }
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1705,31 +1743,13 @@ fun TodaySummaryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.TrendingDown,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.expenses),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.6f)
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.expenses),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
                 
                 AutoSizeText(
                     text = expenses,
