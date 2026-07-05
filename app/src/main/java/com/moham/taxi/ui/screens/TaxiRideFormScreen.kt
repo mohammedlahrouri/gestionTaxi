@@ -194,7 +194,8 @@ fun TaxiRideFormScreen(
     val servicePlatformOptions = run {
         val fromDb = servicePlatforms.map { toPlatformDisplayName(it.name) }
         val base = fromDb.distinctBy { it.lowercase() }
-        if (base.any { it.equals(directLabel, ignoreCase = true) }) base else listOf(directLabel) + base
+        val withoutDirect = base.filter { !it.equals(directLabel, ignoreCase = true) }.sorted()
+        listOf(directLabel) + withoutDirect
     }
 
     val selectedPlatformStoredName = remember(selectedServicePlatform, directLabel) { toPlatformStoredName(selectedServicePlatform) }
