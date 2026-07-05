@@ -26,13 +26,9 @@ fun ExtraModulesScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
 
     val dailyChallengeEnabled by application.isDailyChallengeEnabled().collectAsState(initial = false)
-    val originDestinationEnabled by application.isRideOriginDestinationEnabled().collectAsState(initial = true)
-    val tipsEnabled by application.isTipsEnabled().collectAsState(initial = false)
-    val ticketPhotosEnabled by application.isTicketPhotosEnabled().collectAsState(initial = false)
     val oldVersionEnabled by application.isOldVersionEnabled().collectAsState(initial = false)
     val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
-    
-    var showPrivacyDialog by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -57,31 +53,6 @@ fun ExtraModulesScreen(navController: NavController) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Fotos tickets
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.module_photo_tickets), fontWeight = FontWeight.Medium)
-                    }
-                    Switch(
-                        checked = ticketPhotosEnabled,
-                        onCheckedChange = { isChecked ->
-                            if (isChecked) {
-                                showPrivacyDialog = true
-                            } else {
-                                scope.launch { application.saveTicketPhotosEnabled(false) }
-                            }
-                        }
-                    )
-                }
-            }
-
             // Daily Challenge
             OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -103,58 +74,6 @@ fun ExtraModulesScreen(navController: NavController) {
                         checked = dailyChallengeEnabled,
                         onCheckedChange = { isChecked ->
                             scope.launch { application.saveDailyChallengeEnabled(isChecked) }
-                        }
-                    )
-                }
-            }
-
-            // Origin / Destination
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.settings_origin_destination_title), fontWeight = FontWeight.Medium)
-                        Text(
-                            text = stringResource(R.string.settings_origin_destination_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = originDestinationEnabled,
-                        onCheckedChange = { isChecked ->
-                            scope.launch { application.saveRideOriginDestinationEnabled(isChecked) }
-                        }
-                    )
-                }
-            }
-
-            // Tips
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = stringResource(R.string.tips), fontWeight = FontWeight.Medium)
-                        Text(
-                            text = stringResource(R.string.settings_tips_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = tipsEnabled,
-                        onCheckedChange = { isChecked ->
-                            scope.launch { application.saveTipsEnabled(isChecked) }
                         }
                     )
                 }
@@ -254,29 +173,6 @@ fun ExtraModulesScreen(navController: NavController) {
                     )
                 }
             }
-        }
-        
-        if (showPrivacyDialog) {
-            AlertDialog(
-                onDismissRequest = { showPrivacyDialog = false },
-                title = { Text(stringResource(R.string.photo_tickets_privacy_title)) },
-                text = { Text(stringResource(R.string.photo_tickets_privacy_message)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showPrivacyDialog = false
-                        scope.launch { application.saveTicketPhotosEnabled(true) }
-                    }) {
-                        Text(stringResource(R.string.photo_tickets_privacy_confirm))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showPrivacyDialog = false
-                    }) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                }
-            )
         }
     }
 }

@@ -72,7 +72,6 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.SyncAlt
@@ -270,7 +269,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         isIncome = true,
                         title = title,
                         description = description,
-                        amount = ride.price,
+                        amount = ride.netPrice ?: ride.price,
                         date = ride.realDate
                     )
                 )
@@ -1863,28 +1862,6 @@ fun RecentActivityCard(
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Icon Badge
-                            val badgeBgColor = if (item.isIncome) PrimaryBlue.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f)
-                            val iconColor = if (item.isIncome) PrimaryBlue else Color.White.copy(alpha = 0.6f)
-                            val icon = if (item.isIncome) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(badgeBgColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = null,
-                                    tint = iconColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
                             // Info
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(

@@ -140,9 +140,7 @@ class GestionTaxiApplication : Application() {
     }
 
     fun isRideOriginDestinationEnabled(): Flow<Boolean> {
-        return dataStore.data.map { preferences ->
-            preferences[SHOW_RIDE_ORIGIN_DESTINATION_KEY] ?: true
-        }
+        return flowOf(true)
     }
 
     suspend fun saveTipsEnabled(enabled: Boolean) {
@@ -152,9 +150,7 @@ class GestionTaxiApplication : Application() {
     }
 
     fun isTipsEnabled(): Flow<Boolean> {
-        return dataStore.data.map { preferences ->
-            preferences[TIPS_ENABLED_KEY] ?: false
-        }
+        return flowOf(true)
     }
 
     suspend fun saveTicketPhotosEnabled(enabled: Boolean) {
@@ -164,9 +160,7 @@ class GestionTaxiApplication : Application() {
     }
 
     fun isTicketPhotosEnabled(): Flow<Boolean> {
-        return dataStore.data.map { preferences ->
-            preferences[TICKET_PHOTOS_ENABLED_KEY] ?: false
-        }
+        return flowOf(true)
     }
 
     suspend fun saveOldVersionEnabled(enabled: Boolean) {

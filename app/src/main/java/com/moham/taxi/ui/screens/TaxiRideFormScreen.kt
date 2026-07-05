@@ -1,104 +1,81 @@
 package com.moham.taxi.ui.screens
 
-import androidx.compose.ui.res.stringResource
-import com.moham.taxi.R
-
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.IconButton
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
-import com.moham.taxi.utils.ImageUtils
-import java.io.File
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
 import com.moham.taxi.data.model.TaxiRide
-import com.moham.taxi.ui.components.TaxiDropdown
 import com.moham.taxi.ui.navigation.AppScreens
-import com.moham.taxi.ui.theme.BlueAccent
-import com.moham.taxi.ui.theme.DarkBackground
-import com.moham.taxi.ui.theme.DarkCard
-import com.moham.taxi.ui.theme.GreenAccent
-import com.moham.taxi.ui.theme.Warning
 import com.moham.taxi.ui.viewmodel.PaymentMethodViewModel
 import com.moham.taxi.ui.viewmodel.ServicePlatformViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import com.moham.taxi.utils.DateUtils
+import com.moham.taxi.utils.ImageUtils
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.flowOf
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Paleta de colores oficial para la pantalla de Nueva Carrera
+ */
+object CarreraColors {
+    val Background = Color(0xFF1A1A1D)
+    val Surface = Color(0xFF26262A)
+    val SurfacePressed = Color(0xFF303036)
+    val GreenPrimary = Color(0xFF2E9E4F)
+    val GreenPressed = Color(0xFF268043)
+    val OnBackground = Color(0xFFFAFAFA)
+    val TextSecondary = Color(0xFFA8A8AD)
+    val BorderSubtle = Color(0x1EFFFFFF) // rgba(255,255,255,0.12)
+    val DividerSubtle = Color(0x14FFFFFF) // rgba(255,255,255,0.08)
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TaxiRideFormScreen(
     navController: NavHostController,
@@ -116,9 +93,6 @@ fun TaxiRideFormScreen(
 
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
-    val originDestinationEnabled by application.isRideOriginDestinationEnabled().collectAsState(initial = true)
-    val tipsEnabled by application.isTipsEnabled().collectAsState(initial = false)
-    val ticketPhotosEnabled by application.isTicketPhotosEnabled().collectAsState(initial = false)
 
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
         factory = TaxiRideViewModel.TaxiRideViewModelFactory(
@@ -154,6 +128,7 @@ fun TaxiRideFormScreen(
     val formattedDate = remember(useDate) { dateFormat.format(useDate) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
+    // Estados de datos
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
@@ -168,10 +143,16 @@ fun TaxiRideFormScreen(
     var ticketPhotoPath by remember { mutableStateOf<String?>(null) }
     var tempPhotoFile by remember { mutableStateOf<File?>(null) }
 
+    // Estados de error y carga
     var priceError by remember { mutableStateOf(false) }
     var paymentMethodError by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    // Estados de acordeones expandibles
+    var isRouteExpanded by remember { mutableStateOf(false) }
+    var isTipExpanded by remember { mutableStateOf(false) }
+
+    // Lanzador de cámara para foto
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -180,7 +161,6 @@ fun TaxiRideFormScreen(
                 val uri = android.net.Uri.fromFile(file)
                 val relativePath = ImageUtils.compressAndSaveTicketPhoto(context, uri)
                 if (relativePath != null) {
-                    // Delete old photo if replacing
                     ImageUtils.deleteTicketPhoto(context, ticketPhotoPath)
                     ticketPhotoPath = relativePath
                 }
@@ -192,17 +172,21 @@ fun TaxiRideFormScreen(
         tempPhotoFile = null
     }
 
+    // Datos del Viewmodel
     val servicePlatforms by servicePlatformViewModel.allServicePlatforms.collectAsState(initial = emptyList())
     val directLabel = context.getString(R.string.platform_direct)
     val directStoredName = "Directo"
+
     fun isDirectPlatformName(name: String): Boolean {
         return name.equals(directLabel, ignoreCase = true) ||
             name.equals(directStoredName, ignoreCase = true) ||
             name.equals("Direct", ignoreCase = true)
     }
+
     fun toPlatformDisplayName(storedName: String): String {
         return if (isDirectPlatformName(storedName)) directLabel else storedName
     }
+
     fun toPlatformStoredName(displayName: String): String {
         return if (displayName.equals(directLabel, ignoreCase = true)) directStoredName else displayName
     }
@@ -217,6 +201,7 @@ fun TaxiRideFormScreen(
     val selectedPlatform = servicePlatforms.firstOrNull { it.name.equals(selectedPlatformStoredName, ignoreCase = true) }
     val selectedPlatformId = selectedPlatform?.id
     val platformServiceMode = selectedPlatform?.serviceMode ?: com.moham.taxi.data.model.ServiceMode.BOTH
+    
     val serviceTypeOptions = when (platformServiceMode) {
         com.moham.taxi.data.model.ServiceMode.BOTH -> listOf(stringResource(R.string.option_taximeter), stringResource(R.string.option_fixed_price))
         com.moham.taxi.data.model.ServiceMode.METER_ONLY -> listOf(stringResource(R.string.option_taximeter))
@@ -226,6 +211,7 @@ fun TaxiRideFormScreen(
     val cashLabel = context.getString(R.string.payment_cash)
     val cardLabel = context.getString(R.string.payment_card)
     val appLabel = context.getString(R.string.payment_via_app)
+
     fun canonicalizePaymentMethodStoredName(value: String): String {
         val v = value.trim()
         val lower = v.lowercase()
@@ -236,6 +222,7 @@ fun TaxiRideFormScreen(
             else -> v
         }
     }
+
     fun toPaymentMethodDisplayName(storedName: String): String {
         val canonical = canonicalizePaymentMethodStoredName(storedName)
         return when {
@@ -261,9 +248,11 @@ fun TaxiRideFormScreen(
             emptyList()
         }
     }.distinctBy { it.lowercase() }
+
     val paymentMethodOptionsDisplay = paymentMethodOptionsStored
         .map { toPaymentMethodDisplayName(it) }
         .distinctBy { it.lowercase() }
+
     val paymentMethodDisplayToStored = remember(paymentMethodOptionsStored, paymentMethodOptionsDisplay) {
         paymentMethodOptionsDisplay.zip(paymentMethodOptionsStored).toMap()
     }
@@ -273,12 +262,8 @@ fun TaxiRideFormScreen(
     val selectedPlatformCommission = selectedPlatform?.commissionPercentage
     val selectedPlatformVat = selectedPlatform?.commissionVat
     val hasPlatformCommission = selectedPlatformCommission != null
-    val totalText = run {
-        val priceValue = price.toDoubleOrNull()
-        val tipValue = tip.toDoubleOrNull()
-        if (priceValue == null && tipValue == null) "" else String.format(java.util.Locale.US, "%.2f", (priceValue ?: 0.0) + (tipValue ?: 0.0))
-    }
 
+    // Carga de datos de carrera para edición
     LaunchedEffect(rideId) {
         if (rideId > 0) {
             scope.launch {
@@ -296,11 +281,21 @@ fun TaxiRideFormScreen(
                     rideTime = it.rideTime
                     ticketPhotoPath = it.ticketPhotoPath
                     existingRealDate = it.realDate
+                    
+                    // Si hay datos de ruta, expandir el acordeón
+                    if (it.origin.isNotEmpty() || it.destination.isNotEmpty()) {
+                        isRouteExpanded = true
+                    }
+                    // Si hay propina, expandir el acordeón de propina
+                    if (it.tip != null && it.tip > 0.0) {
+                        isTipExpanded = true
+                    }
                 }
             }
         }
     }
 
+    // Inicialización y actualización de métodos de pago cuando cambia la plataforma
     LaunchedEffect(paymentMethodOptionsStored, servicePlatformOptions, selectedServicePlatform, rideId) {
         if (rideId > 0) return@LaunchedEffect
 
@@ -333,6 +328,7 @@ fun TaxiRideFormScreen(
         }
     }
 
+    // Guardado de carrera
     fun saveTaxiRide() {
         var isValid = true
 
@@ -352,13 +348,14 @@ fun TaxiRideFormScreen(
             scope.launch {
                 try {
                     val inputPrice = price.toDouble()
-                    val tipValue = if (tipsEnabled) tip.toDoubleOrNull()?.takeIf { it > 0.0 } else existingTip
+                    val tipValue = tip.toDoubleOrNull()?.takeIf { it > 0.0 }
                     val finalCommission = selectedPlatformCommission
                     val finalVat = selectedPlatformVat
                     val commissionRate = (finalCommission ?: 0.0) / 100.0
                     val vatRate = (finalVat ?: 0.0) / 100.0
                     val deductionFactor = commissionRate * (1 + vatRate)
                     val alternativeMath = selectedPlatform?.useAlternativeMath == true
+                    
                     val finalPrice = if (hasPlatformCommission && priceInputMode == context.getString(R.string.label_net).uppercase()) {
                         if (alternativeMath) {
                             inputPrice * (1 + deductionFactor)
@@ -377,6 +374,7 @@ fun TaxiRideFormScreen(
                     } else {
                         inputPrice
                     }
+                    
                     val finalDate = DateUtils.assignProperDate(useDate)
                     val finalRideTime = if (rideTime.matches(Regex("^\\d{2}:\\d{2}$"))) {
                         rideTime
@@ -422,332 +420,508 @@ fun TaxiRideFormScreen(
     }
 
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = CarreraColors.Background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .widthIn(max = 480.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(CarreraColors.Background)
         ) {
-            Text(
-                text = if (rideId > 0) stringResource(R.string.edit_ride_title) else stringResource(R.string.new_ride_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 96.dp) // Deja espacio para los botones anclados abajo
+                    .verticalScroll(rememberScrollState())
+                    .widthIn(max = 480.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (!isToday) {
+                // 1. TOPBAR
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = Warning.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = stringResource(R.string.warning),
-                        tint = Warning,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.warning_date_mismatch, formattedDate),
-                        color = Color.White,
+                        text = if (rideId > 0) stringResource(R.string.edit_ride_title) else stringResource(R.string.new_ride_title),
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = CarreraColors.OnBackground
+                        )
+                    )
+                    IconButton(
+                        onClick = {
+                            if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                                navController.popBackStack()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = CarreraColors.OnBackground
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Aviso si la fecha es distinta a la actual
+                if (!isToday) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFFFFB300).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .border(1.dp, Color(0xFFFFB300).copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = stringResource(R.string.warning),
+                            tint = Color(0xFFFFB300),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.warning_date_mismatch, formattedDate),
+                            color = CarreraColors.OnBackground,
+                            fontSize = 13.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // 2. PRECIO GIGANTE (BasicTextField grande + símbolo €)
+                PriceField(
+                    value = price,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            price = newValue
+                            priceError = false
+                        }
+                    },
+                    placeholder = "0.00"
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "Precio de la carrera",
+                    style = TextStyle(
                         fontSize = 13.sp,
-                        modifier = Modifier.weight(1f)
+                        fontWeight = FontWeight.Medium,
+                        color = CarreraColors.TextSecondary
+                    )
+                )
+
+                if (priceError) {
+                    Text(
+                        text = stringResource(R.string.error_valid_price),
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Selector de Bruto/Neto si la plataforma tiene comisión
+                if (hasPlatformCommission) {
+                    Text(
+                        text = stringResource(R.string.label_amount_with_commission),
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = CarreraColors.TextSecondary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        InputField(
-                            label = stringResource(R.string.time),
-                            value = rideTime,
-                            onValueChange = { newValue ->
-                                if (newValue.isEmpty() || (newValue.length <= 5 && newValue.matches(Regex("^\\d{0,2}:?\\d{0,2}$")))) {
-                                    rideTime = newValue
-                                }
-                            },
-                            icon = Icons.Filled.AccessTime,
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next,
+                        ChoiceChip(
+                            label = stringResource(R.string.label_gross),
+                            selected = priceInputMode == context.getString(R.string.label_gross).uppercase(),
+                            onClick = { priceInputMode = context.getString(R.string.label_gross).uppercase() },
                             modifier = Modifier.weight(1f)
                         )
-                        InputField(
-                            label = stringResource(R.string.price_symbol),
-                            value = price,
-                            onValueChange = { newValue ->
-                                if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                    price = newValue
-                                    priceError = false
-                                }
-                            },
-                            icon = Icons.Filled.AttachMoney,
-                            keyboardType = KeyboardType.Decimal,
-                            imeAction = ImeAction.Next,
-                            modifier = Modifier.weight(1f),
-                            placeholder = "0.00",
-                            isError = priceError
+                        ChoiceChip(
+                            label = stringResource(R.string.label_net),
+                            selected = priceInputMode == context.getString(R.string.label_net).uppercase(),
+                            onClick = { priceInputMode = context.getString(R.string.label_net).uppercase() },
+                            modifier = Modifier.weight(1f)
                         )
                     }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
-                    if (priceError) {
-                        Text(
-                            text = stringResource(R.string.error_valid_price),
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (tipsEnabled) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            InputField(
-                                label = stringResource(R.string.tip),
-                                value = tip,
-                                onValueChange = { newValue ->
-                                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                        tip = newValue
-                                    }
-                                },
-                                icon = Icons.Filled.AttachMoney,
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next,
-                                modifier = Modifier.weight(1f),
-                                placeholder = "0.00"
-                            )
-                            InputField(
-                                label = stringResource(R.string.total),
-                                value = totalText,
-                                onValueChange = {},
-                                icon = Icons.Filled.AttachMoney,
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next,
-                                modifier = Modifier.weight(1f),
-                                placeholder = "0.00",
-                                enabled = false,
-                                readOnly = true
-                            )
+                // 3. CAMPO DE HORA
+                LabeledTextField(
+                    label = "Hora",
+                    value = rideTime,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || (newValue.length <= 5 && newValue.matches(Regex("^\\d{0,2}:?\\d{0,2}$")))) {
+                            rideTime = newValue
                         }
+                    },
+                    placeholder = "HH:mm",
+                    icon = Icons.Filled.AccessTime,
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
+                )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 4. ACORDEÓN DE RUTA
+                val routeSummary = remember(origin, destination) {
+                    when {
+                        origin.isNotEmpty() && destination.isNotEmpty() -> "$origin → $destination"
+                        origin.isNotEmpty() -> origin
+                        destination.isNotEmpty() -> destination
+                        else -> ""
                     }
+                }
 
-                    if (originDestinationEnabled || rideId > 0) {
-                        InputField(
-                            label = stringResource(R.string.label_origin),
-                            value = origin,
-                            onValueChange = { origin = it },
-                            icon = Icons.Filled.LocationOn,
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next,
-                            placeholder = stringResource(R.string.placeholder_origin)
+                ExpandableSection(
+                    title = "Ruta",
+                    icon = Icons.Default.Place,
+                    summary = routeSummary,
+                    isExpanded = isRouteExpanded,
+                    onToggle = { isRouteExpanded = !isRouteExpanded }
+                ) {
+                    LabeledTextField(
+                        label = "",
+                        value = origin,
+                        onValueChange = { origin = it },
+                        placeholder = "Dirección de origen",
+                        icon = Icons.Default.MyLocation,
+                        cornerRadius = 12
+                    )
+                    LabeledTextField(
+                        label = "",
+                        value = destination,
+                        onValueChange = { destination = it },
+                        placeholder = "Dirección de destino",
+                        icon = Icons.Default.Flag,
+                        cornerRadius = 12
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 5. SECCIÓN PLATAFORMA (Chips limitados a 3 con opción 'Otros')
+                Text(
+                    text = "Plataforma",
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = CarreraColors.TextSecondary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+
+                val firstThreePlatforms = servicePlatformOptions.take(3)
+                val isSelectedPlatformInFirstThree = firstThreePlatforms.any { it.equals(selectedServicePlatform, ignoreCase = true) }
+                val autoExpandPlatforms = remember(selectedServicePlatform, servicePlatformOptions) {
+                    !isSelectedPlatformInFirstThree && servicePlatformOptions.size > 3
+                }
+                var userToggledPlatforms by remember { mutableStateOf(false) }
+                val showAllP = autoExpandPlatforms || userToggledPlatforms || servicePlatformOptions.size <= 3
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val platformsToRender = if (showAllP) servicePlatformOptions else firstThreePlatforms
+                    platformsToRender.forEach { platformName ->
+                        ChoiceChip(
+                            label = platformName,
+                            selected = selectedServicePlatform.equals(platformName, ignoreCase = true),
+                            onClick = { selectedServicePlatform = platformName }
                         )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        InputField(
-                            label = stringResource(R.string.label_destination),
-                            value = destination,
-                            onValueChange = { destination = it },
-                            icon = Icons.Filled.Flag,
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next,
-                            placeholder = stringResource(R.string.placeholder_destination)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
+                    if (!showAllP && servicePlatformOptions.size > 3) {
+                        ChoiceChip(
+                            label = "Otros",
+                            selected = false,
+                            onClick = { userToggledPlatforms = true }
+                        )
+                    }
+                }
 
-                    SelectField(
-                        label = stringResource(R.string.label_platform),
-                        options = servicePlatformOptions,
-                        selectedOption = selectedServicePlatform,
-                        onOptionSelected = { selectedServicePlatform = it },
-                        icon = Icons.Filled.Smartphone,
-                        modifier = Modifier.fillMaxWidth(),
-                        emptyMessage = stringResource(R.string.platform_empty_msg)
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 6. SECCIÓN MÉTODO DE PAGO (Chips limitados a 3 con opción 'Otros')
+                Text(
+                    text = "Método de pago",
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = CarreraColors.TextSecondary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+
+                val firstThreePayments = paymentMethodOptionsDisplay.take(3)
+                val isSelectedPaymentInFirstThree = firstThreePayments.any { it.equals(toPaymentMethodDisplayName(selectedPaymentMethod), ignoreCase = true) }
+                val autoExpandPayments = remember(selectedPaymentMethod, paymentMethodOptionsDisplay) {
+                    !isSelectedPaymentInFirstThree && paymentMethodOptionsDisplay.size > 3
+                }
+                var userToggledPayments by remember { mutableStateOf(false) }
+                val showAllPM = autoExpandPayments || userToggledPayments || paymentMethodOptionsDisplay.size <= 3
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val paymentsToRender = if (showAllPM) paymentMethodOptionsDisplay else firstThreePayments
+                    paymentsToRender.forEach { paymentName ->
+                        val storedName = paymentMethodDisplayToStored[paymentName] ?: paymentName
+                        ChoiceChip(
+                            label = paymentName,
+                            selected = selectedPaymentMethod.equals(storedName, ignoreCase = true),
+                            onClick = {
+                                selectedPaymentMethod = storedName
+                                paymentMethodError = false
+                            }
+                        )
+                    }
+                    if (!showAllPM && paymentMethodOptionsDisplay.size > 3) {
+                        ChoiceChip(
+                            label = "Otros",
+                            selected = false,
+                            onClick = { userToggledPayments = true }
+                        )
+                    }
+                }
+
+                if (paymentMethodError) {
+                    Text(
+                        text = stringResource(R.string.error_select_payment),
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 7. SECCIÓN TIPO DE SERVICIO (Dos chips grandes)
+                if (serviceTypeOptions.size > 1) {
+                    Text(
+                        text = "Servicio",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = CarreraColors.TextSecondary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (hasPlatformCommission) {
-                        Text(
-                            text = stringResource(R.string.label_amount_with_commission),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            RadioOption(
-                                selected = priceInputMode == context.getString(R.string.label_gross).uppercase(),
-                                onClick = { priceInputMode = context.getString(R.string.label_gross).uppercase() },
-                                label = stringResource(R.string.label_gross),
-                                modifier = Modifier.weight(1f)
-                            )
-                            RadioOption(
-                                selected = priceInputMode == context.getString(R.string.label_net).uppercase(),
-                                onClick = { priceInputMode = context.getString(R.string.label_net).uppercase() },
-                                label = stringResource(R.string.label_net),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
+                    val selectedServiceTypeLabel = when (selectedServiceType) {
+                        TaxiRide.SERVICE_TYPE_FIXED -> stringResource(R.string.option_fixed_price)
+                        else -> stringResource(R.string.option_taximeter)
                     }
-
-                    if (serviceTypeOptions.size > 1) {
-                        val selectedServiceTypeLabel = when (selectedServiceType) {
-                            TaxiRide.SERVICE_TYPE_FIXED -> stringResource(R.string.option_fixed_price)
-                            else -> stringResource(R.string.option_taximeter)
-                        }
-                        SelectField(
-                            label = stringResource(R.string.label_service_type),
-                            options = serviceTypeOptions,
-                            selectedOption = selectedServiceTypeLabel,
-                            onOptionSelected = {
-                                selectedServiceType = when (it) {
-                                    context.getString(R.string.option_fixed_price) -> TaxiRide.SERVICE_TYPE_FIXED
-                                    else -> TaxiRide.SERVICE_TYPE_METER
-                                }
-                            },
-                            icon = Icons.Filled.DirectionsCar,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    SelectField(
-                        label = stringResource(R.string.label_payment_method),
-                        options = paymentMethodOptionsDisplay,
-                        selectedOption = toPaymentMethodDisplayName(selectedPaymentMethod),
-                        onOptionSelected = {
-                            selectedPaymentMethod = paymentMethodDisplayToStored[it] ?: it
-                            paymentMethodError = false
-                        },
-                        isError = paymentMethodError,
-                        errorMessage = stringResource(R.string.error_select_payment),
-                        enabled = paymentMethodOptionsDisplay.size > 1,
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Filled.CreditCard
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
-                            onClick = {
-                                if (!isSubmitting) {
-                                    saveTaxiRide()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = GreenAccent,
-                                disabledContainerColor = GreenAccent.copy(alpha = 0.5f)
-                            ),
-                            enabled = !isSubmitting,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Save,
-                                    contentDescription = stringResource(R.string.save),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isSubmitting) stringResource(R.string.saving) else if (rideId > 0) stringResource(R.string.update_upper) else stringResource(R.string.save_upper),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        serviceTypeOptions.forEach { optionLabel ->
+                            val optionServiceType = when (optionLabel) {
+                                stringResource(R.string.option_fixed_price) -> TaxiRide.SERVICE_TYPE_FIXED
+                                else -> TaxiRide.SERVICE_TYPE_METER
                             }
-                        }
-                        
-                        if (ticketPhotosEnabled) {
-                            Button(
-                                onClick = {
-                                    val file = ImageUtils.createTempImageFile(context)
-                                    tempPhotoFile = file
-                                    val uri = FileProvider.getUriForFile(
-                                        context,
-                                        "${application.packageName}.provider",
-                                        file
-                                    )
-                                    cameraLauncher.launch(uri)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (ticketPhotoPath != null) BlueAccent else DarkBackground.copy(alpha = 0.6f)
-                                ),
-                                modifier = Modifier.height(52.dp),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (ticketPhotoPath != null) Icons.Filled.CheckCircle else Icons.Filled.PhotoCamera,
-                                    contentDescription = "Camera",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        
-                        Button(
-                            onClick = { 
-                                if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
-                                    navController.popBackStack() 
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkBackground.copy(alpha = 0.6f)),
-                            modifier = Modifier.height(52.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(20.dp)
+                            ChoiceChip(
+                                label = optionLabel,
+                                selected = selectedServiceType == optionServiceType,
+                                onClick = { selectedServiceType = optionServiceType },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
                             )
                         }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                // 8. ACORDEÓN DE PROPINA
+                val tipSummary = remember(tip) {
+                    if (tip.isNotEmpty() && tip.toDoubleOrNull() != null) "+$tip €" else ""
+                }
+
+                ExpandableSection(
+                    title = "Propina",
+                    icon = Icons.Default.Add,
+                    summary = tipSummary,
+                    isExpanded = isTipExpanded,
+                    onToggle = { isTipExpanded = !isTipExpanded }
+                ) {
+                    LabeledTextField(
+                        label = "",
+                        value = tip,
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                tip = newValue
+                            }
+                        },
+                        placeholder = "0.00",
+                        icon = Icons.Default.Add,
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done,
+                        cornerRadius = 12
+                    )
+                }
+
+                // Total de carrera + propina
+                val totalText = remember(price, tip) {
+                    val p = price.toDoubleOrNull() ?: 0.0
+                    val t = tip.toDoubleOrNull() ?: 0.0
+                    if (p > 0.0 && t > 0.0) {
+                        String.format(Locale.US, "%.2f €", p + t)
+                    } else {
+                        ""
+                    }
+                }
+                
+                if (totalText.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CarreraColors.Surface, RoundedCornerShape(16.dp))
+                            .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total (carrera + propina)",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = CarreraColors.TextSecondary
+                            )
+                        )
+                        Text(
+                            text = totalText,
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CarreraColors.OnBackground
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // 9. BOTÓN GUARDAR (Anclado en la parte inferior)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(CarreraColors.Background)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Botón Guardar principal
+                    Button(
+                        onClick = {
+                            if (!isSubmitting) {
+                                saveTaxiRide()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CarreraColors.GreenPrimary,
+                            contentColor = CarreraColors.Background
+                        ),
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = stringResource(R.string.save),
+                                tint = CarreraColors.Background,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isSubmitting) {
+                                    stringResource(R.string.saving)
+                                } else if (rideId > 0) {
+                                    stringResource(R.string.update_upper)
+                                } else {
+                                    stringResource(R.string.save_upper)
+                                },
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    // Botón de Cámara secundario
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CarreraColors.Surface)
+                            .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+                            .clickable {
+                                val file = ImageUtils.createTempImageFile(context)
+                                tempPhotoFile = file
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${application.packageName}.provider",
+                                    file
+                                )
+                                cameraLauncher.launch(uri)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (ticketPhotoPath != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
+                            contentDescription = "Cámara",
+                            tint = if (ticketPhotoPath != null) CarreraColors.GreenPrimary else CarreraColors.OnBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -755,127 +929,272 @@ fun TaxiRideFormScreen(
     }
 }
 
+/**
+ * Componente para secciones expandibles y animadas (Ruta y Propina)
+ */
 @Composable
-private fun InputField(
+fun ExpandableSection(
+    title: String,
+    icon: ImageVector,
+    summary: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val rotationState by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        label = "rotation"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CarreraColors.Surface)
+                .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+                .clickable { onToggle() }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = CarreraColors.OnBackground,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = CarreraColors.OnBackground
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            if (!isExpanded && summary.isNotEmpty()) {
+                Text(
+                    text = summary,
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = CarreraColors.TextSecondary
+                    ),
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = if (isExpanded) "Contraer" else "Expandir",
+                tint = CarreraColors.TextSecondary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer(rotationZ = rotationState)
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                content()
+            }
+        }
+    }
+}
+
+/**
+ * Chip de selección única personalizado con la paleta de colores indicada
+ */
+@Composable
+fun ChoiceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (selected) CarreraColors.GreenPrimary else CarreraColors.Surface
+    val contentColor = if (selected) CarreraColors.Background else CarreraColors.OnBackground
+    val borderModifier = if (selected) {
+        Modifier
+    } else {
+        Modifier.border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .then(borderModifier)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = contentColor
+            )
+        )
+    }
+}
+
+/**
+ * Campo de texto personalizado con borde, fondo y diseño adaptativo
+ */
+@Composable
+fun LabeledTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: ImageVector,
-    keyboardType: KeyboardType,
-    imeAction: ImeAction,
+    placeholder: String,
+    icon: ImageVector? = null,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
     modifier: Modifier = Modifier,
-    placeholder: String? = null,
+    isError: Boolean = false,
     enabled: Boolean = true,
     readOnly: Boolean = false,
-    isError: Boolean = false
+    cornerRadius: Int = 16
 ) {
     Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
-        TextField(
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                style = TextStyle(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = CarreraColors.TextSecondary
+                ),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+        }
+
+        BasicTextField(
             value = value,
             onValueChange = onValueChange,
             enabled = enabled,
             readOnly = readOnly,
-            placeholder = { if (placeholder != null) Text(placeholder) },
-            leadingIcon = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.6f)
-                )
-            },
-            isError = isError,
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = DarkBackground.copy(alpha = 0.5f),
-                focusedContainerColor = DarkBackground.copy(alpha = 0.5f),
-                focusedIndicatorColor = BlueAccent.copy(alpha = 0.6f),
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedLabelColor = BlueAccent,
-                cursorColor = BlueAccent,
-                errorIndicatorColor = Color.Red,
-                unfocusedPlaceholderColor = Color.White.copy(alpha = 0.4f),
-                focusedPlaceholderColor = Color.White.copy(alpha = 0.4f)
+            textStyle = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = CarreraColors.OnBackground
             ),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
+            cursorBrush = SolidColor(CarreraColors.GreenPrimary),
             keyboardOptions = KeyboardOptions(
                 keyboardType = keyboardType,
                 imeAction = imeAction
-            )
+            ),
+            decorationBox = { innerTextField ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CarreraColors.Surface, RoundedCornerShape(cornerRadius.dp))
+                        .border(
+                            width = 1.dp,
+                            color = if (isError) Color.Red else CarreraColors.BorderSubtle,
+                            shape = RoundedCornerShape(cornerRadius.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (icon != null) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = CarreraColors.TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = placeholder,
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = CarreraColors.TextSecondary
+                                )
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
+/**
+ * Campo gigante de precio protagonista
+ */
 @Composable
-private fun SelectField(
-    label: String,
-    options: List<String>,
-    selectedOption: String,
-    onOptionSelected: (String) -> Unit,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    emptyMessage: String? = null,
-    isError: Boolean = false,
-    errorMessage: String = ""
-) {
-    TaxiDropdown(
-        options = options,
-        selectedOption = selectedOption,
-        onOptionSelected = onOptionSelected,
-        label = label,
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.6f)
-            )
-        },
-        enabled = enabled,
-        emptyMessage = emptyMessage,
-        isError = isError,
-        errorMessage = errorMessage,
-        modifier = modifier
-    )
-}
-
-@Composable
-private fun RadioOption(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: String,
+fun PriceField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String = "0.00",
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (selected) BlueAccent else Color.White.copy(alpha = 0.3f)
-    val backgroundColor = if (selected) BlueAccent.copy(alpha = 0.15f) else DarkBackground.copy(alpha = 0.5f)
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(backgroundColor)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(14.dp)
-                .border(2.dp, borderColor, CircleShape)
-                .padding(2.dp)
-                .background(if (selected) borderColor else Color.Transparent, CircleShape)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            color = if (selected) Color.White else Color.White.copy(alpha = 0.7f),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Decimal,
+            imeAction = ImeAction.Done
+        ),
+        textStyle = TextStyle(
+            fontSize = 56.sp,
+            fontWeight = FontWeight.Bold,
+            color = CarreraColors.OnBackground,
+            textAlign = TextAlign.Center
+        ),
+        cursorBrush = SolidColor(CarreraColors.GreenPrimary),
+        decorationBox = { innerTextField ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = TextStyle(
+                                fontSize = 56.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CarreraColors.TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        )
+                    }
+                    innerTextField()
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "€",
+                    style = TextStyle(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CarreraColors.OnBackground
+                    ),
+                    modifier = Modifier.alignBy(FirstBaseline)
+                )
+            }
+        },
+        modifier = modifier.fillMaxWidth()
+    )
 }
