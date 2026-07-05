@@ -2,7 +2,9 @@ package com.moham.taxi.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -66,7 +68,7 @@ fun ExpenseDetailScreen(
                 title = { Text(stringResource(R.string.expenses), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_content_description), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
@@ -78,6 +80,7 @@ fun ExpenseDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
                     Card(
@@ -86,15 +89,15 @@ fun ExpenseDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("Fecha: ${com.moham.taxi.utils.DateUtils.formatDate(currentExpense.date, "dd/MM/yyyy")}", color = Color.White, fontSize = 16.sp)
+                            Text("${stringResource(R.string.date)}: ${com.moham.taxi.utils.DateUtils.formatDate(currentExpense.date, "dd/MM/yyyy")}", color = Color.White, fontSize = 16.sp)
                             
                             val typeLabel = if (currentExpense.type == ExpenseType.FUEL) stringResource(R.string.label_fuel) else stringResource(R.string.label_misc)
-                            Text("Tipo: $typeLabel", color = Color.White, fontSize = 16.sp)
+                            Text("${stringResource(R.string.expense_type_label)}: $typeLabel", color = Color.White, fontSize = 16.sp)
                             
-                            Text("Monto: ${formatCurrency(currentExpense.amount)}", color = AccentRed, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text("${stringResource(R.string.amount)}: ${formatCurrency(currentExpense.amount)}", color = AccentRed, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             
                             if (currentExpense.type == ExpenseType.OTHER && !currentExpense.description.isNullOrBlank()) {
-                                Text("Descripción: ${currentExpense.description}", color = Color.White, fontSize = 16.sp)
+                                Text("${stringResource(R.string.label_description)}: ${currentExpense.description}", color = Color.White, fontSize = 16.sp)
                             }
                             
                             Spacer(modifier = Modifier.height(16.dp))

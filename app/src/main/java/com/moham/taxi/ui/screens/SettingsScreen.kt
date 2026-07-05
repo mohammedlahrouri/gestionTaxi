@@ -161,7 +161,11 @@ fun SettingsScreen(navController: NavController) {
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = if (appTheme == "blue") stringResource(R.string.theme_blue_name) else stringResource(R.string.theme_green_name),
+                            text = when (appTheme) {
+                                "blue" -> stringResource(R.string.theme_blue_name)
+                                "green" -> stringResource(R.string.theme_green_name)
+                                else -> stringResource(R.string.theme_blue_name)
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -860,6 +864,7 @@ fun SettingsScreen(navController: NavController) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(stringResource(R.string.theme_green_name))
                         }
+
                     }
                 },
                 confirmButton = {

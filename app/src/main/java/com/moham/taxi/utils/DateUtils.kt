@@ -156,26 +156,26 @@ object DateUtils {
     
     /**
      * Formatea una fecha en el formato especificado
-     * Si la fecha no es hoy y el patrón contiene HH:mm, reemplaza la hora con "SH" (sin hora)
+     * Si la fecha no es hoy y el patrón contiene HH:mm, reemplaza la hora con un sufijo localizado (" SH" / " NH" / " OH")
      */
     fun formatDate(date: Date, pattern: String = "dd/MM/yyyy", locale: Locale = Locale.getDefault()): String {
-        // Si el patrón contiene formato de hora y la fecha no es hoy, mostrar "SH" en lugar de la hora
         if (pattern.contains("HH:mm") && !isToday(date)) {
-            // Extraer solo la parte de la fecha del patrón (sin la hora)
             val dateOnlyPattern = pattern.replace("HH:mm", "")
                 .replace(" ", "") // Eliminar espacios que pudieran quedar
-            
+
             val dateFormatter = SimpleDateFormat(dateOnlyPattern, locale)
-            return dateFormatter.format(date) + " SH"
+            val suffix = when (locale.language) {
+                "en" -> " NH"
+                "de" -> " OH"
+                else -> " SH"
+            }
+            return dateFormatter.format(date) + suffix
         } else {
             val formatter = SimpleDateFormat(pattern, locale)
             return formatter.format(date)
         }
     }
     
-    /**
-     * Verifica si una fecha es hoy
-     */
     fun isToday(date: Date): Boolean {
         val today = Calendar.getInstance()
         val dateCalendar = Calendar.getInstance().apply { time = date }

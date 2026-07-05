@@ -33,22 +33,70 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+@Composable
+fun AutoSizeText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxFontSize: TextUnit = 36.sp,
+    minFontSize: TextUnit = 16.sp,
+    color: Color = Color.Unspecified,
+    fontWeight: FontWeight? = null,
+    textAlign: TextAlign = TextAlign.Start,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
+    style: TextStyle = TextStyle.Default
+) {
+    var fontSize by remember { mutableStateOf(maxFontSize) }
+    var shouldShrink by remember { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        modifier = modifier
+            .drawWithContent {
+                if (shouldShrink) {
+                    drawContent()
+                }
+            },
+        fontSize = fontSize,
+        color = color,
+        fontWeight = fontWeight,
+        textAlign = textAlign,
+        fontFamily = fontFamily,
+        style = style,
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.didOverflowWidth || textLayoutResult.didOverflowHeight) {
+                val newSize = fontSize.value - 2
+                if (newSize > minFontSize.value) {
+                    fontSize = newSize.sp
+                } else {
+                    shouldShrink = true
+                }
+            } else {
+                shouldShrink = true
+            }
+        }
+    )
+}
 
 @Composable
 fun TaxiButton(

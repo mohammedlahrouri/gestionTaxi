@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.moham.taxi.GestionTaxiApplication
+import com.moham.taxi.R
 import com.moham.taxi.data.model.Expense
 import com.moham.taxi.data.model.ExpenseType
 import com.moham.taxi.data.model.TaxiRide
@@ -68,9 +69,38 @@ class ExportService(
     private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val fileNameDateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
     private val fileSafeDateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-    private val currencyFormat = NumberFormat.getCurrencyInstance(Locale("es", "ES")).apply {
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2
+    private val currencyFormat: NumberFormat
+        get() = NumberFormat.getCurrencyInstance(Locale.getDefault()).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+
+    private fun translatePaymentMethod(method: String): String {
+        val lower = method.trim().lowercase()
+        return when {
+            lower == "efectivo" || lower == "cash" -> context.getString(R.string.payment_cash)
+            lower == "tarjeta" || lower == "card" -> context.getString(R.string.payment_card)
+            lower.replace(" ", "") == "viaapp" || lower == "via app" -> context.getString(R.string.payment_via_app)
+            lower == "abonados" || lower == "subscribers" || lower == "account" -> context.getString(R.string.payment_subscribers)
+            lower == "pendientes" || lower == "pending" -> context.getString(R.string.payment_pending)
+            else -> method
+        }
+    }
+
+    private fun translatePlatform(platform: String): String {
+        val lower = platform.trim().lowercase()
+        return when {
+            lower == "directo" || lower == "direct" -> context.getString(R.string.platform_direct)
+            else -> platform
+        }
+    }
+
+    private fun formatServicesCount(count: Int): String {
+        return if (count == 0) {
+            context.getString(R.string.report_no_services)
+        } else {
+            context.getString(R.string.report_services_count, count)
+        }
     }
     private val headerBackground = DeviceRgb(230, 235, 240)
     private val rowStripe = DeviceRgb(245, 247, 250)
@@ -149,15 +179,15 @@ class ExportService(
                 formatCsvNumber(totalNet),
                 formatCsvNumber(totalCommission),
                 "",
-                "Total gastos / Beneficio",
+                "${context.getString(R.string.report_expenses)} / ${context.getString(R.string.report_benefit)}",
                 "${formatCsvNumber(totalExpenses)} / ${formatCsvNumber(profit)}"
             ).joinToString(",") { csvField(it) }
         )
 
         rides.sortedBy { it.date }.forEach { ride ->
             val serviceTypeLabel = when (ride.serviceType) {
-                TaxiRide.SERVICE_TYPE_FIXED -> "Precio Cerrado"
-                else -> "Taxímetro"
+                TaxiRide.SERVICE_TYPE_FIXED -> context.getString(R.string.option_fixed_price)
+                else -> context.getString(R.string.option_taximeter)
             }
             val gross = ride.price
             val net = getNetAmount(ride)
@@ -171,9 +201,9 @@ class ExportService(
                     ride.rideTime.ifBlank { timeOnly.format(ride.date) },
                     ride.origin,
                     ride.destination,
-                    ride.servicePlatform ?: "",
+                    translatePlatform(ride.servicePlatform ?: ""),
                     serviceTypeLabel,
-                    ride.paymentMethod,
+                    translatePaymentMethod(ride.paymentMethod),
                     formatCsvNumber(gross),
                     formatCsvNumber(net),
                     formatCsvNumber(commission),
@@ -185,7 +215,7 @@ class ExportService(
         }
 
         expenses.sortedBy { it.date }.forEach { expense ->
-            val expenseTypeLabel = if (expense.type == ExpenseType.FUEL) ExpenseType.FUEL.name else ExpenseType.OTHER.name
+            val expenseTypeLabel = if (expense.type == ExpenseType.FUEL) context.getString(R.string.report_fuel) else context.getString(R.string.report_other)
             lines.add(
                 listOf(
                     "EXPENSE",
@@ -212,7 +242,7 @@ class ExportService(
     }
 
     private fun formatPercent(value: Double): String {
-        return String.format(Locale("es", "ES"), "%.2f%%", value)
+        return String.format(Locale.getDefault(), "%.2f%%", value)
     }
 
     private fun getNetAmount(ride: TaxiRide): Double {
@@ -241,10 +271,11 @@ class ExportService(
         }
         val percentLabel = commissionPercent?.let { formatPercent(it) }
         val vatLabel = vatPercent?.let { formatPercent(it) }
+        val vatSuffix = context.getString(R.string.vat_short)
         val percentText = when {
-            percentLabel != null && vatLabel != null -> "$percentLabel + $vatLabel IVA"
+            percentLabel != null && vatLabel != null -> "$percentLabel + $vatLabel $vatSuffix"
             percentLabel != null -> percentLabel
-            vatLabel != null -> "$vatLabel IVA"
+            vatLabel != null -> "$vatLabel $vatSuffix"
             else -> "-"
         }
         return if (commissionAmount > 0.0) {
@@ -265,19 +296,20 @@ class ExportService(
     }
 
     private fun buildPaymentPlatformText(ride: TaxiRide): String {
-        val payment = ride.paymentMethod.ifBlank { "-" }
+        val payment = translatePaymentMethod(ride.paymentMethod.ifBlank { "-" })
         val platform = ride.servicePlatform?.ifBlank { "Directo" } ?: "Directo"
+        val translatedPlatform = translatePlatform(platform)
         return if (platform.equals("Directo", ignoreCase = true)) {
             payment
         } else {
-            "$payment\n$platform"
+            "$payment\n$translatedPlatform"
         }
     }
 
     private fun buildAmountsText(ride: TaxiRide): String {
         val netValue = getNetAmount(ride)
         val commissionLabel = buildCommissionLabel(ride)
-        return "Bruto: ${formatMoney(ride.price)}\nComisión: $commissionLabel\nNeto: ${formatMoney(netValue)}"
+        return "${context.getString(R.string.report_gross_short)}: ${formatMoney(ride.price)}\n${context.getString(R.string.report_commission_short)}: $commissionLabel\n${context.getString(R.string.report_net_short)}: ${formatMoney(netValue)}"
     }
 
     private fun resolveLogoResId(): Int {
@@ -470,7 +502,7 @@ class ExportService(
             calendar.set(Calendar.MILLISECOND, 999)
             val endOfMonth = calendar.time
             
-            val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale("es", "ES"))
+            val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale.getDefault())
             val fileName = "Taxi_Mes_${monthYearFormat.format(selectedDate)}_${fileNameDateFormat.format(Date())}.pdf"
             
             val result = savePdfToFile(fileName) { document ->
@@ -513,7 +545,7 @@ class ExportService(
             val expenses = expenseRepository.getExpensesByDateRange(startOfMonth, endOfMonth).first()
             val csv = buildPeriodCsv(startOfMonth, endOfMonth, rides, expenses)
 
-            val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale("es", "ES"))
+            val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale.getDefault())
             val fileName = "Taxi_Mes_${monthYearFormat.format(selectedDate)}_${fileNameDateFormat.format(Date())}.csv"
             val uri = saveTextToFile(fileName, "text/csv", csv)
             return@withContext if (uri != null) {
@@ -586,10 +618,15 @@ class ExportService(
             val tempDir = File(context.cacheDir, "tickets_export_${System.currentTimeMillis()}")
             tempDir.mkdirs()
 
-            val gastosDir = File(tempDir, "gastos")
-            val combustibleDir = File(gastosDir, "combustible")
-            val otrosDir = File(gastosDir, "otros")
-            val carrerasDir = File(tempDir, "carreras")
+            val folderExpenses = context.getString(R.string.zip_expenses)
+            val folderFuel = context.getString(R.string.zip_fuel)
+            val folderOther = context.getString(R.string.zip_other)
+            val folderRides = context.getString(R.string.zip_rides)
+
+            val gastosDir = File(tempDir, folderExpenses)
+            val combustibleDir = File(gastosDir, folderFuel)
+            val otrosDir = File(gastosDir, folderOther)
+            val carrerasDir = File(tempDir, folderRides)
 
             expenses.forEach { expense ->
                 val photoPath = expense.ticketPhotoPath ?: run {
@@ -634,8 +671,10 @@ class ExportService(
 
                 val platform = ride.servicePlatform ?: "Directo"
                 val paymentMethod = ride.paymentMethod
-                val platformDir = File(carrerasDir, platform)
-                val paymentDir = File(platformDir, paymentMethod)
+                val translatedPlatform = translatePlatform(platform)
+                val translatedPayment = translatePaymentMethod(paymentMethod)
+                val platformDir = File(carrerasDir, translatedPlatform)
+                val paymentDir = File(platformDir, translatedPayment)
                 paymentDir.mkdirs()
                 val targetFile = File(paymentDir, photoFile.name)
                 try {
@@ -882,12 +921,12 @@ class ExportService(
     }
 
     private fun addSummarySection(document: Document, totalIncome: Double, totalExpenses: Double, profit: Double) {
-        document.add(Paragraph("RESUMEN FINANCIERO").setBold())
+        document.add(Paragraph(context.getString(R.string.report_financial_summary)).setBold())
         val table = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addTableRow(table, "Ingresos", formatMoney(totalIncome))
-        addTableRow(table, "Gastos", formatMoney(totalExpenses))
-        addTableRow(table, "Neto", formatMoney(profit))
+        addTableRow(table, context.getString(R.string.report_income), formatMoney(totalIncome))
+        addTableRow(table, context.getString(R.string.report_expenses), formatMoney(totalExpenses))
+        addTableRow(table, context.getString(R.string.report_net), formatMoney(profit))
         document.add(table)
         document.add(Paragraph(" "))
     }
@@ -901,7 +940,7 @@ class ExportService(
             return
         }
 
-        document.add(Paragraph("DESGLOSE POR MÉTODOS DE PAGO").setBold())
+        document.add(Paragraph(context.getString(R.string.report_breakdown_by_payment_methods)).setBold())
 
         val viaAppEntry = incomeByPaymentMethod.entries.firstOrNull { it.key.equals("Via App", ignoreCase = true) }
         val remainingEntries = incomeByPaymentMethod.entries
@@ -912,7 +951,8 @@ class ExportService(
 
         orderedEntries.forEach { (method, data) ->
             val (income, count) = data
-            document.add(Paragraph("${method} ....................... ${formatMoney(income)} (${count} servicios)"))
+            val translatedMethod = translatePaymentMethod(method)
+            document.add(Paragraph("${translatedMethod} ....................... ${formatMoney(income)} (${formatServicesCount(count)})"))
 
             if (method.equals("Via App", ignoreCase = true) && appPlatformData.isNotEmpty()) {
                 val sortedPlatforms = appPlatformData.entries.sortedByDescending { it.value.first }
@@ -920,8 +960,9 @@ class ExportService(
                     val (platform, platformData) = entry
                     val (platformIncome, platformCount) = platformData
                     val prefix = if (index < sortedPlatforms.size - 1) "├─ " else "└─ "
+                    val translatedPlatform = translatePlatform(platform)
                     document.add(
-                        Paragraph("$prefix$platform ....................... ${formatMoney(platformIncome)} ($platformCount servicios)")
+                        Paragraph("$prefix$translatedPlatform ....................... ${formatMoney(platformIncome)} (${formatServicesCount(platformCount)})")
                             .setMarginLeft(16f)
                             .setFontSize(10f)
                     )
@@ -934,11 +975,11 @@ class ExportService(
     private fun addServiceTypeSection(document: Document, rides: List<TaxiRide>) {
         val meterTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_METER }.sumOf { it.price }
         val fixedTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_FIXED }.sumOf { it.price }
-        document.add(Paragraph("DESGLOSE POR TIPO DE SERVICIO").setBold())
+        document.add(Paragraph(context.getString(R.string.report_breakdown_by_service_type)).setBold())
         val table = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addTableRow(table, "Taxímetro", formatMoney(meterTotal))
-        addTableRow(table, "Precio Cerrado", formatMoney(fixedTotal))
+        addTableRow(table, context.getString(R.string.option_taximeter), formatMoney(meterTotal))
+        addTableRow(table, context.getString(R.string.option_fixed_price), formatMoney(fixedTotal))
         document.add(table)
         document.add(Paragraph(" "))
     }
@@ -948,16 +989,17 @@ class ExportService(
         platformData: Map<String, Pair<Double, Int>>,
         withoutPlatform: Pair<Double, Int>
     ) {
-        document.add(Paragraph("DESGLOSE POR PLATAFORMA DE SERVICIO").setBold())
+        document.add(Paragraph(context.getString(R.string.report_breakdown_by_platform)).setBold())
         platformData.entries.sortedByDescending { it.value.first }.forEach { (platform, data) ->
             val (income, count) = data
-            document.add(Paragraph("${platform} ....................... ${formatMoney(income)} (${count} servicios)"))
+            val translatedPlatform = translatePlatform(platform)
+            document.add(Paragraph("${translatedPlatform} ....................... ${formatMoney(income)} (${formatServicesCount(count)})"))
         }
         val totalWithPlatform = platformData.values.sumOf { it.first }
         val totalWithPlatformCount = platformData.values.sumOf { it.second }
-        document.add(Paragraph("Total con plataforma ....................... ${formatMoney(totalWithPlatform)} ($totalWithPlatformCount servicios)"))
+        document.add(Paragraph("${context.getString(R.string.report_total_with_platform)} ....................... ${formatMoney(totalWithPlatform)} (${formatServicesCount(totalWithPlatformCount)})"))
         if (withoutPlatform.second > 0) {
-            document.add(Paragraph("Sin plataforma asignada ....................... ${formatMoney(withoutPlatform.first)} (${withoutPlatform.second} servicios)"))
+            document.add(Paragraph("${context.getString(R.string.report_no_platform)} ....................... ${formatMoney(withoutPlatform.first)} (${formatServicesCount(withoutPlatform.second)})"))
         }
         document.add(Paragraph(" "))
     }
@@ -970,27 +1012,28 @@ class ExportService(
         val fuelExpenses = expenses.filter { it.type == ExpenseType.FUEL }.sumOf { it.amount }
         val otherExpenses = expenses.filter { it.type != ExpenseType.FUEL }.sumOf { it.amount }
 
-        document.add(Paragraph("GASTOS DETALLADOS").setBold())
+        document.add(Paragraph(context.getString(R.string.report_detailed_expenses)).setBold())
         val summaryTable = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addTableRow(summaryTable, "Combustible", formatMoney(fuelExpenses))
-        addTableRow(summaryTable, "Otros", formatMoney(otherExpenses))
+        addTableRow(summaryTable, context.getString(R.string.report_fuel), formatMoney(fuelExpenses))
+        addTableRow(summaryTable, context.getString(R.string.report_other), formatMoney(otherExpenses))
         document.add(summaryTable)
         document.add(Paragraph(" "))
 
         val table = Table(UnitValue.createPercentArray(floatArrayOf(2f, 4f, 2f, 2f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Fecha")
-        addHeaderCell(table, "Descripción")
-        addHeaderCell(table, "Importe")
-        addHeaderCell(table, "Tipo")
+        addHeaderCell(table, context.getString(R.string.report_concept_date))
+        addHeaderCell(table, context.getString(R.string.report_concept_description))
+        addHeaderCell(table, context.getString(R.string.report_concept_amount))
+        addHeaderCell(table, context.getString(R.string.report_concept_type))
 
         expenses.sortedBy { it.date }.forEachIndexed { index, expense ->
             val description = (expense.description ?: "").ifBlank { "-" }
             addCell(table, dateTimeFormat.format(expense.date), index)
             addCell(table, description, index)
             addCell(table, formatMoney(expense.amount), index)
-            addCell(table, if (expense.type == ExpenseType.FUEL) ExpenseType.FUEL.name else ExpenseType.OTHER.name, index)
+            val typeText = if (expense.type == ExpenseType.FUEL) context.getString(R.string.report_fuel) else context.getString(R.string.report_other)
+            addCell(table, typeText, index)
         }
         document.add(table)
         document.add(Paragraph(" "))
@@ -998,19 +1041,19 @@ class ExportService(
 
     private fun addDailyRidesSectionPdf(document: Document, rides: List<TaxiRide>) {
         if (rides.isEmpty()) {
-            document.add(Paragraph("CARRERAS").setBold())
-            document.add(Paragraph("No hay servicios registrados en este período.").setFontSize(10f))
+            document.add(Paragraph(context.getString(R.string.report_rides)).setBold())
+            document.add(Paragraph(context.getString(R.string.report_no_rides)).setFontSize(10f))
             document.add(Paragraph(" "))
             return
         }
 
-        document.add(Paragraph("CARRERAS").setBold())
+        document.add(Paragraph(context.getString(R.string.report_rides)).setBold())
         val table = Table(UnitValue.createPercentArray(floatArrayOf(1f, 2.6f, 1.6f, 1.6f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Hora")
-        addHeaderCell(table, "Trayecto")
-        addHeaderCell(table, "Plataforma / Pago")
-        addHeaderCell(table, "Importes")
+        addHeaderCell(table, context.getString(R.string.report_time))
+        addHeaderCell(table, context.getString(R.string.report_trip))
+        addHeaderCell(table, context.getString(R.string.report_platform_payment))
+        addHeaderCell(table, context.getString(R.string.report_amounts))
 
         rides.sortedBy { it.date }.forEachIndexed { index, ride ->
             addCell(table, ride.rideTime.ifBlank { timeFormat.format(ride.date) }, index)
@@ -1028,9 +1071,9 @@ class ExportService(
         val totalCommission = (totalGross - totalNet).coerceAtLeast(0.0)
         val table = Table(UnitValue.createPercentArray(floatArrayOf(1f, 1f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Total Bruto")
-        addHeaderCell(table, "Total Comisión")
-        addHeaderCell(table, "Total Neto")
+        addHeaderCell(table, context.getString(R.string.report_total_gross))
+        addHeaderCell(table, context.getString(R.string.report_total_commission))
+        addHeaderCell(table, context.getString(R.string.report_total_net))
         val rowIndex = 0
         addCell(table, formatMoney(totalGross), rowIndex, 11f)
         addCell(table, formatMoney(totalCommission), rowIndex, 11f)
@@ -1040,13 +1083,13 @@ class ExportService(
     }
 
     private fun addWeeklyGroupedRidesSectionPdf(document: Document, rides: List<TaxiRide>, startDate: Date, endDate: Date) {
-        document.add(Paragraph("SERVICIOS POR DÍA").setBold())
+        document.add(Paragraph(context.getString(R.string.report_services_by_day)).setBold())
         if (rides.isEmpty()) {
-            document.add(Paragraph("No hay servicios registrados en este período.").setFontSize(10f))
+            document.add(Paragraph(context.getString(R.string.report_no_rides)).setFontSize(10f))
             document.add(Paragraph(" "))
             return
         }
-        val dayFormat = SimpleDateFormat("EEEE dd", Locale("es", "ES"))
+        val dayFormat = SimpleDateFormat("EEEE dd", Locale.getDefault())
         val grouped = rides.groupBy { dateFormat.format(it.date) }
         val dayKeys = grouped.keys.mapNotNull { key ->
             runCatching { dateFormat.parse(key) }.getOrNull()?.let { key to it }
@@ -1060,11 +1103,11 @@ class ExportService(
             val dayCommission = (dayGross - dayNet).coerceAtLeast(0.0)
             val summaryTable = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f, 1f, 1f, 1f)))
                 .setWidth(UnitValue.createPercentValue(100f))
-            addHeaderCell(summaryTable, "Día")
-            addHeaderCell(summaryTable, "Servicios")
-            addHeaderCell(summaryTable, "Bruto")
-            addHeaderCell(summaryTable, "Comisión")
-            addHeaderCell(summaryTable, "Neto")
+            addHeaderCell(summaryTable, context.getString(R.string.report_day))
+            addHeaderCell(summaryTable, context.getString(R.string.report_services))
+            addHeaderCell(summaryTable, context.getString(R.string.report_gross_short))
+            addHeaderCell(summaryTable, context.getString(R.string.report_commission_short))
+            addHeaderCell(summaryTable, context.getString(R.string.report_net_short))
             addCell(summaryTable, dayLabel, 0)
             addCell(summaryTable, dayRides.size.toString(), 0)
             addCell(summaryTable, formatMoney(dayGross), 0)
@@ -1074,10 +1117,10 @@ class ExportService(
 
             val detailTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 2.4f, 1.6f, 1.6f)))
                 .setWidth(UnitValue.createPercentValue(98f))
-            addHeaderCell(detailTable, "Hora")
-            addHeaderCell(detailTable, "Trayecto")
-            addHeaderCell(detailTable, "Plataforma / Pago")
-            addHeaderCell(detailTable, "Importes")
+            addHeaderCell(detailTable, context.getString(R.string.report_time))
+            addHeaderCell(detailTable, context.getString(R.string.report_trip))
+            addHeaderCell(detailTable, context.getString(R.string.report_platform_payment))
+            addHeaderCell(detailTable, context.getString(R.string.report_amounts))
             dayRides.sortedBy { it.date }.forEachIndexed { index, ride ->
                 addCell(detailTable, ride.rideTime.ifBlank { timeFormat.format(ride.date) }, index)
                 addCell(detailTable, buildTripText(ride), index)
@@ -1091,18 +1134,18 @@ class ExportService(
 
         if (rides.isNotEmpty()) {
             val rangeText = "${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}"
-            document.add(Paragraph("Resumen semanal ($rangeText)").setBold())
+            document.add(Paragraph(context.getString(R.string.report_weekly_summary, rangeText)).setBold())
         }
     }
 
     private fun addRangeGroupedRidesSectionPdf(document: Document, rides: List<TaxiRide>, startDate: Date, endDate: Date) {
-        document.add(Paragraph("SERVICIOS POR DÍA").setBold())
+        document.add(Paragraph(context.getString(R.string.report_services_by_day)).setBold())
         if (rides.isEmpty()) {
-            document.add(Paragraph("No hay servicios registrados en este período.").setFontSize(10f))
+            document.add(Paragraph(context.getString(R.string.report_no_rides)).setFontSize(10f))
             document.add(Paragraph(" "))
             return
         }
-        val dayFormat = SimpleDateFormat("EEEE dd", Locale("es", "ES"))
+        val dayFormat = SimpleDateFormat("EEEE dd", Locale.getDefault())
         val grouped = rides.groupBy { dateFormat.format(it.date) }
         val dayKeys = grouped.keys.mapNotNull { key ->
             runCatching { dateFormat.parse(key) }.getOrNull()?.let { key to it }
@@ -1116,11 +1159,11 @@ class ExportService(
             val dayCommission = (dayGross - dayNet).coerceAtLeast(0.0)
             val summaryTable = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f, 1f, 1f, 1f)))
                 .setWidth(UnitValue.createPercentValue(100f))
-            addHeaderCell(summaryTable, "Día")
-            addHeaderCell(summaryTable, "Servicios")
-            addHeaderCell(summaryTable, "Bruto")
-            addHeaderCell(summaryTable, "Comisión")
-            addHeaderCell(summaryTable, "Neto")
+            addHeaderCell(summaryTable, context.getString(R.string.report_day))
+            addHeaderCell(summaryTable, context.getString(R.string.report_services))
+            addHeaderCell(summaryTable, context.getString(R.string.report_gross_short))
+            addHeaderCell(summaryTable, context.getString(R.string.report_commission_short))
+            addHeaderCell(summaryTable, context.getString(R.string.report_net_short))
             addCell(summaryTable, dayLabel, 0)
             addCell(summaryTable, dayRides.size.toString(), 0)
             addCell(summaryTable, formatMoney(dayGross), 0)
@@ -1130,10 +1173,10 @@ class ExportService(
 
             val detailTable = Table(UnitValue.createPercentArray(floatArrayOf(1f, 2.4f, 1.6f, 1.6f)))
                 .setWidth(UnitValue.createPercentValue(98f))
-            addHeaderCell(detailTable, "Hora")
-            addHeaderCell(detailTable, "Trayecto")
-            addHeaderCell(detailTable, "Plataforma / Pago")
-            addHeaderCell(detailTable, "Importes")
+            addHeaderCell(detailTable, context.getString(R.string.report_time))
+            addHeaderCell(detailTable, context.getString(R.string.report_trip))
+            addHeaderCell(detailTable, context.getString(R.string.report_platform_payment))
+            addHeaderCell(detailTable, context.getString(R.string.report_amounts))
             dayRides.sortedBy { it.date }.forEachIndexed { index, ride ->
                 addCell(detailTable, ride.rideTime.ifBlank { timeFormat.format(ride.date) }, index)
                 addCell(detailTable, buildTripText(ride), index)
@@ -1147,7 +1190,7 @@ class ExportService(
 
         if (rides.isNotEmpty()) {
             val rangeText = "${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}"
-            document.add(Paragraph("Resumen ($rangeText)").setBold())
+            document.add(Paragraph(context.getString(R.string.report_summary_range, rangeText)).setBold())
         }
     }
 
@@ -1158,12 +1201,12 @@ class ExportService(
         val totalServices = rides.size
         val table = Table(UnitValue.createPercentArray(floatArrayOf(1.4f, 1f, 1f, 1f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Total Rango")
-        addHeaderCell(table, "Servicios")
-        addHeaderCell(table, "Bruto")
-        addHeaderCell(table, "Comisión")
-        addHeaderCell(table, "Neto")
-        addCell(table, "Rango", 0, 11f)
+        addHeaderCell(table, context.getString(R.string.report_total_range))
+        addHeaderCell(table, context.getString(R.string.report_services))
+        addHeaderCell(table, context.getString(R.string.report_gross_short))
+        addHeaderCell(table, context.getString(R.string.report_commission_short))
+        addHeaderCell(table, context.getString(R.string.report_net_short))
+        addCell(table, context.getString(R.string.report_range_short), 0, 11f)
         addCell(table, totalServices.toString(), 0, 11f)
         addCell(table, formatMoney(totalGross), 0, 11f)
         addCell(table, formatMoney(totalCommission), 0, 11f)
@@ -1179,12 +1222,12 @@ class ExportService(
         val totalServices = rides.size
         val table = Table(UnitValue.createPercentArray(floatArrayOf(1.4f, 1f, 1f, 1f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Total Semana")
-        addHeaderCell(table, "Servicios")
-        addHeaderCell(table, "Bruto")
-        addHeaderCell(table, "Comisión")
-        addHeaderCell(table, "Neto")
-        addCell(table, "Semana", 0, 11f)
+        addHeaderCell(table, context.getString(R.string.report_total_week))
+        addHeaderCell(table, context.getString(R.string.report_services))
+        addHeaderCell(table, context.getString(R.string.report_gross_short))
+        addHeaderCell(table, context.getString(R.string.report_commission_short))
+        addHeaderCell(table, context.getString(R.string.report_net_short))
+        addCell(table, context.getString(R.string.report_week_short), 0, 11f)
         addCell(table, totalServices.toString(), 0, 11f)
         addCell(table, formatMoney(totalGross), 0, 11f)
         addCell(table, formatMoney(totalCommission), 0, 11f)
@@ -1199,17 +1242,17 @@ class ExportService(
         startDate: Date,
         firstDayOfWeekValue: Int
     ) {
-        document.add(Paragraph("RESUMEN SEMANAL").setBold())
+        document.add(Paragraph(context.getString(R.string.report_weekly_summary_title)).setBold())
         val weekCount = DateUtils.getMonthWeekCount(startDate, firstDayOfWeekValue)
         val weeklyTotals = mutableListOf<Pair<String, Triple<Double, Double, Int>>>()
 
         val table = Table(UnitValue.createPercentArray(floatArrayOf(2f, 1f, 1f, 1f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Semana")
-        addHeaderCell(table, "Servicios")
-        addHeaderCell(table, "Bruto")
-        addHeaderCell(table, "Comisión")
-        addHeaderCell(table, "Neto")
+        addHeaderCell(table, context.getString(R.string.report_week_short))
+        addHeaderCell(table, context.getString(R.string.report_services))
+        addHeaderCell(table, context.getString(R.string.report_gross_short))
+        addHeaderCell(table, context.getString(R.string.report_commission_short))
+        addHeaderCell(table, context.getString(R.string.report_net_short))
 
         (0 until weekCount).forEachIndexed { index, weekNumber ->
             val (weekStart, weekEnd) = DateUtils.getMonthWeekRange(startDate, weekNumber, firstDayOfWeekValue)
@@ -1217,7 +1260,7 @@ class ExportService(
             val weekGross = weekRides.sumOf { it.price }
             val weekNet = weekRides.sumOf { getNetAmount(it) }
             val weekCommission = (weekGross - weekNet).coerceAtLeast(0.0)
-            val label = "Semana ${weekNumber + 1} (${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)})"
+            val label = "${context.getString(R.string.report_week_short)} ${weekNumber + 1} (${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)})"
             addCell(table, label, index)
             addCell(table, weekRides.size.toString(), index)
             addCell(table, formatMoney(weekGross), index)
@@ -1229,7 +1272,7 @@ class ExportService(
 
         val maxGross = weeklyTotals.maxOfOrNull { it.second.first } ?: 0.0
         if (maxGross > 0.0) {
-            document.add(Paragraph("Ingresos por semana").setBold().setFontSize(10f))
+            document.add(Paragraph(context.getString(R.string.report_weekly_chart_title)).setBold().setFontSize(10f))
             weeklyTotals.forEach { (label, totals) ->
                 val barLength = ((totals.first / maxGross) * 20).toInt().coerceAtLeast(1)
                 val bar = "█".repeat(barLength)
@@ -1246,18 +1289,18 @@ class ExportService(
         startDate: Date,
         endDate: Date
     ) {
-        document.add(Paragraph("PERFORMANCE DIARIA").setBold())
+        document.add(Paragraph(context.getString(R.string.report_daily_performance)).setBold())
         val ridesByDay = rides.groupBy { dateFormat.format(it.date) }
         val expensesByDay = expenses.groupBy { dateFormat.format(it.date) }
             .mapValues { entry -> entry.value.sumOf { it.amount } }
 
         val table = Table(UnitValue.createPercentArray(floatArrayOf(1.4f, 1f, 1f, 1f, 1f)))
             .setWidth(UnitValue.createPercentValue(100f))
-        addHeaderCell(table, "Fecha")
-        addHeaderCell(table, "Servicios")
-        addHeaderCell(table, "Bruto")
-        addHeaderCell(table, "Gastos")
-        addHeaderCell(table, "Beneficio Neto")
+        addHeaderCell(table, context.getString(R.string.report_concept_date))
+        addHeaderCell(table, context.getString(R.string.report_services))
+        addHeaderCell(table, context.getString(R.string.report_gross_short))
+        addHeaderCell(table, context.getString(R.string.report_expenses))
+        addHeaderCell(table, context.getString(R.string.report_net_benefit))
 
         val calendar = Calendar.getInstance().apply {
             time = startDate
@@ -1292,25 +1335,25 @@ class ExportService(
         startDate: Date,
         firstDayOfWeekValue: Int
     ) {
-        document.add(Paragraph("DETALLE POR SEMANA").setBold())
+        document.add(Paragraph(context.getString(R.string.report_detail_by_week)).setBold())
         val weekCount = DateUtils.getMonthWeekCount(startDate, firstDayOfWeekValue)
         (0 until weekCount).forEach { weekNumber ->
             val (weekStart, weekEnd) = DateUtils.getMonthWeekRange(startDate, weekNumber, firstDayOfWeekValue)
             val weekRides = rides.filter { it.date.time in weekStart.time..weekEnd.time }
-            val label = "Semana ${weekNumber + 1} (${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)})"
+            val label = "${context.getString(R.string.report_week_short)} ${weekNumber + 1} (${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)})"
             document.add(Paragraph(label).setBold().setFontSize(11f))
             if (weekRides.isEmpty()) {
-                document.add(Paragraph("Sin servicios").setFontSize(9f))
+                document.add(Paragraph(context.getString(R.string.report_no_services)).setFontSize(9f))
                 document.add(Paragraph(" "))
                 return@forEach
             }
             val table = Table(UnitValue.createPercentArray(floatArrayOf(1.2f, 1f, 2.2f, 1.6f, 1.6f)))
                 .setWidth(UnitValue.createPercentValue(100f))
-            addHeaderCell(table, "Fecha")
-            addHeaderCell(table, "Hora")
-            addHeaderCell(table, "Trayecto")
-            addHeaderCell(table, "Plataforma / Pago")
-            addHeaderCell(table, "Importes")
+            addHeaderCell(table, context.getString(R.string.report_concept_date))
+            addHeaderCell(table, context.getString(R.string.report_time))
+            addHeaderCell(table, context.getString(R.string.report_trip))
+            addHeaderCell(table, context.getString(R.string.report_platform_payment))
+            addHeaderCell(table, context.getString(R.string.report_amounts))
             weekRides.sortedBy { it.date }.forEachIndexed { index, ride ->
                 addCell(table, dateFormat.format(ride.date), index)
                 addCell(table, ride.rideTime.ifBlank { timeFormat.format(ride.date) }, index)
@@ -1325,16 +1368,9 @@ class ExportService(
 
     private fun addDisclaimerPdf(document: Document) {
         val disclaimer = """
-⚠️ NOTA IMPORTANTE SOBRE PLATAFORMAS CON COMISIÓN
+${context.getString(R.string.report_disclaimer_title)}
 
-Las plataformas que trabajan con la opción "Taxímetro" y luego entregan el precio
-con la comisión ya descontada pueden presentar diferencias entre:
-
-• El importe mostrado en el taxímetro de la app de la plataforma
-• El importe que aparece en el ticket/recibo final
-
-Esto es normal y se debe a que las comisiones de la plataforma ya han sido restadas
-del precio final que recibes.
+${context.getString(R.string.report_disclaimer_body)}
         """.trimIndent()
 
         document.add(
@@ -1389,12 +1425,12 @@ del precio final que recibes.
         val sb = StringBuilder()
         
         // Encabezado simple
-        sb.appendLine("INFORME DIARIO: ${dateFormat.format(selectedDate)}")
+        sb.appendLine("${context.getString(R.string.report_daily).uppercase(Locale.getDefault())}: ${dateFormat.format(selectedDate)}")
         sb.appendLine()
         
         // Resumen financiero simplificado
-        sb.appendLine("RESUMEN")
-        sb.appendLine("Ingresos,Gastos,Beneficio")
+        sb.appendLine(context.getString(R.string.home_summary_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_income)},${context.getString(R.string.report_expenses)},${context.getString(R.string.report_benefit)}")
         sb.appendLine("${formatMoney(totalIncome)},${formatMoney(totalExpenses)},${formatMoney(profit)}")
         sb.appendLine()
         
@@ -1404,17 +1440,17 @@ del precio final que recibes.
         
         // Carreras simplificadas
         if (rides.isNotEmpty()) {
-            sb.appendLine("CARRERAS")
-            sb.appendLine("Hora,Origen,Destino,Importe,Metodo de Pago,Tipo de Servicio")
+            sb.appendLine(context.getString(R.string.report_rides).uppercase(Locale.getDefault()))
+            sb.appendLine("${context.getString(R.string.report_time)},${context.getString(R.string.label_origin)},${context.getString(R.string.label_destination)},${context.getString(R.string.report_concept_amount)},${context.getString(R.string.label_payment_method)},${context.getString(R.string.label_service_type)}")
             
             rides.sortedBy { it.date }
                 .forEach { ride ->
                     val safeOrigin = ride.origin.replace(",", ";")
                     val safeDestination = ride.destination.replace(",", ";")
-                    val safePaymentMethod = ride.paymentMethod.replace(",", ";")
+                    val safePaymentMethod = translatePaymentMethod(ride.paymentMethod).replace(",", ";")
                     val serviceTypeLabel = when (ride.serviceType) {
-                        TaxiRide.SERVICE_TYPE_METER -> "Taxímetro"
-                        TaxiRide.SERVICE_TYPE_FIXED -> "Precio Cerrado"
+                        TaxiRide.SERVICE_TYPE_METER -> context.getString(R.string.option_taximeter)
+                        TaxiRide.SERVICE_TYPE_FIXED -> context.getString(R.string.option_fixed_price)
                         else -> ""
                     }
                     val safeServiceType = serviceTypeLabel.replace(",", ";")
@@ -1426,9 +1462,9 @@ del precio final que recibes.
         val meterTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_METER }.sumOf { it.price }
         val fixedTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_FIXED }.sumOf { it.price }
         sb.appendLine()
-        sb.appendLine("RESUMEN TIPO DE SERVICIO")
-        sb.appendLine("Taxímetro,${formatMoney(meterTotal)}")
-        sb.appendLine("Precio Cerrado,${formatMoney(fixedTotal)}")
+        sb.appendLine(context.getString(R.string.report_breakdown_by_service_type).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.option_taximeter)},${formatMoney(meterTotal)}")
+        sb.appendLine("${context.getString(R.string.option_fixed_price)},${formatMoney(fixedTotal)}")
         sb.appendLine()
 
         appendPlatformSection(sb, platformData, withoutPlatform)
@@ -1437,19 +1473,20 @@ del precio final que recibes.
             val fuelExpenses = expenses.filter { it.type == ExpenseType.FUEL }.sumOf { it.amount }
             val otherExpenses = expenses.filter { it.type != ExpenseType.FUEL }.sumOf { it.amount }
             
-            sb.appendLine("GASTOS POR TIPO")
-            sb.appendLine("Tipo,Importe")
-            sb.appendLine("Combustible,${formatMoney(fuelExpenses)}")
-            sb.appendLine("Otros,${formatMoney(otherExpenses)}")
+            sb.appendLine(context.getString(R.string.report_expenses_by_type_title).uppercase(Locale.getDefault()))
+            sb.appendLine("${context.getString(R.string.report_type_header)},${context.getString(R.string.report_concept_amount)}")
+            sb.appendLine("${context.getString(R.string.report_fuel)},${formatMoney(fuelExpenses)}")
+            sb.appendLine("${context.getString(R.string.report_other)},${formatMoney(otherExpenses)}")
             sb.appendLine()
             
-            sb.appendLine("GASTOS")
-            sb.appendLine("Hora,Descripcion,Importe,Tipo")
+            sb.appendLine(context.getString(R.string.report_expenses).uppercase(Locale.getDefault()))
+            sb.appendLine("${context.getString(R.string.report_time)},${context.getString(R.string.report_concept_description)},${context.getString(R.string.report_concept_amount)},${context.getString(R.string.report_concept_type)}")
             
             expenses.sortedBy { it.date }
                 .forEach { expense ->
                     val safeDescription = (expense.description ?: "").replace(",", ";")
-                    val safeType = (if (expense.type == ExpenseType.FUEL) ExpenseType.FUEL.name else ExpenseType.OTHER.name).replace(",", ";")
+                    val typeLabel = if (expense.type == ExpenseType.FUEL) context.getString(R.string.report_fuel) else context.getString(R.string.report_other)
+                    val safeType = typeLabel.replace(",", ";")
                     
                     sb.appendLine("${dateTimeFormat.format(expense.date)},${safeDescription},${formatMoney(expense.amount)},${safeType}")
                 }
@@ -1489,12 +1526,12 @@ del precio final que recibes.
         val sb = StringBuilder()
         
         // Encabezado simplificado
-        sb.appendLine("INFORME SEMANAL: ${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}")
+        sb.appendLine("${context.getString(R.string.report_weekly).uppercase(Locale.getDefault())}: ${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}")
         sb.appendLine()
         
         // Resumen financiero simplificado
-        sb.appendLine("RESUMEN")
-        sb.appendLine("Ingresos,Gastos,Beneficio")
+        sb.appendLine(context.getString(R.string.home_summary_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_income)},${context.getString(R.string.report_expenses)},${context.getString(R.string.report_benefit)}")
         sb.appendLine("${formatMoney(totalIncome)},${formatMoney(totalExpenses)},${formatMoney(profit)}")
         sb.appendLine()
         
@@ -1505,22 +1542,22 @@ del precio final que recibes.
         val meterTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_METER }.sumOf { it.price }
         val fixedTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_FIXED }.sumOf { it.price }
         sb.appendLine()
-        sb.appendLine("RESUMEN TIPO DE SERVICIO")
-        sb.appendLine("Taxímetro,${formatMoney(meterTotal)}")
-        sb.appendLine("Precio Cerrado,${formatMoney(fixedTotal)}")
+        sb.appendLine(context.getString(R.string.report_breakdown_by_service_type).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.option_taximeter)},${formatMoney(meterTotal)}")
+        sb.appendLine("${context.getString(R.string.option_fixed_price)},${formatMoney(fixedTotal)}")
         sb.appendLine()
 
         appendPlatformSection(sb, platformData, withoutPlatform)
 
-        sb.appendLine("GASTOS POR TIPO")
-        sb.appendLine("Tipo,Importe")
-        sb.appendLine("Combustible,${formatMoney(fuelExpenses)}")
-        sb.appendLine("Otros,${formatMoney(otherExpenses)}")
+        sb.appendLine(context.getString(R.string.report_expenses_by_type_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_type_header)},${context.getString(R.string.report_concept_amount)}")
+        sb.appendLine("${context.getString(R.string.report_fuel)},${formatMoney(fuelExpenses)}")
+        sb.appendLine("${context.getString(R.string.report_other)},${formatMoney(otherExpenses)}")
         sb.appendLine()
         
         // Resumen por día simplificado
-        sb.appendLine("RESUMEN DIARIO")
-        sb.appendLine("Fecha,Ingresos,Gastos,Beneficio")
+        sb.appendLine(context.getString(R.string.report_daily_performance).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_concept_date)},${context.getString(R.string.report_income)},${context.getString(R.string.report_expenses)},${context.getString(R.string.report_benefit)}")
         
         // Crear un mapa para agrupar por día
         val dailyData = mutableMapOf<String, Triple<Double, Double, Double>>()
@@ -1554,7 +1591,7 @@ del precio final que recibes.
      */
     private suspend fun generateMonthReport(startDate: Date, endDate: Date): String {
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.US)
+        val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
         
         val rides = taxiRideRepository.getTaxiRidesByDateRange(startDate, endDate).first()
         val expenses = expenseRepository.getExpensesByDateRange(startDate, endDate).first()
@@ -1578,13 +1615,14 @@ del precio final que recibes.
         val sb = StringBuilder()
         
         // Encabezado simplificado
-        sb.appendLine("INFORME MENSUAL: ${monthYearFormat.format(startDate).replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}")
+        val formattedMonth = monthYearFormat.format(startDate).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        sb.appendLine(context.getString(R.string.report_monthly, formattedMonth).uppercase(Locale.getDefault()))
         sb.appendLine("${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}")
         sb.appendLine()
         
         // Resumen financiero simplificado
-        sb.appendLine("RESUMEN")
-        sb.appendLine("Ingresos,Gastos,Beneficio")
+        sb.appendLine(context.getString(R.string.home_summary_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_income)},${context.getString(R.string.report_expenses)},${context.getString(R.string.report_benefit)}")
         sb.appendLine("${formatMoney(totalIncome)},${formatMoney(totalExpenses)},${formatMoney(profit)}")
         sb.appendLine()
         
@@ -1595,22 +1633,22 @@ del precio final que recibes.
         val meterTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_METER }.sumOf { it.price }
         val fixedTotal = rides.filter { it.serviceType == TaxiRide.SERVICE_TYPE_FIXED }.sumOf { it.price }
         sb.appendLine()
-        sb.appendLine("RESUMEN TIPO DE SERVICIO")
-        sb.appendLine("Taxímetro,${formatMoney(meterTotal)}")
-        sb.appendLine("Precio Cerrado,${formatMoney(fixedTotal)}")
+        sb.appendLine(context.getString(R.string.report_breakdown_by_service_type).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.option_taximeter)},${formatMoney(meterTotal)}")
+        sb.appendLine("${context.getString(R.string.option_fixed_price)},${formatMoney(fixedTotal)}")
         sb.appendLine()
 
         appendPlatformSection(sb, platformData, withoutPlatform)
 
-        sb.appendLine("GASTOS POR TIPO")
-        sb.appendLine("Tipo,Importe")
-        sb.appendLine("Combustible,${formatMoney(fuelExpenses)}")
-        sb.appendLine("Otros,${formatMoney(otherExpenses)}")
+        sb.appendLine(context.getString(R.string.report_expenses_by_type_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_type_header)},${context.getString(R.string.report_concept_amount)}")
+        sb.appendLine("${context.getString(R.string.report_fuel)},${formatMoney(fuelExpenses)}")
+        sb.appendLine("${context.getString(R.string.report_other)},${formatMoney(otherExpenses)}")
         sb.appendLine()
         
         // Resumen semanal simplificado
-        sb.appendLine("RESUMEN SEMANAL")
-        sb.appendLine("Semana,Ingresos,Gastos,Beneficio")
+        sb.appendLine(context.getString(R.string.report_weekly_summary_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_week)},${context.getString(R.string.report_income)},${context.getString(R.string.report_expenses)},${context.getString(R.string.report_benefit)}")
         
         // Obtener el primer día de la semana configurado
         val application = context.applicationContext as GestionTaxiApplication
@@ -1715,39 +1753,45 @@ del precio final que recibes.
         // Calcular beneficio y añadir al informe
         weeklyData.entries.sortedBy { it.key }.forEach { (week, data) ->
             val benefit = data.first - data.second
-            sb.appendLine("Semana $week,${formatMoney(data.first)},${formatMoney(data.second)},${formatMoney(benefit)}")
+            sb.appendLine("${context.getString(R.string.report_week)} $week,${formatMoney(data.first)},${formatMoney(data.second)},${formatMoney(benefit)}")
         }
 
         appendDisclaimerSection(sb)
         return sb.toString()
     }
-
+    
     private fun appendPaymentMethodSection(
         sb: StringBuilder,
         incomeByPaymentMethod: Map<String, Pair<Double, Int>>,
         appPlatformData: Map<String, Pair<Double, Int>>
     ) {
-        sb.appendLine("METODOS DE PAGO")
-        sb.appendLine("Metodo,Importe,Servicios")
+        sb.appendLine(context.getString(R.string.report_payment_methods_title).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.report_method_header)},${context.getString(R.string.report_concept_amount)},${context.getString(R.string.report_services)}")
         
-        val viaAppEntry = incomeByPaymentMethod.entries.firstOrNull { it.key.equals("Via App", ignoreCase = true) }
+        val viaAppEntry = incomeByPaymentMethod.entries.firstOrNull { 
+            it.key.equals("Via App", ignoreCase = true) || it.key.equals(context.getString(R.string.payment_via_app), ignoreCase = true) 
+        }
         val remainingEntries = incomeByPaymentMethod.entries
-            .filterNot { it.key.equals("Via App", ignoreCase = true) }
+            .filterNot { 
+                it.key.equals("Via App", ignoreCase = true) || it.key.equals(context.getString(R.string.payment_via_app), ignoreCase = true) 
+            }
             .sortedByDescending { it.value.first }
 
         val orderedEntries = listOfNotNull(viaAppEntry) + remainingEntries
 
         orderedEntries.forEach { (method, data) ->
             val (income, count) = data
-            sb.appendLine("${method},${formatMoney(income)},${count}")
+            val translatedMethod = translatePaymentMethod(method)
+            sb.appendLine("${translatedMethod},${formatMoney(income)},${count}")
 
-            if (method.equals("Via App", ignoreCase = true) && appPlatformData.isNotEmpty()) {
+            if ((method.equals("Via App", ignoreCase = true) || method.equals(context.getString(R.string.payment_via_app), ignoreCase = true)) && appPlatformData.isNotEmpty()) {
                 val sortedPlatforms = appPlatformData.entries.sortedByDescending { it.value.first }
                 sortedPlatforms.forEachIndexed { index, entry ->
                     val (platform, platformData) = entry
                     val (platformIncome, platformCount) = platformData
                     val prefix = if (index < sortedPlatforms.size - 1) "  ├─ " else "  └─ "
-                    sb.appendLine("${prefix}${platform},${formatMoney(platformIncome)},${platformCount}")
+                    val translatedPlatform = translatePlatform(platform)
+                    sb.appendLine("${prefix}${translatedPlatform},${formatMoney(platformIncome)},${platformCount}")
                 }
             }
         }
@@ -1759,33 +1803,29 @@ del precio final que recibes.
         platformData: Map<String, Pair<Double, Int>>,
         withoutPlatform: Pair<Double, Int>
     ) {
-        sb.appendLine("DESGLOSE POR PLATAFORMA DE SERVICIO")
-        sb.appendLine("Plataforma,Importe,Servicios")
+        sb.appendLine(context.getString(R.string.report_breakdown_by_platform).uppercase(Locale.getDefault()))
+        sb.appendLine("${context.getString(R.string.label_platform)},${context.getString(R.string.report_concept_amount)},${context.getString(R.string.report_services)}")
         
         platformData.entries.sortedByDescending { it.value.first }.forEach { (platform, data) ->
             val (income, count) = data
-            sb.appendLine("${platform},${formatMoney(income)},${count}")
+            val translatedPlatform = translatePlatform(platform)
+            sb.appendLine("${translatedPlatform},${formatMoney(income)},${count}")
         }
         
         val totalWithPlatform = platformData.values.sumOf { it.first }
         val totalWithPlatformCount = platformData.values.sumOf { it.second }
-        sb.appendLine("Total con plataforma,${formatMoney(totalWithPlatform)},${totalWithPlatformCount}")
+        sb.appendLine("${context.getString(R.string.report_total_with_platform)},${formatMoney(totalWithPlatform)},${totalWithPlatformCount}")
         
         if (withoutPlatform.second > 0) {
-            sb.appendLine("Sin plataforma asignada,${formatMoney(withoutPlatform.first)},${withoutPlatform.second}")
+            sb.appendLine("${context.getString(R.string.report_no_platform)},${formatMoney(withoutPlatform.first)},${withoutPlatform.second}")
         }
         sb.appendLine()
     }
 
     private fun appendDisclaimerSection(sb: StringBuilder) {
         sb.appendLine()
-        appendQuotedLine(sb, "⚠️ NOTA IMPORTANTE SOBRE PLATAFORMAS CON COMISIÓN")
-        appendQuotedLine(sb, "Las plataformas que trabajan con la opción \"Taxímetro\" y luego entregan el precio")
-        appendQuotedLine(sb, "con la comisión ya descontada pueden presentar diferencias entre:")
-        appendQuotedLine(sb, "• El importe mostrado en el taxímetro de la app de la plataforma")
-        appendQuotedLine(sb, "• El importe que aparece en el ticket/recibo final")
-        appendQuotedLine(sb, "Esto es normal y se debe a que las comisiones de la plataforma ya han sido restadas")
-        appendQuotedLine(sb, "del precio final que recibes.")
+        appendQuotedLine(sb, context.getString(R.string.report_disclaimer_title))
+        appendQuotedLine(sb, context.getString(R.string.report_disclaimer_body))
     }
 
     private fun appendQuotedLine(sb: StringBuilder, text: String) {
@@ -1879,12 +1919,12 @@ del precio final que recibes.
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = mimeType
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Informe financiero Taxi")
-                putExtra(Intent.EXTRA_TEXT, "Informe financiero generado por la aplicación Taxi: $fileName")
+                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.report_subject))
+                putExtra(Intent.EXTRA_TEXT, context.getString(R.string.report_body, fileName))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             
-            val chooserIntent = Intent.createChooser(shareIntent, "Compartir informe a través de")
+            val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.report_share_title))
             chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooserIntent)
             

@@ -75,7 +75,7 @@ fun PriceScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MadridPriceScreen(navController: NavController, currentCity: String) {
-
+    val context = LocalContext.current
     var selectedTariff by remember { mutableStateOf<MadridTariff?>(null) }
     var isWorkday by remember { mutableStateOf(true) }
     var kilometers by remember { mutableStateOf("") }
@@ -124,7 +124,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                 }
             )
         }
-    ) { paddingValues ->
+    ){ paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -155,7 +155,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "Tarifa seleccionada",
+                                text = stringResource(R.string.selected_tariff),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -174,7 +174,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "Nivel de tráfico",
+                                    text = stringResource(R.string.label_traffic_level),
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -223,7 +223,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                             if (isValid) {
                                 navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
                             } else {
-                                Toast.makeText(navController.context, "Por favor, completa tus datos de facturación primero", Toast.LENGTH_LONG).show()
+                                Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
                                 navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
                             }
                         }
@@ -233,7 +233,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                         .height(64.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text("Crear presupuesto", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.create_quote), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 Button(
@@ -242,7 +242,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                         .fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Text("Volver a ajustes", fontSize = 18.sp)
+                    Text(stringResource(R.string.back_to_settings), fontSize = 18.sp)
                 }
                 
             } else {
@@ -413,30 +413,30 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                             
                             when (selectedTariff) {
                                 MadridTariff.T1 -> {
-                                    items.add(QuoteItem("Bajada de bandera (T1)", null, 2.55, 2.55))
-                                    items.add(QuoteItem("Kilómetros", kmVal, 1.40, kmVal * 1.40))
+                                    items.add(QuoteItem(context.getString(R.string.quote_fare_start, "T1"), null, 2.55, 2.55))
+                                    items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.40, kmVal * 1.40))
                                 }
                                 MadridTariff.T2 -> {
-                                    items.add(QuoteItem("Bajada de bandera (T2)", null, 3.20, 3.20))
-                                    items.add(QuoteItem("Kilómetros", kmVal, 1.60, kmVal * 1.60))
+                                    items.add(QuoteItem(context.getString(R.string.quote_fare_start, "T2"), null, 3.20, 3.20))
+                                    items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.60, kmVal * 1.60))
                                 }
                                 MadridTariff.T3 -> {
-                                    items.add(QuoteItem("Viaje mínimo (T3)", null, 22.0, 22.0))
+                                    items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "T3"), null, 22.0, 22.0))
                                     val extraKm = (kmVal - 9.0).coerceAtLeast(0.0)
                                     if (extraKm > 0) {
                                         val p = if (isWorkday) 1.40 else 1.60
-                                        items.add(QuoteItem("Kilómetros extra", extraKm, p, extraKm * p))
+                                        items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
                                     }
                                 }
                                 MadridTariff.T4 -> {
-                                    items.add(QuoteItem("Tarifa plana Aeropuerto (T4)", null, 33.0, 33.0))
+                                    items.add(QuoteItem(context.getString(R.string.quote_flat_airport, "T4"), null, 33.0, 33.0))
                                 }
                                 MadridTariff.T7 -> {
-                                    items.add(QuoteItem("Viaje mínimo (T7)", null, 8.0, 8.0))
+                                    items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "T7"), null, 8.0, 8.0))
                                     val extraKm = (kmVal - 1.45).coerceAtLeast(0.0)
                                     if (extraKm > 0) {
                                         val p = if (isWorkday) 1.40 else 1.60
-                                        items.add(QuoteItem("Kilómetros extra", extraKm, p, extraKm * p))
+                                        items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
                                     }
                                 }
                                 else -> {}
@@ -447,26 +447,26 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                                 if (selectedTariff == MadridTariff.T3 || selectedTariff == MadridTariff.T7) {
                                     val extraKm = if (selectedTariff == MadridTariff.T3) (kmVal - 9.0).coerceAtLeast(0.0) else (kmVal - 1.45).coerceAtLeast(0.0)
                                     if (extraKm > 0.0) {
-                                        items.add(QuoteItem("Suplemento tráfico", null, surch, surch))
+                                        items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
                                     } else if (selectedTraffic == TrafficLevel.MODERATE || selectedTraffic == TrafficLevel.HEAVY) {
-                                        items.add(QuoteItem("Suplemento tráfico (Base)", null, surch, surch))
+                                        items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge_base), null, surch, surch))
                                     }
                                 } else if (selectedTariff != MadridTariff.T4) {
-                                    items.add(QuoteItem("Suplemento tráfico", null, surch, surch))
+                                    items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
                                 }
                             }
 
                             val itemsSum = items.sumOf { it.total }
                             val diff = price!! - itemsSum
                             if (diff > 0.01) {
-                                items.add(QuoteItem("Estimación de tiempo/tráfico", null, diff, diff))
+                                items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
                             } else if (diff < -0.01) {
-                                items.add(QuoteItem("Ajuste de redondeo", null, diff, diff))
+                                items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
                             }
 
                             val app = navController.context.applicationContext as GestionTaxiApplication
                             app.currentQuote = QuoteData(
-                                title = "Presupuesto de viaje en Taxi - $currentCity",
+                                title = context.getString(R.string.quote_title_format, currentCity),
                                 items = items,
                                 totalAmount = price!!
                             )
@@ -513,7 +513,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                                 if (isValid) {
                                     navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
                                 } else {
-                                    Toast.makeText(navController.context, "Por favor, completa tus datos de facturación primero", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
                                     navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
                                 }
                             }
@@ -521,7 +521,7 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text("Crear presupuesto")
+                        Text(stringResource(R.string.create_quote))
                     }
                 }
             }
@@ -594,6 +594,7 @@ fun calculatePrice(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NonMadridPriceScreen(navController: NavController, currentCity: String, tariffViewModel: TariffViewModel) {
+    val context = LocalContext.current
     val allTariffs by tariffViewModel.allTariffs.collectAsState()
     val allSurcharges by tariffViewModel.allSurcharges.collectAsState()
 
@@ -664,7 +665,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "Tarifa seleccionada",
+                                text = stringResource(R.string.selected_tariff),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -712,7 +713,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                             if (isValid) {
                                 navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
                             } else {
-                                Toast.makeText(navController.context, "Por favor, completa tus datos de facturación primero", Toast.LENGTH_LONG).show()
+                                Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
                                 navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
                             }
                         }
@@ -722,7 +723,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                         .height(64.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text("Crear presupuesto", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.create_quote), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 Button(
@@ -731,7 +732,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                         .fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Text("Volver a ajustes", fontSize = 18.sp)
+                    Text(stringResource(R.string.back_to_settings), fontSize = 18.sp)
                 }
             } else {
                 Card(
@@ -742,15 +743,15 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(end = 12.dp))
                         Column {
-                            Text(text = "Tarifas de $currentCity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text(text = "Añade las tarifas y suplementos desde Ajustes", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = stringResource(R.string.card_madrid_rates_title, currentCity), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = stringResource(R.string.add_rates_from_settings), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                 }
 
-                Text("Selecciona la tarifa", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.label_select_tariff), fontWeight = FontWeight.Bold)
                 if (allTariffs.isEmpty()) {
-                    Text("No hay tarifas configuradas", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.empty_tariffs_msg), color = MaterialTheme.colorScheme.error)
                 } else {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         allTariffs.forEach { tariff ->
@@ -779,7 +780,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                 }
 
                 if (allSurcharges.isNotEmpty()) {
-                    Text("Suplementos y Bultos", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.surcharges_and_packages), fontWeight = FontWeight.Bold)
                     allSurcharges.forEach { surcharge ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             if (surcharge.isPerItem) {
@@ -833,10 +834,10 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                                 items.add(QuoteItem(t.name, null, t.fixedPrice ?: 0.0, t.fixedPrice ?: 0.0))
                             } else {
                                 val km = kilometers.toDoubleOrNull() ?: 0.0
-                                items.add(QuoteItem("Bajada de bandera (${t.name})", null, t.baseFare ?: 0.0, t.baseFare ?: 0.0))
-                                items.add(QuoteItem("Kilómetros", km, t.pricePerKm ?: 0.0, km * (t.pricePerKm ?: 0.0)))
+                                items.add(QuoteItem(context.getString(R.string.quote_fare_start, t.name), null, t.baseFare ?: 0.0, t.baseFare ?: 0.0))
+                                items.add(QuoteItem(context.getString(R.string.quote_kilometers), km, t.pricePerKm ?: 0.0, km * (t.pricePerKm ?: 0.0)))
                                 if ((t.surcharge ?: 0.0) > 0.0) {
-                                    items.add(QuoteItem("Suplemento tarifa", null, t.surcharge!!, t.surcharge!!))
+                                    items.add(QuoteItem(context.getString(R.string.label_surcharge), null, t.surcharge!!, t.surcharge!!))
                                 }
                             }
                             
@@ -856,14 +857,14 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                             val itemsSum = items.sumOf { it.total }
                             val diff = price!! - itemsSum
                             if (diff > 0.01) {
-                                items.add(QuoteItem("Estimación de tiempo/tráfico", null, diff, diff))
+                                items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
                             } else if (diff < -0.01) {
-                                items.add(QuoteItem("Ajuste de redondeo", null, diff, diff))
+                                items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
                             }
 
                             val app = navController.context.applicationContext as GestionTaxiApplication
                             app.currentQuote = QuoteData(
-                                title = "Presupuesto de viaje en Taxi - $currentCity",
+                                title = context.getString(R.string.quote_title_format, currentCity),
                                 items = items,
                                 totalAmount = price!!
                             )
@@ -900,7 +901,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                                 if (isValid) {
                                     navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
                                 } else {
-                                    Toast.makeText(navController.context, "Por favor, completa tus datos de facturación primero", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
                                     navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
                                 }
                             }
@@ -908,7 +909,7 @@ fun NonMadridPriceScreen(navController: NavController, currentCity: String, tari
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text("Crear presupuesto")
+                        Text(stringResource(R.string.create_quote))
                     }
                 }
             }

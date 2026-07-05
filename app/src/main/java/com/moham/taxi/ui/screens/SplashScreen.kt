@@ -73,15 +73,7 @@ fun SplashScreen(
     
     // Estado de progreso (0 a 100)
     var progress by remember { mutableStateOf(0f) }
-    val tips = listOf(
-            stringResource(R.string.tip_1),
-            stringResource(R.string.tip_2),
-            stringResource(R.string.tip_3),
-            stringResource(R.string.tip_4),
-            stringResource(R.string.tip_5)
-        )
-    val selectedTip = remember { tips.first() }
-    var loadingText by remember { mutableStateOf(selectedTip) }
+    var loadingText by remember { mutableStateOf("") }
 
     // Animación de pulso para el logo
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -277,17 +269,17 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center
         ) {
             
-            // Logo Container
+            // Logo Container (Aumentado de tamaño)
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(200.dp) // Espacio para animaciones
+                modifier = Modifier.size(300.dp) // Espacio para animaciones (anteriormente 200.dp)
             ) {
                 // Outer glow ring (animate-pulse)
                 Box(
                     modifier = Modifier
-                        .size(120.dp) // Base size
-                        .scale(1.5f) // scale 1.5
-                        .alpha(pulseAlpha) // animate alpha
+                        .size(180.dp) // Base size (anteriormente 120.dp)
+                        .scale(1.5f)
+                        .alpha(pulseAlpha)
                         .clip(CircleShape)
                         .background(PrimaryBlue.copy(alpha = 0.2f))
                 )
@@ -295,7 +287,7 @@ fun SplashScreen(
                 // Inner glow
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
+                        .size(180.dp) // Anteriormente 120.dp
                         .scale(1.2f)
                         .clip(CircleShape)
                         .background(
@@ -306,7 +298,7 @@ fun SplashScreen(
                 )
 
                 // Animated ring (ping)
-                Canvas(modifier = Modifier.size(120.dp)) {
+                Canvas(modifier = Modifier.size(180.dp)) { // Anteriormente 120.dp
                     drawCircle(
                         color = PrimaryBlue.copy(alpha = pingAlpha),
                         radius = size.minDimension / 2 * pingScale,
@@ -317,7 +309,7 @@ fun SplashScreen(
                 // Icon container actual
                 Box(
                     modifier = Modifier
-                        .size(112.dp) // h-28 w-28 = 7rem = 112dp
+                        .size(168.dp) // Anteriormente 112.dp
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
@@ -329,181 +321,23 @@ fun SplashScreen(
                                 end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                             )
                         )
-                        // Border simulated with another box or stroke, simplify with simple background
                         .padding(1.dp) // Border thickness
                 ) {
-                    // Inner content for border effect if needed, usually clean without border is fine or use border modifier
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape)
-                            .background(Color.Transparent), // Already handled by gradient
+                            .background(Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Filled.DirectionsCar,
                             contentDescription = "Logo",
                             tint = PrimaryBlue,
-                            modifier = Modifier.size(56.dp)
+                            modifier = Modifier.size(84.dp) // Anteriormente 56.dp
                         )
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Title "GESTIÓN TAXI"
-            val titleText = stringResource(R.string.app_name_title)
-            Text(
-                text = titleText,
-                fontSize = 32.sp, // text-4xl
-                fontWeight = FontWeight.Light,
-                color = Color.White,
-                letterSpacing = if (titleText.length > 12) 2.sp else 4.sp,
-                lineHeight = 40.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Decorative Lines
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Linea izquierda (fading in)
-                Box(
-                    modifier = Modifier
-                        .width(48.dp)
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, PrimaryBlue.copy(alpha = 0.6f))
-                            )
-                        )
-                )
-                // Punto central
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue)
-                )
-                // Linea derecha (fading out)
-                Box(
-                    modifier = Modifier
-                        .width(48.dp)
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(PrimaryBlue.copy(alpha = 0.6f), Color.Transparent)
-                            )
-                        )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Subtitle
-            Text(
-                text = stringResource(R.string.app_subtitle),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Light,
-                color = Color.White.copy(alpha = 0.7f), // muted-foreground
-                letterSpacing = 0.5.sp, // tracking-wide
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(64.dp))
-
-            // Progress Section
-            Column(
-                modifier = Modifier.width(300.dp), // max-w-xs approx
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Progress Bar Container
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f)) // secondary bg
-                ) {
-                    // Progress Fill with Gradient
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progress / 100f)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        PrimaryBlue,
-                                        Color(0xFF34D399) // Emerald-400 approx for gradient end
-                                    )
-                                )
-                            )
-                    )
-                    
-                    // Shimmer Effect (Simple animation moving across)
-                    val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
-                    val shimmerTranslate by shimmerTransition.animateFloat(
-                        initialValue = -0.2f, // Start before the bar
-                        targetValue = 1.2f, // End after the bar
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1500, easing = LinearEasing),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "shimmerTranslate"
-                    )
-                    
-                    // Only show shimmer if progress < 100
-                    if (progress < 100) {
-                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .fillMaxHeight()
-                                .graphicsLayer {
-                                    translationX = size.width * shimmerTranslate
-                                }
-                                .width(80.dp) // w-20
-                                .background(
-                                    Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.3f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                )
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Loading Text
-                Text(
-                    text = loadingText,
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Light,
-                    modifier = Modifier.fillMaxWidth(),
-                    lineHeight = 18.sp
-                )
-                
-                // Percentage
-                Text(
-                    text = "${progress.toInt()}%",
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.4f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
             }
         }
 

@@ -43,7 +43,7 @@ class BackupService(
     private val database: AppDatabase
 ) {
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    private val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale("es", "ES"))
+    private val monthYearFormat = SimpleDateFormat("MMMM_yyyy", Locale.getDefault())
     private val fileNameDateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
     
     companion object {

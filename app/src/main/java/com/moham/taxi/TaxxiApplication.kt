@@ -50,6 +50,12 @@ class GestionTaxiApplication : Application() {
     // Scope único optimizado para todas las operaciones
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
+    override fun onCreate() {
+        super.onCreate()
+        // Reset any app-level locale override to align with device system language
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+    }
+    
     // Sistema de caché para preferencias frecuentemente usadas
     private var cachedSummaryIncomeType: Int? = null
     private var cachedSelectedDate: Date? = null
@@ -108,6 +114,8 @@ class GestionTaxiApplication : Application() {
         val LAST_SEEN_VERSION_CODE_KEY = longPreferencesKey("last_seen_version_code")
         val STORED_FIRST_INSTALL_TIME_KEY = longPreferencesKey("stored_first_install_time")
         val TICKET_PHOTOS_ENABLED_KEY = booleanPreferencesKey("ticket_photos_enabled")
+        val PRIVACY_POLICY_ACCEPTED_KEY = booleanPreferencesKey("privacy_policy_accepted")
+        val OLD_VERSION_ENABLED_KEY = booleanPreferencesKey("old_version_enabled")
     }
     
     // Método para guardar si el reto diario está habilitado
@@ -160,6 +168,18 @@ class GestionTaxiApplication : Application() {
         }
     }
 
+    suspend fun saveOldVersionEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[OLD_VERSION_ENABLED_KEY] = enabled
+        }
+    }
+
+    fun isOldVersionEnabled(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[OLD_VERSION_ENABLED_KEY] ?: false
+        }
+    }
+
     fun isFirstRun(): Flow<Boolean> {
         return dataStore.data.map { preferences ->
             preferences[IS_FIRST_RUN_KEY] ?: true
@@ -186,6 +206,21 @@ class GestionTaxiApplication : Application() {
     suspend fun setHasCompletedOnboarding(completed: Boolean) {
         dataStore.edit { preferences ->
             preferences[HAS_COMPLETED_ONBOARDING_KEY] = completed
+            if (completed) {
+                preferences[PRIVACY_POLICY_ACCEPTED_KEY] = true
+            }
+        }
+    }
+
+    fun isPrivacyPolicyAccepted(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[PRIVACY_POLICY_ACCEPTED_KEY] ?: false
+        }
+    }
+
+    suspend fun savePrivacyPolicyAccepted(accepted: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PRIVACY_POLICY_ACCEPTED_KEY] = accepted
         }
     }
 
@@ -227,7 +262,8 @@ class GestionTaxiApplication : Application() {
     // Método para obtener el tema de la aplicación
     fun getAppTheme(): Flow<String> {
         return dataStore.data.map { preferences ->
-            preferences[APP_THEME_KEY] ?: "blue" // "blue" or "green"
+            val theme = preferences[APP_THEME_KEY] ?: "blue" // "blue" or "green"
+            if (theme == "black_white") "blue" else theme
         }
     }
     

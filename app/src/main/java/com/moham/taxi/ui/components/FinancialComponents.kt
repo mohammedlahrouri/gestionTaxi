@@ -24,7 +24,7 @@ import java.util.Locale
  * Formatea un valor monetario en euros con el formato adecuado.
  */
 fun formatCurrency(amount: Double): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("es", "ES"))
+    val format = NumberFormat.getCurrencyInstance(Locale.getDefault())
     return format.format(amount)
 }
 

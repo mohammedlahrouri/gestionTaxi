@@ -361,7 +361,7 @@ fun InvoiceScreen(navController: NavController) {
                         Text(
                             stringResource(
                                 R.string.address_label,
-                                "${billingData.street}, ${billingData.city}, CP: ${billingData.postalCode}"
+                                "${billingData.street}, ${billingData.city}, ${stringResource(R.string.postal_code_short, billingData.postalCode)}"
                             )
                         )
                         HorizontalDivider(

@@ -13,8 +13,8 @@ android {
         applicationId = "com.moham.taxi"
         minSdk = 24
         targetSdk = 35
-        versionCode = 46
-        versionName = "6.0.1"
+        versionCode = 56
+        versionName = "7.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -59,6 +59,14 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/DEPENDENCIES"
         }
+    }
+}
+
+// Force reCAPTCHA to a patched version (fixes critical security vulnerability)
+// See: https://cloud.google.com/recaptcha/docs/deprecation-policy-mobile
+configurations.all {
+    resolutionStrategy {
+        force("com.google.android.recaptcha:recaptcha:18.4.0")
     }
 }
 

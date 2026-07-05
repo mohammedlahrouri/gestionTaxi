@@ -33,7 +33,8 @@ class PdfGenerator(private val context: Context) {
         time: String
     ): File {
         // Usar el directorio de archivos de la aplicación para evitar problemas de permisos
-        val facturasDir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Facturas")
+        val folderName = context.getString(R.string.invoice_folder_name)
+        val facturasDir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), folderName)
         if (!facturasDir.exists()) {
             facturasDir.mkdirs()
         }
@@ -42,7 +43,8 @@ class PdfGenerator(private val context: Context) {
 
         // Crear nombre del archivo con fecha y hora
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "Factura_${timestamp}.pdf"
+        val filePrefix = context.getString(R.string.invoice_file_prefix)
+        val fileName = "${filePrefix}_${timestamp}.pdf"
         val file = File(facturasDir, fileName)
 
         // Crear PDF
@@ -66,7 +68,8 @@ class PdfGenerator(private val context: Context) {
                 document.add(Paragraph("${context.getString(R.string.name_label)}: ${billingData.name}"))
                 document.add(Paragraph("${context.getString(R.string.nif_label)}: ${billingData.nif}"))
                 document.add(Paragraph("${context.getString(R.string.license_label_pdf)}: ${billingData.license}"))
-                document.add(Paragraph("${context.getString(R.string.address_label_pdf)}: ${billingData.street}, ${billingData.city}, CP: ${billingData.postalCode}"))
+                val zipText = context.getString(R.string.postal_code_short, billingData.postalCode)
+                document.add(Paragraph("${context.getString(R.string.address_label_pdf)}: ${billingData.street}, ${billingData.city}, $zipText"))
                 document.add(Paragraph("\n"))
 
                 // Datos del cliente

@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Local temporary/IDE files and build releases
+.kotlin/
+.stfolder/
+.vscode/
+/app/release/
+/patch_dialogs.py
+/update_backup_service.patch
+/new diseño estadisticas/

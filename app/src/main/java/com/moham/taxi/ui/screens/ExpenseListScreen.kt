@@ -445,7 +445,7 @@ fun TaxiRideItem(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = stringResource(R.string.label_date_format, SimpleDateFormat("dd/MM/yyyy", Locale("es", "ES")).format(ride.date)),
+                    text = stringResource(R.string.label_date_format, SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(ride.date)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -577,13 +577,18 @@
     <string name="settings_themes_dialog_title">Select theme</string>
     <string name="theme_blue_name">Blue (new)</string>
     <string name="theme_green_name">Green (classic)</string>
+
     <string name="settings_active_options_title">Active options</string>
     <string name="settings_active_options_desc">Enable or disable app features</string>
     <string name="settings_daily_challenge_desc">Show the daily challenge on the home screen</string>
     <string name="settings_origin_destination_title">Origin and destination</string>
     <string name="settings_origin_destination_desc">Show origin and destination when adding a ride</string>
     <string name="settings_tips_desc">Show tips in the app</string>
+    <string name="settings_old_version_title">Classic Layout</string>
+    <string name="settings_old_version_desc">Enable classic design with the \"Gestion Taxi\" title/car icon header and the weekly calendar card on the home screen</string>
     <string name="home_summary_title">Summary</string>
+    <string name="balance_of_the_day">Day\'s Balance</string>
+    <string name="recent_activity">Recent Activity</string>
 
     <string name="onboarding_welcome_step_title">Welcome (%1$d/%2$d)</string>
     <string name="onboarding_continue">Continue</string>
@@ -650,4 +655,165 @@
 
     <string name="payment_subscribers">Account</string>
     <string name="payment_pending">Pending</string>
+
+    <!-- Missing English keys -->
+    <string name="label_alternative_math">Alternative math</string>
+    <string name="help_alternative_math">Activate it if the Gross/Net numbers of rides do not match your platform</string>
+    <string name="module_gps_dest">Automatic GPS destination (coming soon)</string>
+    <string name="module_km_start_end">Start and end KM (coming soon)</string>
+    <string name="module_photo_tickets">Receipt photos</string>
+    <string name="photo_tickets_privacy_title">Privacy policy on receipt images</string>
+    <string name="photo_tickets_privacy_message">To guarantee maximum confidentiality, the images associated with the tickets are stored locally and exclusively on your device. In no case will they be transferred or saved on external servers or third-party databases. Your privacy and security are fundamental to us.</string>
+    <string name="photo_tickets_privacy_confirm">Understood</string>
+
+    <!-- New translation and internationalization resources -->
+    <string name="postal_code_short">ZIP: %1$s</string>
+    <string name="back_content_description">Back</string>
+    <string name="backup_status_cancelled">Cancelled</string>
+    <string name="backup_status_network_error">No connection</string>
+    <string name="backup_status_developer_error">Invalid configuration</string>
+    <string name="backup_status_sign_in_failed">Sign in failed</string>
+    <string name="backup_status_sign_in_required">Sign in required</string>
+    <string name="backup_status_internal_error">Internal error</string>
+    <string name="backup_status_code_error">Code %1$d</string>
+    <string name="backup_photos_cloud_notice">Notice: Ticket photos are not saved in the cloud at the moment.</string>
+    <string name="privacy_dialog_title">Privacy Policy Update</string>
+    <string name="privacy_dialog_msg">Privacy policy update. We have incorporated the optional ability to associate photos with service tickets and invoices. These images are stored exclusively locally on your device and are not synced with Google Drive. However, please note that they will be included in local backups to ensure their safety. Your privacy and data security are our priority.</string>
+    <string name="view_privacy_policy">View privacy policy</string>
+
+    <string name="report_daily">Daily report</string>
+    <string name="report_weekly">Weekly report</string>
+    <string name="report_monthly">Monthly report: %1$s</string>
+    <string name="report_range">Range report</string>
+    <string name="report_financial_summary">FINANCIAL SUMMARY</string>
+    <string name="report_income">Income</string>
+    <string name="report_expenses">Expenses</string>
+    <string name="report_net">Net</string>
+    <string name="report_breakdown_by_payment_methods">BREAKDOWN BY PAYMENT METHODS</string>
+    <string name="report_breakdown_by_service_type">BREAKDOWN BY SERVICE TYPE</string>
+    <string name="report_breakdown_by_platform">BREAKDOWN BY SERVICE PLATFORM</string>
+    <string name="report_total_with_platform">Total with platform</string>
+    <string name="report_no_platform">No platform assigned</string>
+    <string name="report_detailed_expenses">DETAILED EXPENSES</string>
+    <string name="report_fuel">Fuel</string>
+    <string name="report_other">Other</string>
+    <string name="report_concept_date">Date</string>
+    <string name="report_concept_description">Description</string>
+    <string name="report_concept_amount">Amount</string>
+    <string name="report_concept_type">Type</string>
+    <string name="report_rides">RIDES</string>
+    <string name="report_no_rides">No services registered in this period.</string>
+    <string name="report_time">Time</string>
+    <string name="report_trip">Trip</string>
+    <string name="report_platform_payment">Platform / Payment</string>
+    <string name="report_amounts">Amounts</string>
+    <string name="report_total_gross">Total Gross</string>
+    <string name="report_total_commission">Total Commission</string>
+    <string name="report_total_net">Total Net</string>
+    <string name="report_total_range">Total Range</string>
+    <string name="report_total_week">Total Week</string>
+    <string name="report_services_by_day">SERVICES BY DAY</string>
+    <string name="report_day">Day</string>
+    <string name="report_services">Services</string>
+    <string name="report_week">Week</string>
+    <string name="report_detail_by_week">WEEKLY DETAILS</string>
+    <string name="report_daily_performance">DAILY PERFORMANCE</string>
+    <string name="report_net_benefit">Net Profit</string>
+    <string name="report_services_count">%1$d services</string>
+    <string name="report_no_services">No services</string>
+    <string name="report_subject">Taxi financial report</string>
+    <string name="report_body">Financial report generated by the Taxi app: %1$s</string>
+    <string name="report_share_title">Share report via</string>
+    <string name="report_disclaimer_title">⚠️ IMPORTANT NOTE ON PLATFORMS WITH COMMISSION</string>
+    <string name="report_disclaimer_body">Platforms that work with the \"Taximeter\" option and then deliver the price with the commission already discounted may show differences between the amount displayed on the taximeter of the platform\'s app and the amount that appears on the final receipt. This is normal and is because the platform\'s commissions have already been subtracted from the final price you receive.</string>
+
+    <string name="quote_fare_start">Base fare (%1$s)</string>
+    <string name="quote_kilometers">Kilometers</string>
+    <string name="quote_minimum_trip">Minimum fare (%1$s)</string>
+    <string name="quote_extra_km">Extra kilometers</string>
+    <string name="quote_flat_airport">Airport flat rate (%1$s)</string>
+    <string name="quote_traffic_surcharge">Traffic surcharge</string>
+    <string name="quote_traffic_surcharge_base">Traffic surcharge (Base)</string>
+    <string name="quote_time_traffic_estimation">Time/traffic estimation</string>
+    <string name="quote_round_adjustment">Rounding adjustment</string>
+    <string name="quote_title_format">Taxi Trip Quote - %1$s</string>
+    <string name="selected_tariff">Selected tariff</string>
+    <string name="create_quote">Create quote</string>
+    <string name="back_to_settings">Back to settings</string>
+    <string name="add_rates_from_settings">Add tariffs and surcharges from Settings</string>
+    <string name="surcharges_and_packages">Surcharges and Packages</string>
+    <string name="billing_data_missing_toast">Please complete your billing details first</string>
+    <string name="quote_data_title">Quote Details</string>
+    <string name="quote_origin_label">Origin address *</string>
+    <string name="quote_destination_label">Destination address *</string>
+    <string name="choose_date_label">Choose Date *</string>
+    <string name="choose_time_label">Choose Time *</string>
+    <string name="fields_required_toast">Please fill in all fields</string>
+    <string name="no_quote_data_error">Error: No quote data found</string>
+    <string name="quote_generated_success">Quote generated</string>
+    <string name="pdf_generation_error_simple">Error generating PDF</string>
+    <string name="quote_datetime_format">%1$s at %2$s</string>
+    <string name="title_add_surcharge">Add Surcharge/Package</string>
+    <string name="title_edit_surcharge">Edit Surcharge/Package</string>
+    <string name="label_is_per_item">It is a package (multiple can be added)</string>
+    <string name="madrid_configured_msg">Madrid rates are already configured in the system. You can use the price calculator directly.\n\nTo add rates for another city, tap on \'Change city\'.</string>
+    <string name="tab_tariffs">Tariffs</string>
+    <string name="empty_surcharges_msg">No surcharges configured</string>
+    <string name="dialog_delete_surcharge_title">Delete surcharge/package</string>
+    <string name="dialog_delete_surcharge_msg">Are you sure you want to delete the surcharge/package %1$s?</string>
+    <string name="label_package_multiple">Package (Multiple can be added)</string>
+    <string name="label_surcharge_once">Surcharge (Only added once)</string>
+    <string name="label_fixed_price_short">Fixed: %1$s</string>
+    <string name="label_tariff_breakdown">Base: %1$s | Km: %2$s | Surcharge: %3$s</string>
+
+    <!-- New resources for Quote and Invoice PDFs -->
+    <string name="pdf_quote_header">SERVICE QUOTE</string>
+    <string name="pdf_quote_service_date">Service date: %1$s</string>
+    <string name="pdf_quote_origin">Origin: %1$s</string>
+    <string name="pdf_quote_destination">Destination: %1$s</string>
+    <string name="pdf_quote_driver_data">DRIVER DATA</string>
+    <string name="pdf_quote_nif">NIF/Tax ID: %1$s</string>
+    <string name="pdf_quote_license">License: %1$s</string>
+    <string name="pdf_quote_concept">Concept</string>
+    <string name="pdf_quote_quantity">Qty.</string>
+    <string name="pdf_quote_unit_price">Unit Price</string>
+    <string name="pdf_quote_total">Total</string>
+    <string name="pdf_quote_taxable_base">Taxable Base:</string>
+    <string name="pdf_quote_vat">VAT (10%):</string>
+    <string name="pdf_quote_total_budget">TOTAL BUDGET:</string>
+    <string name="pdf_quote_disclaimer">This document is an estimate and has no fiscal validity as an invoice.</string>
+    <string name="pdf_quote_share_subject">Taxi Quote</string>
+    <string name="pdf_quote_share_body">Here is the estimated quote for the taxi service.</string>
+    <string name="pdf_quote_share_title">Share Quote</string>
+    <string name="invoice_folder_name">Invoices</string>
+    <string name="invoice_file_prefix">Invoice</string>
+    <string name="pdf_quote_file_prefix">Taxi_Quote</string>
+    
+    <!-- Export ZIP folders -->
+    <string name="zip_expenses">expenses</string>
+    <string name="zip_fuel">fuel</string>
+    <string name="zip_other">other</string>
+    <string name="zip_rides">rides</string>
+
+    <!-- Report resources in text / PDF -->
+    <string name="report_gross_short">Gross</string>
+    <string name="report_commission_short">Commission</string>
+    <string name="report_net_short">Net</string>
+    <string name="report_weekly_summary">Weekly summary (%1$s)</string>
+    <string name="report_summary_range">Summary (%1$s)</string>
+    <string name="report_benefit">Benefit</string>
+    <string name="report_payment_methods_title">PAYMENT METHODS</string>
+    <string name="report_method_header">Method</string>
+    <string name="report_weekly_summary_title">WEEKLY SUMMARY</string>
+    <string name="report_expenses_by_type_title">EXPENSES BY TYPE</string>
+    <string name="report_type_header">Type</string>
+    <string name="report_weekly_chart_title">Weekly income chart</string>
+    <string name="report_filename_prefix_month">Taxi_Month</string>
+    <string name="report_filename_prefix_range">Taxi_Range</string>
+    <string name="tickets_filename_prefix_month">Taxi_Tickets_Month</string>
+    <string name="tickets_filename_prefix_range">Taxi_Tickets_Range</string>
+    <string name="report_filename_to">to</string>
+    <string name="vat_short">VAT</string>
+    <string name="report_range_short">Range</string>
+    <string name="report_week_short">Week</string>
 </resources>

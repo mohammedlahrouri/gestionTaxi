@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.moham.taxi.ui.navigation.AppNavigation
 import com.moham.taxi.ui.screens.SplashScreen
 import com.moham.taxi.ui.screens.SplashScreenPreloadData
+import androidx.compose.ui.platform.LocalContext
 import com.moham.taxi.ui.theme.GestionTaxiTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            Toast.makeText(this, "Permisos concedidos para exportar datos", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_permissions_granted), Toast.LENGTH_SHORT).show()
         } else {
             handlePermissionDenied(permissions)
         }
@@ -50,7 +51,11 @@ class MainActivity : ComponentActivity() {
         requestStoragePermissions()
         
         setContent {
-            GestionTaxiTheme {
+            val context = LocalContext.current
+            val application = context.applicationContext as GestionTaxiApplication
+            val appTheme by application.getAppTheme().collectAsState(initial = "blue")
+            
+            GestionTaxiTheme(appTheme = appTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -108,7 +113,7 @@ class MainActivity : ComponentActivity() {
             // Mostrar explicación antes de solicitar permisos
             Toast.makeText(
                 this, 
-                "La aplicación necesita permisos de almacenamiento para exportar datos. Por favor, concede los permisos.", 
+                getString(R.string.toast_permissions_rationale), 
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -121,11 +126,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun getRequiredPermissions(): List<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ usa permisos granulares de medios
-            listOf(
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
-            )
+            // Android 13+ (API 33+) no requiere permisos de almacenamiento para exportar o importar usando MediaStore y SAF
+            emptyList()
         } else {
             // Android 12 y anteriores
             listOf(
@@ -147,7 +149,7 @@ class MainActivity : ComponentActivity() {
         if (permanentlyDenied) {
             Toast.makeText(
                 this, 
-                "Los permisos fueron denegados permanentemente. Para habilitar la exportación de datos, ve a Configuración > Aplicaciones > Gestión Taxi > Permisos y activa los permisos de almacenamiento.", 
+                getString(R.string.toast_permissions_permanently_denied, getString(R.string.app_name)), 
                 Toast.LENGTH_LONG
             ).show()
             
@@ -156,7 +158,7 @@ class MainActivity : ComponentActivity() {
         } else {
             Toast.makeText(
                 this, 
-                "Se necesitan permisos de almacenamiento para exportar datos. La aplicación funcionará normalmente, pero no podrás exportar datos hasta conceder los permisos.", 
+                getString(R.string.toast_permissions_denied), 
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -172,7 +174,7 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, "No se pudo abrir la configuración", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_open_settings_error), Toast.LENGTH_SHORT).show()
         }
     }
 }

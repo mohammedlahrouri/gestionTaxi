@@ -7,10 +7,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.INTERNET" />
     
-    <!-- Permisos granulares para Android 13+ (API 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
 
     <application
         android:name=".GestionTaxiApplication"
@@ -36,7 +33,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="file" />
                 <data android:scheme="content" />
                 <data android:mimeType="application/octet-stream" />
