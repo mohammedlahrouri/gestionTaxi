@@ -577,6 +577,8 @@
     <string name="settings_tips_desc">Afficher les pourboires dans l’application</string>
     <string name="settings_old_version_title">Ancienne version</string>
     <string name="settings_old_version_desc">Active le design classique avec l\'en-tête \"Gestion Taxi\" (icône de voiture) et la carte calendrier hebdomadaire sur l\'écran d\'accueil</string>
+    <string name="settings_modern_theme_title">Design moderne</string>
+    <string name="settings_modern_theme_desc">Fait disparaître les cartes de l\'écran d\'accueil en conservant les distances pour un design plus minimaliste</string>
     <string name="home_summary_title">Résumé</string>
     <string name="balance_of_the_day">Bilan du jour</string>
     <string name="recent_activity">Activité récente</string>

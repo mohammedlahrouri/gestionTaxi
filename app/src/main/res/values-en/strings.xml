@@ -586,6 +586,8 @@
     <string name="settings_tips_desc">Show tips in the app</string>
     <string name="settings_old_version_title">Classic Layout</string>
     <string name="settings_old_version_desc">Enable classic design with the \"Gestion Taxi\" title/car icon header and the weekly calendar card on the home screen</string>
+    <string name="settings_modern_theme_title">Modern theme</string>
+    <string name="settings_modern_theme_desc">Makes cards disappear from the home screen while keeping layout distances for a more minimalist design</string>
     <string name="home_summary_title">Summary</string>
     <string name="balance_of_the_day">Day\'s Balance</string>
     <string name="recent_activity">Recent Activity</string>

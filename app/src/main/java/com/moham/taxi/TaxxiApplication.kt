@@ -116,6 +116,7 @@ class GestionTaxiApplication : Application() {
         val TICKET_PHOTOS_ENABLED_KEY = booleanPreferencesKey("ticket_photos_enabled")
         val PRIVACY_POLICY_ACCEPTED_KEY = booleanPreferencesKey("privacy_policy_accepted")
         val OLD_VERSION_ENABLED_KEY = booleanPreferencesKey("old_version_enabled")
+        val MODERN_THEME_ENABLED_KEY = booleanPreferencesKey("modern_theme_enabled")
     }
     
     // Método para guardar si el reto diario está habilitado
@@ -177,6 +178,18 @@ class GestionTaxiApplication : Application() {
     fun isOldVersionEnabled(): Flow<Boolean> {
         return dataStore.data.map { preferences ->
             preferences[OLD_VERSION_ENABLED_KEY] ?: false
+        }
+    }
+
+    suspend fun saveModernThemeEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[MODERN_THEME_ENABLED_KEY] = enabled
+        }
+    }
+
+    fun isModernThemeEnabled(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[MODERN_THEME_ENABLED_KEY] ?: false
         }
     }
 

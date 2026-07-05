@@ -224,6 +224,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     val dailyChallengeEnabled by application.isDailyChallengeEnabled().collectAsState(initial = false)
     val oldVersionEnabled by application.isOldVersionEnabled().collectAsState(initial = false)
+    val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
     
     // ViewModels
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
@@ -610,6 +611,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .statusBarsPadding()
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp)
                     .zIndex(99f)
             ) {
@@ -792,10 +794,10 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             // Daily Challenge
             if (dailyChallengeEnabled) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(
@@ -928,7 +930,9 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             if (!oldVersionEnabled) {
                 TodaySummaryCard(
                     income = formatCurrency(dateIncome),
-                    expenses = formatCurrency(dateExpenses)
+                    expenses = formatCurrency(dateExpenses),
+                    modernThemeEnabled = modernThemeEnabled,
+                    showIcon = oldVersionEnabled
                 )
             }
 
@@ -960,7 +964,9 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             expenses = formatCurrency(monthExpenses)
                         )
                     )
-                }
+                },
+                modernThemeEnabled = modernThemeEnabled,
+                showIcon = oldVersionEnabled
             )
             
             RecentActivityCard(
@@ -972,7 +978,9 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         AppScreens.ExpenseDetail.createRouteWithId(item.id)
                     }
                     navController.navigate(route)
-                }
+                },
+                modernThemeEnabled = modernThemeEnabled,
+                showIcon = oldVersionEnabled
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -1026,7 +1034,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                             indication = null
                         ) {
                             // Prevenir que los clics dentro de la tarjeta cierren el overlay
-                        }
+                        },
+                        forceCardBackground = true
                     )
                 }
             }
@@ -1113,38 +1122,35 @@ data class ResumenRow(
 
 @Composable
 fun ResumenCard(
-    items: List<ResumenRow>
+    items: List<ResumenRow>,
+    modernThemeEnabled: Boolean = false,
+    showIcon: Boolean = true
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Balance,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
+                if (showIcon) {
+                    Icon(
+                        imageVector = Icons.Filled.Balance,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
                 Text(
                     text = stringResource(R.string.home_summary_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = Icons.Filled.SyncAlt,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.75f),
-                    modifier = Modifier.size(18.dp)
                 )
             }
 
@@ -1326,13 +1332,14 @@ fun SummaryCard(
     title: String,
     icon: ImageVector,
     iconColor: Color,
-    items: List<Triple<String, String, String>>
+    items: List<Triple<String, String, String>>,
+    modernThemeEnabled: Boolean = false
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -1526,14 +1533,17 @@ fun DateSelectorCard(
     taxiRideViewModel: TaxiRideViewModel,
     application: GestionTaxiApplication,
     normalizeDate: (Date) -> Date,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    forceCardBackground: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
+    val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
+    val useTransparent = modernThemeEnabled && !forceCardBackground
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = if (useTransparent) Color.Transparent else DarkCard),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        border = if (useTransparent) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header Day/Date
@@ -1685,13 +1695,15 @@ fun DateSelectorCard(
 fun TodaySummaryCard(
     income: String,
     expenses: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    modernThemeEnabled: Boolean = false,
+    showIcon: Boolean = true
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
         shape = RoundedCornerShape(20.dp),
         modifier = modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             // Header: Balance del día
@@ -1699,21 +1711,23 @@ fun TodaySummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PrimaryBlue.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Balance,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(16.dp)
-                    )
+                if (showIcon) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(PrimaryBlue.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Balance,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                 }
-                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.balance_of_the_day),
                     fontSize = 16.sp,
@@ -1780,13 +1794,15 @@ data class ActivityItem(
 fun RecentActivityCard(
     activities: List<ActivityItem>,
     onActivityClick: (ActivityItem) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    modernThemeEnabled: Boolean = false,
+    showIcon: Boolean = true
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
         shape = RoundedCornerShape(20.dp),
         modifier = modifier.fillMaxWidth(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             // Header
@@ -1794,21 +1810,23 @@ fun RecentActivityCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(PrimaryBlue.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.History,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(18.dp)
-                    )
+                if (showIcon) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PrimaryBlue.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.History,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                 }
-                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = stringResource(R.string.recent_activity),
                     fontSize = 18.sp,

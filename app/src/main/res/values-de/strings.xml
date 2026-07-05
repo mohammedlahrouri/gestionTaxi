@@ -568,6 +568,8 @@
     <string name="settings_tips_desc">Trinkgeld in der App anzeigen</string>
     <string name="settings_old_version_title">Klassisches Layout</string>
     <string name="settings_old_version_desc">Aktiviert das klassische Design mit dem Kopfzeilentitel \"Gestion Taxi\" (Auto-Symbol) und der wöchentlichen Kalenderkarte auf dem Startbildschirm</string>
+    <string name="settings_modern_theme_title">Modernes Layout</string>
+    <string name="settings_modern_theme_desc">Blendet die Karten auf dem Startbildschirm aus, behält aber die Abstände für ein minimalistischeres Design bei</string>
     <string name="home_summary_title">Übersicht</string>
     <string name="balance_of_the_day">Tagesbilanz</string>
     <string name="recent_activity">Letzte Aktivitäten</string>

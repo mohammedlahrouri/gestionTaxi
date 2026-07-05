@@ -596,6 +596,8 @@
     <string name="settings_tips_desc">Mostrar propinas en la app</string>
     <string name="settings_old_version_title">Diseño antiguo</string>
     <string name="settings_old_version_desc">Habilita el diseño clásico con el título \"Gestión Taxi\" e icono de coche en el encabezado y la tarjeta del calendario semanal en la pantalla principal</string>
+    <string name="settings_modern_theme_title">Diseño moderno</string>
+    <string name="settings_modern_theme_desc">Hace que las tarjetas desaparezcan de la pantalla de inicio manteniendo las distancias para un diseño más minimalista</string>
     <string name="home_summary_title">Resumen</string>
     <string name="balance_of_the_day">Balance del día</string>
     <string name="recent_activity">Actividad reciente</string>

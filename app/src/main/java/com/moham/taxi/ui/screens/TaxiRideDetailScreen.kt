@@ -93,7 +93,11 @@ fun TaxiRideDetailScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.rides_title), color = Color.White) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        if (navController.currentDestination?.route?.startsWith(AppScreens.TaxiRideDetail.route) == true) {
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_content_description), tint = Color.White)
                     }
                 },

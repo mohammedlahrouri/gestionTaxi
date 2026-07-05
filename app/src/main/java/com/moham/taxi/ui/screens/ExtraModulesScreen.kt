@@ -30,6 +30,7 @@ fun ExtraModulesScreen(navController: NavController) {
     val tipsEnabled by application.isTipsEnabled().collectAsState(initial = false)
     val ticketPhotosEnabled by application.isTicketPhotosEnabled().collectAsState(initial = false)
     val oldVersionEnabled by application.isOldVersionEnabled().collectAsState(initial = false)
+    val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
     
     var showPrivacyDialog by remember { mutableStateOf(false) }
 
@@ -180,6 +181,32 @@ fun ExtraModulesScreen(navController: NavController) {
                         checked = oldVersionEnabled,
                         onCheckedChange = { isChecked ->
                             scope.launch { application.saveOldVersionEnabled(isChecked) }
+                        }
+                    )
+                }
+            }
+
+            // Diseño Moderno
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = stringResource(R.string.settings_modern_theme_title), fontWeight = FontWeight.Medium)
+                        Text(
+                            text = stringResource(R.string.settings_modern_theme_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = modernThemeEnabled,
+                        onCheckedChange = { isChecked ->
+                            scope.launch { application.saveModernThemeEnabled(isChecked) }
                         }
                     )
                 }
