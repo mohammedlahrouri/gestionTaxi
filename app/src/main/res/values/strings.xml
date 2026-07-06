@@ -70,6 +70,7 @@
     <string name="platform_direct">Directo</string>
     <string name="platform_empty_msg">No tienes configuradas más plataformas (Radio taxi, Imbric, FreeNow). Añádelas en Ajustes > Plataformas.</string>
     <string name="label_payment_method">Método de Pago</string>
+    <string name="paid_via">Pagado mediante: %1$s</string>
     <string name="payment_cash">Efectivo</string>
     <string name="payment_card">Tarjeta</string>
     <string name="payment_via_app">Via App</string>

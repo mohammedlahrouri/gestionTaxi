@@ -72,21 +72,6 @@ fun OtherScreen(navController: NavController) {
     }
     
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        stringResource(R.string.title_other_options),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NewStatsBackground,
-                    titleContentColor = NewStatsTextPrimary
-                )
-            )
-        },
         bottomBar = {
             BottomNavBar(
                 selectedItem = 3,
@@ -103,7 +88,7 @@ fun OtherScreen(navController: NavController) {
                 }
             )
         },
-        containerColor = NewStatsBackground
+        containerColor = Color.Black
     ) { paddingValues ->
         if (showCommunityDialog) {
             AlertDialog(
@@ -131,72 +116,67 @@ fun OtherScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-             // Header Text
-            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Text(
-                    text = stringResource(R.string.label_select_option),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = NewStatsTextSecondary
-                )
-            }
-            
             // Opción de Ajustes
-            NewOptionCard(
+            NewOptionRow(
                 title = stringResource(R.string.settings_title),
-                description = stringResource(R.string.settings_general_title),
                 icon = Icons.Filled.Settings,
                 gradientStart = NewStatsOtherIcon,
                 gradientEnd = NewStatsAppIcon,
                 onClick = { navController.navigate(AppScreens.Settings.route) }
             )
 
-            NewOptionCard(
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+
+            NewOptionRow(
                 title = stringResource(R.string.settings_export_data_card_title),
-                description = stringResource(R.string.settings_export_data_card_desc),
                 icon = Icons.Filled.Download,
                 gradientStart = NewStatsOtherIcon,
                 gradientEnd = NewStatsAppIcon,
                 onClick = { navController.navigate(AppScreens.Export.route) }
             )
             
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+            
             // Opción de Precios
-            NewOptionCard(
+            NewOptionRow(
                 title = stringResource(R.string.option_prices),
-                description = stringResource(R.string.desc_prices),
                 icon = Icons.Filled.Calculate,
                 gradientStart = PriceGradientStart,
                 gradientEnd = PriceGradientEnd,
                 onClick = { navController.navigate(AppScreens.Price.route) }
             )
             
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+            
             // Opción de Facturas
-            NewOptionCard(
+            NewOptionRow(
                 title = stringResource(R.string.option_invoices),
-                description = stringResource(R.string.desc_invoices),
                 icon = Icons.Filled.Description,
                 gradientStart = InvoiceGradientStart,
                 gradientEnd = InvoiceGradientEnd,
                 onClick = { navController.navigate(AppScreens.Invoice.route) }
             )
 
-            NewOptionCard(
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+
+            NewOptionRow(
                 title = stringResource(R.string.option_maintenance),
-                description = "",
                 icon = Icons.Filled.Build,
                 gradientStart = NewStatsOtherIcon,
                 gradientEnd = NewStatsAppIcon,
                 onClick = { navController.navigate(AppScreens.Maintenance.route) }
             )
 
-            NewOptionCard(
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+
+            NewOptionRow(
                 title = stringResource(R.string.option_whatsapp),
-                description = stringResource(R.string.desc_whatsapp),
                 icon = Icons.Filled.Lightbulb,
                 gradientStart = NewStatsAppIcon,
                 gradientEnd = NewStatsOtherIcon,
@@ -209,9 +189,10 @@ fun OtherScreen(navController: NavController) {
                 }
             )
 
-            NewOptionCard(
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+
+            NewOptionRow(
                 title = stringResource(R.string.option_community),
-                description = if (isSpain) stringResource(R.string.desc_community) else stringResource(R.string.region_not_available),
                 icon = Icons.Filled.People,
                 gradientStart = PriceGradientStart,
                 gradientEnd = PriceGradientEnd,
@@ -222,9 +203,10 @@ fun OtherScreen(navController: NavController) {
                 }
             )
 
-            NewOptionCard(
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), thickness = 0.5.dp)
+
+            NewOptionRow(
                 title = stringResource(R.string.option_donations),
-                description = stringResource(R.string.desc_donations),
                 icon = Icons.Filled.Favorite,
                 gradientStart = InvoiceGradientStart,
                 gradientEnd = InvoiceGradientEnd,
@@ -235,79 +217,57 @@ fun OtherScreen(navController: NavController) {
 }
 
 @Composable
-fun NewOptionCard(
+fun NewOptionRow(
     title: String,
-    description: String,
     icon: ImageVector,
     gradientStart: Color,
     gradientEnd: Color,
     onClick: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = NewStatsCardBackground
-        ),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, NewStatsBorder)
+            .clickable { onClick() }
+            .padding(vertical = 16.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
+        // Icono con fondo degradado
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Icono con fondo degradado
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = gradientStart.copy(alpha = 0.5f))
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(gradientStart, gradientEnd)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            // Texto
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = NewStatsTextPrimary
-                )
-                if (description.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NewStatsTextSecondary
+                .size(48.dp)
+                .shadow(8.dp, RoundedCornerShape(12.dp), spotColor = gradientStart.copy(alpha = 0.5f))
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(gradientStart, gradientEnd)
                     )
-                }
-            }
-            
-            // Chevron
+                ),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward, // ChevronRight alternative
-                contentDescription = null,
-                tint = NewStatsTextSecondary,
-                modifier = Modifier.size(20.dp)
+                imageVector = icon,
+                contentDescription = title,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
+        
+        // Texto
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            modifier = Modifier.weight(1f)
+        )
+        
+        // Chevron
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

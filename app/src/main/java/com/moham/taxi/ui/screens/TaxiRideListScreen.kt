@@ -1,27 +1,17 @@
 package com.moham.taxi.ui.screens
 
-import androidx.compose.ui.res.stringResource
-
-
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
@@ -47,13 +37,11 @@ import com.moham.taxi.R
 import com.moham.taxi.data.model.Expense
 import com.moham.taxi.data.model.ExpenseType
 import com.moham.taxi.data.model.TaxiRide
-import com.moham.taxi.ui.components.DateFloatingActionButton
-import com.moham.taxi.ui.components.AutoSizeText
-import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.components.TicketPhotoThumbnail
 import com.moham.taxi.ui.components.TicketPhotoDialog
+import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
-import com.moham.taxi.ui.theme.*
+import com.moham.taxi.ui.theme.AccentRed
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import com.moham.taxi.utils.DateUtils
@@ -87,9 +75,19 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
     var rideToDelete by remember { mutableStateOf<TaxiRide?>(null) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
     
-    val useDate = remember(selectedDate) {
+    // Sync with DataStore selected date flow
+    val initialDate = remember(selectedDate) {
         if (selectedDate > 0) Date(selectedDate) else Date()
     }
+    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = initialDate)
+    
+    LaunchedEffect(selectedDate) {
+        if (selectedDate > 0) {
+            application.saveSelectedDate(Date(selectedDate))
+        }
+    }
+    
+    val useDate = selectedDateFromStore
     val isToday = remember(useDate) {
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply { time = useDate }
@@ -99,23 +97,89 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
     }
     
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val dayOfWeekFormat = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
     val formattedDate = remember(useDate) { dateFormat.format(useDate) }
+    val dayOfWeek = remember(useDate) { 
+        dayOfWeekFormat.format(useDate).replaceFirstChar { 
+            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+        } 
+    }
     
-    val selectedDateRides by taxiRideViewModel.getSelectedDateRides(useDate).collectAsState(initial = emptyList())
-    val todayRides by taxiRideViewModel.todayRides.collectAsState(initial = emptyList())
-    val ridesToShow = if (selectedDate > 0 && !isToday) selectedDateRides else todayRides
+    val headerDateText = remember(useDate, isToday, dayOfWeek) {
+        val locale = Locale.getDefault()
+        val pattern = when (locale.language) {
+            "es" -> "d 'de' MMMM"
+            "fr" -> "d MMMM"
+            "de" -> "d. MMMM"
+            else -> "MMMM d"
+        }
+        val detailFormatter = SimpleDateFormat(pattern, locale)
+        val formattedDetail = detailFormatter.format(useDate)
+        
+        val prefix = if (isToday) {
+            when (locale.language) {
+                "es" -> "Hoy"
+                "fr" -> "Aujourd'hui"
+                "de" -> "Heute"
+                else -> "Today"
+            }
+        } else {
+            dayOfWeek
+        }
+        "$prefix, $formattedDetail"
+    }
     
-    val selectedDateExpenses by expenseViewModel.getSelectedDateExpenses(useDate).collectAsState(initial = emptyList())
-    val todayExpenses by expenseViewModel.todayExpenses.collectAsState(initial = emptyList())
-    val expensesToShow = if (selectedDate > 0 && !isToday) selectedDateExpenses else todayExpenses
+    val ridesToShow by taxiRideViewModel.getSelectedDateRides(useDate).collectAsState(initial = emptyList())
+    val expensesToShow by expenseViewModel.getSelectedDateExpenses(useDate).collectAsState(initial = emptyList())
     
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDatePicker by remember { mutableStateOf(false) }
+    
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(useDate)
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                            scope.launch {
+                                application.saveSelectedDate(newDate)
+                            }
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = Color(0xFF3B9C5C),
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = Color(0xFF3B9C5C),
+                    todayContentColor = Color(0xFF3B9C5C)
+                )
+            )
+        }
+    }
     
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = Color(0xFF121212),
         bottomBar = {
-            BottomNavBar(
+            BottomBar(
                 selectedItem = 1,
                 onItemSelected = { index ->
                     when (index) {
@@ -130,18 +194,6 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                 }
             )
         },
-        floatingActionButton = {
-            DateFloatingActionButton(
-                currentDate = useDate,
-                onDateSelected = { newDate ->
-                    val route = AppScreens.TaxiRideList.createRouteWithDate(newDate.time)
-                    navController.navigate(route) {
-                        popUpTo(AppScreens.TaxiRideList.route) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
@@ -149,83 +201,43 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Header
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.rides_title),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = stringResource(R.string.showing_data_for, formattedDate),
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
-            }
-            
-            // Custom Segmented Tabs
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.05f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(4.dp)
-            ) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    val tabs = listOf(
-                        stringResource(R.string.rides_title),
-                        stringResource(R.string.expenses)
-                    )
-                    tabs.forEachIndexed { index, title ->
-                        val isSelected = selectedTabIndex == index
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) PrimaryBlue else Color.Transparent)
-                                .clickable { selectedTabIndex = index }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = title,
-                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
-            }
-            
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Content
-            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            // Clickable Date Selector in Header
+            DateSelector(
+                dateText = headerDateText,
+                onClick = { showDatePicker = true },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Segmented Tabs (Rides / Expenses)
+            SegmentedTabs(
+                selectedTabIndex = selectedTabIndex,
+                onTabSelected = { selectedTabIndex = it },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Content List
+            Box(modifier = Modifier.fillMaxSize()) {
                 if (selectedTabIndex == 0) {
-                    // Carreras List
                     if (ridesToShow.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                stringResource(R.string.no_rides_registered),
-                                color = Color.White.copy(alpha = 0.5f)
+                                text = stringResource(R.string.no_rides_registered),
+                                color = Color(0xFF9AA0A6)
                             )
                         }
                     } else {
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
-                            items(ridesToShow) { ride ->
-                                TaxiRideItem(
+                            itemsIndexed(ridesToShow) { index, ride ->
+                                RideListItem(
                                     ride = ride,
                                     onEdit = {
                                         val timestamp = ride.date.time
@@ -241,25 +253,30 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                                         showDeleteConfirmDialog = true
                                     }
                                 )
+                                if (index < ridesToShow.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.08f),
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 } else {
-                    // Gastos List
                     if (expensesToShow.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                stringResource(R.string.no_expenses_registered),
-                                color = Color.White.copy(alpha = 0.5f)
+                                text = stringResource(R.string.no_expenses_registered),
+                                color = Color(0xFF9AA0A6)
                             )
                         }
                     } else {
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
-                            items(expensesToShow) { expense ->
-                                ExpenseItem(
+                            itemsIndexed(expensesToShow) { index, expense ->
+                                ExpenseListItem(
                                     expense = expense,
                                     onEdit = {
                                         val timestamp = expense.date.time
@@ -275,6 +292,12 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                                         showDeleteConfirmDialog = true
                                     }
                                 )
+                                if (index < expensesToShow.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.08f),
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -283,14 +306,13 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
         }
     }
     
-    // Delete Dialogs (Logic unchanged, UI style tweaked for consistency)
     if (showDeleteConfirmDialog) {
         if (rideToDelete != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmDialog = false; rideToDelete = null },
-                containerColor = DarkCard,
-                title = { Text(stringResource(R.string.delete_ride_title), color = Color.White) },
-                text = { Text(stringResource(R.string.delete_ride_confirm), color = Color.White.copy(0.8f)) },
+                containerColor = Color(0xFF2C2F33),
+                title = { Text(stringResource(R.string.delete_ride_title), color = Color(0xFFF5F5F5)) },
+                text = { Text(stringResource(R.string.delete_ride_confirm), color = Color(0xFFF5F5F5).copy(alpha = 0.8f)) },
                 confirmButton = {
                     TextButton(onClick = {
                          val item = rideToDelete
@@ -304,7 +326,7 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirmDialog = false; rideToDelete = null }) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
+                        Text(stringResource(R.string.cancel), color = Color(0xFFF5F5F5))
                     }
                 }
             )
@@ -312,9 +334,9 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
         if (expenseToDelete != null) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmDialog = false; expenseToDelete = null },
-                containerColor = DarkCard,
-                title = { Text(stringResource(R.string.delete_expense_title), color = Color.White) },
-                text = { Text(stringResource(R.string.delete_expense_confirm), color = Color.White.copy(0.8f)) },
+                containerColor = Color(0xFF2C2F33),
+                title = { Text(stringResource(R.string.delete_expense_title), color = Color(0xFFF5F5F5)) },
+                text = { Text(stringResource(R.string.delete_expense_confirm), color = Color(0xFFF5F5F5).copy(alpha = 0.8f)) },
                 confirmButton = {
                     TextButton(onClick = {
                          val item = expenseToDelete
@@ -328,7 +350,7 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirmDialog = false; expenseToDelete = null }) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
+                        Text(stringResource(R.string.cancel), color = Color(0xFFF5F5F5))
                     }
                 }
             )
@@ -337,7 +359,80 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
 }
 
 @Composable
-fun TaxiRideItem(
+fun DateSelector(
+    dateText: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = dateText,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowDown,
+            contentDescription = stringResource(R.string.action_change_date),
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+fun SegmentedTabs(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0xFF2C2F33),
+                shape = RoundedCornerShape(50)
+            )
+            .padding(4.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val tabs = listOf(
+                stringResource(R.string.rides_title),
+                stringResource(R.string.expenses)
+            )
+            tabs.forEachIndexed { index, title ->
+                val isSelected = selectedTabIndex == index
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(50))
+                        .background(if (isSelected) Color(0xFF3B9C5C) else Color.Transparent)
+                        .clickable { onTabSelected(index) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title,
+                        color = if (isSelected) Color(0xFFF5F5F5) else Color(0xFF9AA0A6),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RideListItem(
     ride: TaxiRide,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -353,44 +448,65 @@ fun TaxiRideItem(
         )
     }
     
-    Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        modifier = Modifier.fillMaxWidth().clickable { onItemClick() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onItemClick() }
+            .padding(vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row
+        // Fila superior: Hora a la izquierda, importe en verde vivo `#4CD07D`, 24sp bold a la derecha + MoreVert
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = ride.rideTime.ifBlank { "00:00" },
+                fontSize = 16.sp,
+                color = Color(0xFFF5F5F5)
+            )
+            
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val hasCommission = ride.netPrice != null && ride.netPrice != ride.price
+                if (hasCommission) {
                     Text(
-                        DateUtils.formatDate(ride.date, "dd/MM/yyyy"),
+                        text = formatCurrency(ride.price),
                         fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.6f)
+                        color = Color(0xFF9AA0A6),
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                     )
-                    if (ride.rideTime.isNotBlank()) {
-                        Text(
-                            ride.rideTime,
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.6f)
-                        )
-                    }
+                    Text(
+                        text = formatCurrency(ride.netPrice!!),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CD07D),
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                } else {
+                    Text(
+                        text = formatCurrency(ride.price),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CD07D),
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
                 }
                 
-                // Menú
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            Icons.Filled.MoreVert,
+                            imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.options),
-                            tint = Color.White.copy(0.6f)
+                            tint = Color(0xFF9AA0A6)
                         )
                     }
                     DropdownMenu(
@@ -400,182 +516,177 @@ fun TaxiRideItem(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.edit)) },
                             onClick = { showMenu = false; onEdit() },
-                            leadingIcon = { Icon(Icons.Filled.Edit, null) }
+                            leadingIcon = { Icon(Icons.Default.Edit, null) }
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.delete)) },
                             onClick = { showMenu = false; onDelete() },
-                            leadingIcon = { Icon(Icons.Filled.Delete, null) }
+                            leadingIcon = { Icon(Icons.Default.Delete, null) }
                         )
                     }
                 }
             }
-            
-            // Central: Origin and Destination
-            val originText = ride.origin.ifBlank { stringResource(R.string.no_origin) }
-            val destinationText = ride.destination.ifBlank { stringResource(R.string.no_destination) }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.LocationOn,
-                        contentDescription = null,
-                        tint = PrimaryBlue.copy(alpha = 0.8f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = originText,
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.9f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.Flag,
-                        contentDescription = null,
-                        tint = AccentRed.copy(alpha = 0.8f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = destinationText,
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.9f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+        }
+        
+        // Ruta condicional: solo si hay origen y destino
+        if (ride.origin.isNotBlank() && ride.destination.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = Color(0xFF3B9C5C),
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "${ride.origin} → ${ride.destination}",
+                    fontSize = 14.sp,
+                    color = Color(0xFF9AA0A6),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-
+        }
+        
+        Spacer(modifier = Modifier.height(10.dp))
+        
+        // Fila inferior de Chips y miniatura de foto
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Chips en FlowRow
+            val isDirect = ride.servicePlatform.isNullOrBlank() || ride.servicePlatform.equals("directo", ignoreCase = true)
+            val platformText = if (isDirect) "DIRECTO" else ride.servicePlatform!!.uppercase()
+            val platformBg = if (isDirect) Color(0xFF3B9C5C).copy(alpha = 0.15f) else Color(0xFF8B5CF6).copy(alpha = 0.15f)
+            val platformTextColor = if (isDirect) Color(0xFF3B9C5C) else Color(0xFF8B5CF6)
+            
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Chip(
+                    label = platformText,
+                    backgroundColor = platformBg,
+                    textColor = platformTextColor
+                )
+                
+                val paymentIcon = when (ride.paymentMethod.lowercase()) {
+                    "efectivo" -> Icons.Filled.Payments
+                    "tarjeta" -> Icons.Filled.CreditCard
+                    else -> Icons.Filled.Smartphone
+                }
+                Chip(
+                    label = ride.paymentMethod,
+                    icon = paymentIcon
+                )
+                
+                val isTaximeter = ride.serviceType == TaxiRide.SERVICE_TYPE_METER || ride.serviceType == "METER" || ride.tariffId != null
+                val tariffLabel = if (isTaximeter) "Taxímetro" else "Cerrado"
+                Chip(
+                    label = tariffLabel
+                )
+            }
+            
             if (ride.ticketPhotoPath != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 TicketPhotoThumbnail(
                     photoPath = ride.ticketPhotoPath,
+                    modifier = Modifier.size(36.dp),
                     onClick = { showPhotoDialog = true }
                 )
-                Spacer(modifier = Modifier.height(12.dp))
             }
-
-            // Fila Inferior: Badges y Precio
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Badges a la izquierda
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                stringResource(R.string.ride_type_taxi),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White.copy(alpha = 0.8f)
-                            )
-                        }
-                        ride.servicePlatform?.let { platform ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF8B5CF6).copy(alpha = 0.1f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    platform.uppercase(),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF8B5CF6)
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Payment Method Chip
-                    val (bgColor, textColor, icon) = when (ride.paymentMethod.lowercase()) {
-                        "efectivo" -> Triple(PrimaryBlue.copy(alpha = 0.1f), PrimaryBlue, Icons.Filled.AttachMoney)
-                        "tarjeta" -> Triple(Color(0xFF0EA5E9).copy(alpha = 0.1f), Color(0xFF0EA5E9), Icons.Filled.CreditCard)
-                        else -> Triple(Color(0xFF8B5CF6).copy(alpha = 0.1f), Color(0xFF8B5CF6), Icons.Filled.Smartphone)
-                    }
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(bgColor)
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(12.dp))
-                        Text(ride.paymentMethod, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = textColor)
-                    }
-                }
-                
-                // Precio a la derecha
-                val hasCommission = ride.netPrice != null && ride.netPrice != ride.price
-                if (hasCommission) {
-                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(max = 120.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = stringResource(R.string.label_gross),
-                                fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.5f)
-                            )
-                            Text(
-                                text = formatCurrency(ride.price),
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.5f),
-                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = stringResource(R.string.label_net),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF10B981) // Verde esmeralda para el neto
-                            )
-                            AutoSizeText(
-                                text = formatCurrency(ride.netPrice!!),
-                                modifier = Modifier.weight(1f, fill = false),
-                                maxFontSize = 18.sp,
-                                minFontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF10B981),
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.End
-                            )
-                        }
-                    }
-                } else {
-                    AutoSizeText(
-                        text = formatCurrency(ride.price),
-                        modifier = Modifier.widthIn(max = 100.dp),
-                        maxFontSize = 18.sp,
-                        minFontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End
-                    )
-                }
-            }
+        }
+        
+        // Propina condicional
+        if (ride.tip != null && ride.tip > 0) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Propina: +${formatCurrency(ride.tip)}",
+                fontSize = 12.sp,
+                color = Color(0xFF4CD07D).copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
         }
     }
 }
 
 @Composable
+fun Chip(
+    label: String,
+    icon: ImageVector? = null,
+    backgroundColor: Color = Color.White.copy(alpha = 0.08f),
+    textColor: Color = Color(0xFFF5F5F5),
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(backgroundColor)
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(12.dp)
+            )
+        }
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = textColor
+        )
+    }
+}
+
+@Composable
+fun TaxiRideItem(
+    ride: TaxiRide,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onItemClick: () -> Unit
+) {
+    RideListItem(
+        ride = ride,
+        onEdit = onEdit,
+        onDelete = onDelete,
+        onItemClick = onItemClick
+    )
+}
+
+@Composable
 fun ExpenseItem(
+    expense: Expense,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onItemClick: () -> Unit
+) {
+    ExpenseListItem(
+        expense = expense,
+        onEdit = onEdit,
+        onDelete = onDelete,
+        onItemClick = onItemClick
+    )
+}
+
+@Composable
+fun ExpenseListItem(
     expense: Expense,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -591,110 +702,125 @@ fun ExpenseItem(
         )
     }
     
-    Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        modifier = Modifier.fillMaxWidth().clickable { onItemClick() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onItemClick() }
+            .padding(vertical = 12.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header
-             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = DateUtils.formatDate(expense.date, "HH:mm").ifBlank { "00:00" },
+                fontSize = 16.sp,
+                color = Color(0xFFF5F5F5)
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        DateUtils.formatDate(expense.date, "dd/MM/yyyy"),
-                        fontSize = 14.sp,
-                        color = Color.White.copy(alpha = 0.6f)
-                    )
-                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = 0.1f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                Text(
+                    text = formatCurrency(expense.amount),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentRed,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+                
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(24.dp)
                     ) {
-                        Text(
-                            if (expense.type == ExpenseType.FUEL) stringResource(R.string.short_fuel) else stringResource(R.string.short_other), 
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.8f)
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.options),
+                            tint = Color(0xFF9AA0A6)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.edit)) },
+                            onClick = { showMenu = false; onEdit() },
+                            leadingIcon = { Icon(Icons.Default.Edit, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete)) },
+                            onClick = { showMenu = false; onDelete() },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) }
                         )
                     }
                 }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        formatCurrency(expense.amount),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentRed,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
-                    
-                     Box {
-                        IconButton(
-                            onClick = { showMenu = true },
-                            modifier = Modifier.size(24.dp).offset(x = 8.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = stringResource(R.string.options),
-                                tint = Color.White.copy(0.6f)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.edit)) },
-                                onClick = { showMenu = false; onEdit() },
-                                leadingIcon = { Icon(Icons.Filled.Edit, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.delete)) },
-                                onClick = { showMenu = false; onDelete() },
-                                leadingIcon = { Icon(Icons.Filled.Delete, null) }
-                            )
-                        }
-                    }
-                }
             }
-            
-            // Type/Description Badge
-             val (bgColor, textColor, icon) = when (expense.type) {
-                ExpenseType.FUEL -> Triple(Color(0xFFEF4444).copy(alpha = 0.1f), Color(0xFFEF4444), Icons.Filled.LocalGasStation)
-                else -> Triple(Color(0xFFF59E0B).copy(alpha = 0.1f), Color(0xFFF59E0B), Icons.Filled.Payments)
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val (bgColor, textColor, icon) = when (expense.type) {
+                ExpenseType.FUEL -> Triple(Color(0xFFEF4444).copy(alpha = 0.15f), Color(0xFFEF4444), Icons.Filled.LocalGasStation)
+                else -> Triple(Color(0xFFF59E0B).copy(alpha = 0.15f), Color(0xFFF59E0B), Icons.Filled.Payments)
             }
             
             Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(bgColor)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(14.dp))
-                Text(if (expense.type == ExpenseType.FUEL) stringResource(R.string.label_fuel) else stringResource(R.string.label_misc), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor)
-            }
-            
-            if (expense.type == ExpenseType.OTHER && !expense.description.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                     // Using a description icon or similar
-                     Text(expense.description, fontSize = 12.sp, color = Color.White.copy(0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Chip(
+                    label = if (expense.type == ExpenseType.FUEL) stringResource(R.string.label_fuel) else stringResource(R.string.label_misc),
+                    icon = icon,
+                    backgroundColor = bgColor,
+                    textColor = textColor
+                )
+                
+                if (expense.type == ExpenseType.OTHER && !expense.description.isNullOrBlank()) {
+                    Text(
+                        text = expense.description,
+                        fontSize = 12.sp,
+                        color = Color(0xFF9AA0A6),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
-
+            
             if (expense.ticketPhotoPath != null) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 TicketPhotoThumbnail(
                     photoPath = expense.ticketPhotoPath,
+                    modifier = Modifier.size(36.dp),
                     onClick = { showPhotoDialog = true }
                 )
             }
         }
     }
+}
+
+@Composable
+fun BottomBar(
+    selectedItem: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BottomNavBar(
+        selectedItem = selectedItem,
+        onItemSelected = onItemSelected,
+        modifier = modifier
+    )
 }

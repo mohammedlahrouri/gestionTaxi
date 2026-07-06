@@ -31,7 +31,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun TicketPhotoThumbnail(
     photoPath: String?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.size(48.dp),
     onClick: () -> Unit
 ) {
     if (photoPath.isNullOrBlank()) return
@@ -53,7 +53,6 @@ fun TicketPhotoThumbnail(
 
     Box(
         modifier = modifier
-            .size(48.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White.copy(alpha = 0.1f))
             .clickable { onClick() },

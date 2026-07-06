@@ -70,6 +70,7 @@
     <string name="platform_direct">Direct</string>
     <string name="platform_empty_msg">No platforms configured. Add them in Settings > Platforms.</string>
     <string name="label_payment_method">Payment Method</string>
+    <string name="paid_via">Paid via: %1$s</string>
     <string name="payment_cash">Cash</string>
     <string name="payment_card">Card</string>
     <string name="payment_via_app">Via App</string>

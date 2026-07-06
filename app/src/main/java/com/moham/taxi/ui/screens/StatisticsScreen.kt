@@ -47,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.screens.BottomNavBar
+import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,13 +128,21 @@ fun StatisticsScreen(navController: NavHostController) {
     var tipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var weekTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var monthTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = Date())
+
+    LaunchedEffect(selectedDateFromStore) {
+        selectedDateFromStore?.let {
+            if (selectedDate.time != it.time) {
+                selectedDate = it
+            }
+        }
+    }
     
     // Cargar datos financieros
-    LaunchedEffect(tipsEnabled) {
+    LaunchedEffect(selectedDate, tipsEnabled) {
         withContext(Dispatchers.IO) {
-            // Cargar la fecha seleccionada desde DataStore
-            selectedDate = application.getSelectedDate().first() ?: Date()
-            
             // Datos diarios
             dateIncome = taxiRideViewModel.getIncomeForDate(selectedDate)
             dateExpenses = expenseViewModel.getExpensesTotalForDate(selectedDate)
@@ -348,22 +357,98 @@ fun StatisticsScreen(navController: NavHostController) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.statistics_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = StatsBackground,
-                    titleContentColor = StatsTextPrimary
+    val isToday = remember(selectedDate) {
+        val today = Calendar.getInstance()
+        val selectedCal = Calendar.getInstance().apply { time = selectedDate }
+        today.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+        today.get(Calendar.DAY_OF_MONTH) == selectedCal.get(Calendar.DAY_OF_MONTH) &&
+        today.get(Calendar.MONTH) == selectedCal.get(Calendar.MONTH)
+    }
+    
+    val dayOfWeekFormat = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
+    val dayOfWeek = remember(selectedDate) { 
+        dayOfWeekFormat.format(selectedDate).replaceFirstChar { 
+            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
+        } 
+    }
+    
+    val headerDateText = remember(selectedDate, isToday, dayOfWeek) {
+        val locale = Locale.getDefault()
+        val pattern = when (locale.language) {
+            "es" -> "d 'de' MMMM"
+            "fr" -> "d MMMM"
+            "de" -> "d. MMMM"
+            else -> "MMMM d"
+        }
+        val detailFormatter = SimpleDateFormat(pattern, locale)
+        val formattedDetail = detailFormatter.format(selectedDate)
+        
+        val prefix = if (isToday) {
+            when (locale.language) {
+                "es" -> "Hoy"
+                "fr" -> "Aujourd'hui"
+                "de" -> "Heute"
+                else -> "Today"
+            }
+        } else {
+            dayOfWeek
+        }
+        "$prefix, $formattedDetail"
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = com.moham.taxi.utils.DateUtils.dateToUtcStartOfDayMillis(selectedDate)
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val newDate = com.moham.taxi.utils.DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                            selectedDate = newDate
+                            scope.launch {
+                                application.saveSelectedDate(newDate)
+                            }
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = CalendarBackground,
+                    titleContentColor = CalendarText,
+                    headlineContentColor = CalendarText,
+                    weekdayContentColor = CalendarText,
+                    subheadContentColor = CalendarText,
+                    yearContentColor = CalendarText,
+                    currentYearContentColor = CalendarAccent,
+                    selectedYearContainerColor = CalendarAccent,
+                    selectedYearContentColor = CalendarText,
+                    selectedDayContainerColor = CalendarAccent,
+                    selectedDayContentColor = CalendarText,
+                    todayContentColor = CalendarAccent,
+                    todayDateBorderColor = CalendarAccent,
+                    dayContentColor = CalendarText,
+                    dividerColor = CalendarText.copy(alpha = 0.2f)
                 )
             )
-        },
+        }
+    }
+
+    Scaffold(
         bottomBar = {
             BottomNavBar(
                 selectedItem = 2,
@@ -380,28 +465,32 @@ fun StatisticsScreen(navController: NavHostController) {
                 }
             )
         },
-        containerColor = StatsBackground
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .background(StatsBackground)
+                .background(DarkBackground)
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = StatsCardBackground),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, StatsBorder),
-                modifier = Modifier.fillMaxWidth()
+            DateSelector(
+                dateText = headerDateText,
+                onClick = { showDatePicker = true }
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = Color(0xFF2C2F33),
+                        shape = RoundedCornerShape(50)
+                    )
+                    .padding(4.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth()) {
                     listOf(
                         stringResource(R.string.tab_day),
                         stringResource(R.string.tab_week),
@@ -411,18 +500,17 @@ fun StatisticsScreen(navController: NavHostController) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .background(
-                                    if (selected) StatsBackground else Color.Transparent,
-                                    RoundedCornerShape(16.dp)
-                                )
+                                .clip(RoundedCornerShape(50))
+                                .background(if (selected) Color(0xFF3B9C5C) else Color.Transparent)
                                 .clickable { selectedTab = index }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = title,
-                                color = if (selected) StatsTextPrimary else StatsTextSecondary,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                                color = if (selected) Color(0xFFF5F5F5) else Color(0xFF9AA0A6),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
                             )
                         }
                     }
@@ -437,18 +525,23 @@ fun StatisticsScreen(navController: NavHostController) {
                 period = periodData.period,
                 dates = periodData.range
             )
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             StatsPaymentMethods(methods = periodData.paymentMethods)
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             StatsPlatformBreakdown(
                 platforms = periodData.platforms,
                 meterTotal = periodData.meterTotal,
                 fixedTotal = periodData.fixedTotal
             )
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             StatsExpenseDetails(
                 fuel = periodData.fuel,
                 otherExpenses = periodData.otherExpenses
             )
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             StatsTrendChart(points = periodData.trend, title = periodData.trendTitle)
             if (tipsEnabled) {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
                 StatsTipsDetails(total = periodData.tipsTotal, byMethod = periodData.tipsByMethod)
             }
             Spacer(modifier = Modifier.height(16.dp))

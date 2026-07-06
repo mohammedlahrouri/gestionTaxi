@@ -69,6 +69,7 @@
     <string name="platform_direct">Direct</string>
     <string name="platform_empty_msg">Aucune plateforme configurée. Ajoutez-les dans Paramètres > Plateformes.</string>
     <string name="label_payment_method">Méthode de Paiement</string>
+    <string name="paid_via">Payé via : %1$s</string>
     <string name="payment_cash">Espèces</string>
     <string name="payment_card">Carte</string>
     <string name="payment_via_app">Via App</string>

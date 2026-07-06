@@ -64,7 +64,7 @@ import java.util.Locale
  * Paleta de colores oficial para la pantalla de Nueva Carrera
  */
 object CarreraColors {
-    val Background = Color(0xFF1A1A1D)
+    val Background = Color(0xFF121212)
     val Surface = Color(0xFF26262A)
     val SurfacePressed = Color(0xFF303036)
     val GreenPrimary = Color(0xFF2E9E4F)

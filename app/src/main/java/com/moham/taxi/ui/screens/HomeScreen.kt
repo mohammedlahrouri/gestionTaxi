@@ -183,6 +183,12 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     var selectedDate by rememberSaveable(key = "selected_date") { 
         mutableStateOf(initialSelectedDate)
     }
+    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = initialSelectedDate)
+    LaunchedEffect(selectedDateFromStore) {
+        if (selectedDate.time != selectedDateFromStore.time) {
+            selectedDate = selectedDateFromStore
+        }
+    }
     // Estados para los datos financieros
     var dateIncome by remember { mutableStateOf(preloadData?.dateIncome ?: 0.0) }
     var weekIncome by remember { mutableStateOf(preloadData?.weekIncome ?: 0.0) }
@@ -683,27 +689,10 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         )
                     }
                 } else {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { showCalendarOverlay = true }
-                            .padding(vertical = 4.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = headerDateText,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Icon(
-                            imageVector = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = stringResource(R.string.action_change_date),
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    DateSelector(
+                        dateText = headerDateText,
+                        onClick = { showCalendarOverlay = true }
+                    )
                 }
                 
                 Row(
@@ -1415,107 +1404,41 @@ fun BottomNavBar(
         Triple(stringResource(R.string.nav_other), Icons.Filled.MoreHoriz, 3)
     )
     
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
-        color = Color.Transparent,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp
+    NavigationBar(
+        modifier = modifier.fillMaxWidth(),
+        containerColor = Color(0xFF1E2124),
+        tonalElevation = 0.dp
     ) {
-        Surface(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .fillMaxWidth(),
-            color = DarkBackground.copy(alpha = 0.94f),
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 6.dp,
-            shadowElevation = 10.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEachIndexed { index, (text, icon, _) ->
-                    val isSelected = selectedItem == index
-
-                    val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) PrimaryBlue else Color.White.copy(alpha = 0.65f),
-                        animationSpec = tween(180),
-                        label = "nav_color"
+        items.forEachIndexed { index, (text, icon, _) ->
+            val isSelected = selectedItem == index
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onItemSelected(index)
+                },
+                icon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = text,
+                        modifier = Modifier.size(24.dp)
                     )
-                    val backgroundColor by animateColorAsState(
-                        targetValue = if (isSelected) PrimaryBlue.copy(alpha = 0.16f) else Color.Transparent,
-                        animationSpec = tween(180),
-                        label = "nav_bg"
+                },
+                label = {
+                    Text(
+                        text = text,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                     )
-                    val iconScale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.08f else 1f,
-                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                        label = "nav_scale"
-                    )
-                    val underlineAlpha by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else 0f,
-                        animationSpec = tween(180),
-                        label = "nav_underline"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 56.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(backgroundColor)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = rememberRipple(bounded = true, color = PrimaryBlue.copy(alpha = 0.35f))
-                            ) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onItemSelected(index)
-                            }
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = text,
-                                tint = contentColor,
-                                modifier = Modifier.size(22.dp).scale(iconScale)
-                            )
-                            AutoSizeText(
-                                text = text,
-                                color = contentColor,
-                                maxFontSize = 11.sp,
-                                minFontSize = 8.sp,
-                                textAlign = TextAlign.Center,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 2.dp)
-                                    .size(width = 22.dp, height = 2.dp)
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                PrimaryBlue.copy(alpha = underlineAlpha),
-                                                PrimaryBlue.copy(alpha = 0.6f * underlineAlpha)
-                                            )
-                                        ),
-                                        shape = RoundedCornerShape(2.dp)
-                                    )
-                            )
-                        }
-                    }
-                }
-            }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFF3B9C5C),
+                    selectedTextColor = Color(0xFF3B9C5C),
+                    indicatorColor = Color.Transparent,
+                    unselectedIconColor = Color(0xFF9AA0A6),
+                    unselectedTextColor = Color(0xFF9AA0A6)
+                )
+            )
         }
     }
 }

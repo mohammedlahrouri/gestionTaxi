@@ -6,4 +6,5 @@
     <string name="language_french">Francés</string>
     <string name="language_german">Alemán</string>
     <string name="language_system_default">Sistema (predeterminado)</string>
+    <string name="paid_via">Pagado mediante: %1$s</string>
 </resources>

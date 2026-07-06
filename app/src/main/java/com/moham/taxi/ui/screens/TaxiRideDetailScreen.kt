@@ -111,42 +111,72 @@ fun TaxiRideDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkCard),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Date & Time
+                    val dateStr = com.moham.taxi.utils.DateUtils.formatDate(currentRide.date, "dd/MM/yyyy")
+                    val dateTimeStr = if (currentRide.rideTime.isNotBlank()) "$dateStr  ${currentRide.rideTime}" else dateStr
+                    Text(dateTimeStr, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                    // Origin & Destination Route
+                    val hasOrigin = currentRide.origin.isNotBlank()
+                    val hasDestination = currentRide.destination.isNotBlank()
+                    if (hasOrigin || hasDestination) {
+                        val routeText = if (hasOrigin && hasDestination) {
+                            "${currentRide.origin.trim()} → ${currentRide.destination.trim()}"
+                        } else if (hasOrigin) {
+                            currentRide.origin.trim()
+                        } else {
+                            currentRide.destination.trim()
+                        }
+                        Text(routeText, color = Color.White.copy(alpha = 0.9f), fontSize = 16.sp)
+                    }
+
+                    // Price
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Basic Info
-                            Text("${stringResource(R.string.date)}: ${com.moham.taxi.utils.DateUtils.formatDate(currentRide.date, "dd/MM/yyyy")}", color = Color.White, fontSize = 16.sp)
-                            if (currentRide.rideTime.isNotBlank()) {
-                                Text("${stringResource(R.string.time)}: ${currentRide.rideTime}", color = Color.White, fontSize = 16.sp)
-                            }
-                            Text("${stringResource(R.string.label_origin)}: ${currentRide.origin.ifBlank { "N/A" }}", color = Color.White, fontSize = 16.sp)
-                            Text("${stringResource(R.string.label_destination)}: ${currentRide.destination.ifBlank { "N/A" }}", color = Color.White, fontSize = 16.sp)
-                            val hasCommission = currentRide.netPrice != null && currentRide.netPrice != currentRide.price
-                            if (hasCommission) {
-                                Column {
-                                    Text("${stringResource(R.string.label_gross)}: ${formatCurrency(currentRide.price)}", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
-                                    Text("${stringResource(R.string.label_net)}: ${formatCurrency(currentRide.netPrice!!)}", color = Color(0xFF10B981), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                }
-                            } else {
-                                Text("${stringResource(R.string.price)}: ${formatCurrency(currentRide.price)}", color = PrimaryBlue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Text("${stringResource(R.string.label_payment_method)}: ${translatePaymentMethod(currentRide.paymentMethod)}", color = Color.White, fontSize = 16.sp)
-                            
-                            currentRide.servicePlatform?.let {
-                                Text("${stringResource(R.string.label_platform)}: ${translatePlatform(it).uppercase()}", color = Color.White, fontSize = 16.sp)
-                            }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            InlineTicketPhoto(photoPath = currentRide.ticketPhotoPath)
+                        val hasCommission = currentRide.netPrice != null && currentRide.netPrice != currentRide.price
+                        if (hasCommission) {
+                            Text(
+                                text = formatCurrency(currentRide.price),
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 14.sp,
+                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                            )
+                        }
+                        val displayPrice = currentRide.netPrice ?: currentRide.price
+                        Text(
+                            text = formatCurrency(displayPrice),
+                            color = Color(0xFF10B981),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Service Platform (Uber, Lyft, Directo, etc.)
+                    currentRide.servicePlatform?.let { platform ->
+                        if (platform.isNotBlank()) {
+                            Text(translatePlatform(platform).uppercase(), color = Color.White, fontSize = 16.sp)
                         }
                     }
+
+                    // Payment Method
+                    Text(
+                        text = stringResource(R.string.paid_via, translatePaymentMethod(currentRide.paymentMethod)),
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
                     
-                    Spacer(modifier = Modifier.height(24.dp))
+                    // Ticket photo at the end if present
+                    if (!currentRide.ticketPhotoPath.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InlineTicketPhoto(photoPath = currentRide.ticketPhotoPath)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),

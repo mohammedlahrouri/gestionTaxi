@@ -85,31 +85,35 @@ fun ExpenseDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkCard),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("${stringResource(R.string.date)}: ${com.moham.taxi.utils.DateUtils.formatDate(currentExpense.date, "dd/MM/yyyy")}", color = Color.White, fontSize = 16.sp)
-                            
-                            val typeLabel = if (currentExpense.type == ExpenseType.FUEL) stringResource(R.string.label_fuel) else stringResource(R.string.label_misc)
-                            Text("${stringResource(R.string.expense_type_label)}: $typeLabel", color = Color.White, fontSize = 16.sp)
-                            
-                            Text("${stringResource(R.string.amount)}: ${formatCurrency(currentExpense.amount)}", color = AccentRed, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            
-                            if (currentExpense.type == ExpenseType.OTHER && !currentExpense.description.isNullOrBlank()) {
-                                Text("${stringResource(R.string.label_description)}: ${currentExpense.description}", color = Color.White, fontSize = 16.sp)
-                            }
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            InlineTicketPhoto(photoPath = currentExpense.ticketPhotoPath)
-                        }
+                    // Date
+                    Text(com.moham.taxi.utils.DateUtils.formatDate(currentExpense.date, "dd/MM/yyyy"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    
+                    // Expense Type
+                    val typeLabel = when (currentExpense.type) {
+                        ExpenseType.FUEL -> stringResource(R.string.expense_type_fuel)
+                        ExpenseType.MAINTENANCE -> stringResource(R.string.expense_type_maintenance)
+                        ExpenseType.OTHER -> currentExpense.description.takeIf { !it.isNullOrBlank() } ?: stringResource(R.string.expense_type_other)
+                    }
+                    Text(typeLabel, color = Color.White, fontSize = 16.sp)
+                    
+                    // Kilometers (if Maintenance)
+                    if (currentExpense.type == ExpenseType.MAINTENANCE && currentExpense.maintenanceKilometers != null) {
+                        Text("${currentExpense.maintenanceKilometers} km", color = Color.White, fontSize = 16.sp)
                     }
                     
-                    Spacer(modifier = Modifier.height(24.dp))
+                    // Amount
+                    Text(formatCurrency(currentExpense.amount), color = AccentRed, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    
+                    // Ticket photo if present
+                    if (!currentExpense.ticketPhotoPath.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InlineTicketPhoto(photoPath = currentExpense.ticketPhotoPath)
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),

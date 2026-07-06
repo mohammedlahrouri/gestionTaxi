@@ -285,9 +285,31 @@ fun ExpenseFormScreen(
     }
     
     Scaffold(
+        containerColor = DarkBackground,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.new_expense_title)) },
+                title = {
+                    Text(
+                        text = if (expenseId > 0) stringResource(R.string.edit_expense_title) else stringResource(R.string.new_expense_title),
+                        color = Color.White
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground),
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+                                navController.popBackStack()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = Color.White
+                        )
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
