@@ -64,7 +64,9 @@ fun AutoSizeText(
     fontWeight: FontWeight? = null,
     textAlign: TextAlign = TextAlign.Start,
     fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
-    style: TextStyle = TextStyle.Default
+    style: TextStyle = TextStyle.Default,
+    maxLines: Int = 1,
+    softWrap: Boolean = false
 ) {
     var fontSize by remember { mutableStateOf(maxFontSize) }
     var shouldShrink by remember { mutableStateOf(false) }
@@ -83,6 +85,8 @@ fun AutoSizeText(
         textAlign = textAlign,
         fontFamily = fontFamily,
         style = style,
+        maxLines = maxLines,
+        softWrap = softWrap,
         onTextLayout = { textLayoutResult ->
             if (textLayoutResult.didOverflowWidth || textLayoutResult.didOverflowHeight) {
                 val newSize = fontSize.value - 2

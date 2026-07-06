@@ -13,8 +13,8 @@ android {
         applicationId = "com.moham.taxi"
         minSdk = 24
         targetSdk = 35
-        versionCode = 61
-        versionName = "7.2.3"
+        versionCode = 62
+        versionName = "7.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

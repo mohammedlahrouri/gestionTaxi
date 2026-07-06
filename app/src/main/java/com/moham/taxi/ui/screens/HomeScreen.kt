@@ -1148,14 +1148,14 @@ fun ResumenCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.weight(0.45f))
+                Spacer(modifier = Modifier.weight(0.36f))
                 Text(
                     text = stringResource(R.string.income),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White.copy(alpha = 0.5f),
                     textAlign = TextAlign.End,
-                    modifier = Modifier.weight(0.275f)
+                    modifier = Modifier.weight(0.32f)
                 )
                 Text(
                     text = stringResource(R.string.expenses),
@@ -1163,7 +1163,7 @@ fun ResumenCard(
                     fontWeight = FontWeight.Medium,
                     color = Color.White.copy(alpha = 0.5f),
                     textAlign = TextAlign.End,
-                    modifier = Modifier.weight(0.275f)
+                    modifier = Modifier.weight(0.32f)
                 )
             }
 
@@ -1176,7 +1176,7 @@ fun ResumenCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.weight(0.45f),
+                            modifier = Modifier.weight(0.36f),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1189,12 +1189,14 @@ fun ResumenCard(
                             Text(
                                 text = item.label,
                                 fontSize = 14.sp,
-                                color = Color.White.copy(alpha = 0.6f)
+                                color = Color.White.copy(alpha = 0.6f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                         AutoSizeText(
                             text = item.income,
-                            modifier = Modifier.weight(0.275f),
+                            modifier = Modifier.weight(0.32f),
                             maxFontSize = 14.sp,
                             minFontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -1203,7 +1205,7 @@ fun ResumenCard(
                         )
                         AutoSizeText(
                             text = item.expenses,
-                            modifier = Modifier.weight(0.275f),
+                            modifier = Modifier.weight(0.32f),
                             maxFontSize = 14.sp,
                             minFontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,

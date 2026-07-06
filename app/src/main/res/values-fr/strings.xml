@@ -29,8 +29,8 @@
     <string name="options">Options</string>
     
     <!-- Home Screen -->
-    <string name="quick_action_add_income">Ajouter Revenu</string>
-    <string name="quick_action_add_expense">Ajouter Dépense</string>
+    <string name="quick_action_add_income">Revenu</string>
+    <string name="quick_action_add_expense">Dépense</string>
     <string name="date_different_warning">Date différente d\'aujourd\'hui</string>
     <string name="daily_challenge">Défi quotidien</string>
     <string name="define_challenge">Définir Défi</string>

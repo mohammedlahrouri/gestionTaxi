@@ -88,7 +88,7 @@ fun OtherScreen(navController: NavController) {
                 }
             )
         },
-        containerColor = Color.Black
+        containerColor = DarkBackground
     ) { paddingValues ->
         if (showCommunityDialog) {
             AlertDialog(
