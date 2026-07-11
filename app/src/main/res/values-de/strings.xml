@@ -518,6 +518,18 @@
     <string name="thanks_community">Danke, dass Sie Teil dieser Gemeinschaft sind.</string>
     <string name="thanks_road">Wir sehen uns auf der Straße!</string>
 
+    <!-- Credits / APIs Used -->
+    <string name="credits_title">Credits &amp; Verwendete APIs</string>
+    <string name="credits_intro">Diese Anwendung nutzt die folgenden öffentlichen Dienste und APIs zur Bereitstellung ihrer Funktionen:</string>
+    <string name="credits_api_minetur">Kraftstoffpreise-API (MITECO) - Echtzeit-Kraftstoffpreissuche in Spanien.</string>
+    <string name="credits_api_photon">Photon-API (von Komoot) - Adresssuche und Vorschläge für Start/Ziel.</string>
+    <string name="credits_api_brouter">BRouter-API - Hochpräzise Autorouten- und Entfernungsberechnung.</string>
+    <string name="credits_api_osrm">OSRM-API - Sekundärer Backup-Server zur Routen- und Entfernungsberechnung.</string>
+    <string name="credits_api_drive">Google Drive API - Sicheres Cloud-Backup der Datenbank.</string>
+    <string name="credits_api_signin">Google Sign-In API - Sichere Anmeldung mit Ihrem Google-Konto.</string>
+    <string name="credits_api_billing">Google Play Billing API - Unterstützung der App durch sichere Spenden.</string>
+
+
     <!-- PDF Generator -->
     <string name="invoice_title_upper">RECHNUNG</string>
     <string name="invoice_number_pdf">Rechnungs-Nr.</string>

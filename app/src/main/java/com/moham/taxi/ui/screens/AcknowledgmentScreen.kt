@@ -16,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -89,6 +90,51 @@ fun AcknowledgmentScreen(navController: NavController) {
                 fontStyle = FontStyle.Italic,
                 fontWeight = FontWeight.SemiBold
             )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(R.string.credits_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Text(
+                text = stringResource(R.string.credits_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val apis = listOf(
+                Pair("MITECO (Precios Carburantes)", R.string.credits_api_minetur),
+                Pair("Photon (by Komoot)", R.string.credits_api_photon),
+                Pair("BRouter", R.string.credits_api_brouter),
+                Pair("OSRM (Open Source Routing Machine)", R.string.credits_api_osrm),
+                Pair("Google Drive API", R.string.credits_api_drive),
+                Pair("Google Sign-In", R.string.credits_api_signin),
+                Pair("Google Play Billing", R.string.credits_api_billing)
+            )
+
+            apis.forEach { (apiName, descResId) ->
+                Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                    Text(
+                        text = apiName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(descResId),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
         }
