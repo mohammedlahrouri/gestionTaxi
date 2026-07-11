@@ -31,11 +31,18 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import com.moham.taxi.utils.CurrencyUtils
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,6 +99,7 @@ fun TaxiRideFormScreen(
     }
 
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val application = context.applicationContext as GestionTaxiApplication
 
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
@@ -151,6 +159,8 @@ fun TaxiRideFormScreen(
     // Estados de acordeones expandibles
     var isRouteExpanded by remember { mutableStateOf(false) }
     var isTipExpanded by remember { mutableStateOf(false) }
+
+    val priceFocusRequester = remember { FocusRequester() }
 
     // Lanzador de cámara para foto
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -296,6 +306,11 @@ fun TaxiRideFormScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        delay(100)
+        priceFocusRequester.requestFocus()
+    }
+
     // Inicialización y actualización de métodos de pago cuando cambia la plataforma
     LaunchedEffect(paymentMethodOptionsStored, servicePlatformOptions, selectedServicePlatform, rideId) {
         if (rideId > 0) return@LaunchedEffect
@@ -420,6 +435,90 @@ fun TaxiRideFormScreen(
         }
     }
 
+    val isKeyboardVisible = WindowInsets.isImeVisible
+    val bottomPadding = if (isKeyboardVisible) 24.dp else 96.dp
+
+    val saveAndCameraButtons = @Composable {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Botón Guardar principal
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    if (!isSubmitting) {
+                        saveTaxiRide()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CarreraColors.GreenPrimary,
+                    contentColor = CarreraColors.Background
+                ),
+                enabled = !isSubmitting,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = stringResource(R.string.save),
+                        tint = CarreraColors.Background,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isSubmitting) {
+                            stringResource(R.string.saving)
+                        } else if (rideId > 0) {
+                            stringResource(R.string.update_upper)
+                        } else {
+                            stringResource(R.string.save_upper)
+                        },
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+
+            // Botón de Cámara secundario
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CarreraColors.Surface)
+                    .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+                    .clickable {
+                        focusManager.clearFocus()
+                        val file = ImageUtils.createTempImageFile(context)
+                        tempPhotoFile = file
+                        val uri = FileProvider.getUriForFile(
+                            context,
+                            "${application.packageName}.provider",
+                            file
+                        )
+                        cameraLauncher.launch(uri)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (ticketPhotoPath != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
+                    contentDescription = "Cámara",
+                    tint = if (ticketPhotoPath != null) CarreraColors.GreenPrimary else CarreraColors.OnBackground,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+
     Scaffold(
         containerColor = CarreraColors.Background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -429,14 +528,24 @@ fun TaxiRideFormScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(CarreraColors.Background)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 96.dp) // Deja espacio para los botones anclados abajo
+                    .padding(bottom = bottomPadding) // Deja espacio para los botones anclados abajo
                     .verticalScroll(rememberScrollState())
-                    .widthIn(max = 480.dp),
+                    .widthIn(max = 480.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = {
+                            focusManager.clearFocus()
+                        })
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -457,6 +566,7 @@ fun TaxiRideFormScreen(
                     )
                     IconButton(
                         onClick = {
+                            focusManager.clearFocus()
                             if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
                                 navController.popBackStack()
                             }
@@ -502,8 +612,10 @@ fun TaxiRideFormScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 2. PRECIO GIGANTE (BasicTextField grande + símbolo €)
-                PriceField(
+                // 2. PRECIO DE LA CARRERA
+                val currencySymbol = remember { CurrencyUtils.getCurrencySymbol() }
+                LabeledTextField(
+                    label = "Precio de la carrera",
                     value = price,
                     onValueChange = { newValue ->
                         if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
@@ -511,18 +623,13 @@ fun TaxiRideFormScreen(
                             priceError = false
                         }
                     },
-                    placeholder = "0.00"
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Precio de la carrera",
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = CarreraColors.TextSecondary
-                    )
+                    placeholder = "0.00",
+                    suffixText = currencySymbol,
+                    keyboardType = KeyboardType.Decimal,
+                    imeAction = ImeAction.Next,
+                    isError = priceError,
+                    focusRequester = priceFocusRequester,
+                    isLarge = true
                 )
 
                 if (priceError) {
@@ -530,44 +637,13 @@ fun TaxiRideFormScreen(
                         text = stringResource(R.string.error_valid_price),
                         color = Color.Red,
                         fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Selector de Bruto/Neto si la plataforma tiene comisión
-                if (hasPlatformCommission) {
-                    Text(
-                        text = stringResource(R.string.label_amount_with_commission),
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = CarreraColors.TextSecondary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ChoiceChip(
-                            label = stringResource(R.string.label_gross),
-                            selected = priceInputMode == context.getString(R.string.label_gross).uppercase(),
-                            onClick = { priceInputMode = context.getString(R.string.label_gross).uppercase() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        ChoiceChip(
-                            label = stringResource(R.string.label_net),
-                            selected = priceInputMode == context.getString(R.string.label_net).uppercase(),
-                            onClick = { priceInputMode = context.getString(R.string.label_net).uppercase() },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
 
                 // 3. CAMPO DE HORA
                 LabeledTextField(
@@ -581,7 +657,8 @@ fun TaxiRideFormScreen(
                     placeholder = "HH:mm",
                     icon = Icons.Filled.AccessTime,
                     keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
+                    imeAction = ImeAction.Next,
+                    isSubtle = true
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -622,6 +699,47 @@ fun TaxiRideFormScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // 7. SECCIÓN TIPO DE SERVICIO (Dos chips grandes)
+                if (serviceTypeOptions.size > 1) {
+                    Text(
+                        text = "Servicio",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = CarreraColors.TextSecondary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                    )
+
+                    val selectedServiceTypeLabel = when (selectedServiceType) {
+                        TaxiRide.SERVICE_TYPE_FIXED -> stringResource(R.string.option_fixed_price)
+                        else -> stringResource(R.string.option_taximeter)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        serviceTypeOptions.forEach { optionLabel ->
+                            val optionServiceType = when (optionLabel) {
+                                stringResource(R.string.option_fixed_price) -> TaxiRide.SERVICE_TYPE_FIXED
+                                else -> TaxiRide.SERVICE_TYPE_METER
+                            }
+                            ChoiceChip(
+                                label = optionLabel,
+                                selected = selectedServiceType == optionServiceType,
+                                onClick = { selectedServiceType = optionServiceType },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
                 // 5. SECCIÓN PLATAFORMA (Chips limitados a 3 con opción 'Otros')
                 Text(
@@ -728,10 +846,10 @@ fun TaxiRideFormScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 7. SECCIÓN TIPO DE SERVICIO (Dos chips grandes)
-                if (serviceTypeOptions.size > 1) {
+                // Selector de Bruto/Neto si la plataforma tiene comisión
+                if (hasPlatformCommission) {
                     Text(
-                        text = "Servicio",
+                        text = stringResource(R.string.label_amount_with_commission),
                         style = TextStyle(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
@@ -741,30 +859,22 @@ fun TaxiRideFormScreen(
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                     )
-
-                    val selectedServiceTypeLabel = when (selectedServiceType) {
-                        TaxiRide.SERVICE_TYPE_FIXED -> stringResource(R.string.option_fixed_price)
-                        else -> stringResource(R.string.option_taximeter)
-                    }
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        serviceTypeOptions.forEach { optionLabel ->
-                            val optionServiceType = when (optionLabel) {
-                                stringResource(R.string.option_fixed_price) -> TaxiRide.SERVICE_TYPE_FIXED
-                                else -> TaxiRide.SERVICE_TYPE_METER
-                            }
-                            ChoiceChip(
-                                label = optionLabel,
-                                selected = selectedServiceType == optionServiceType,
-                                onClick = { selectedServiceType = optionServiceType },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                            )
-                        }
+                        ChoiceChip(
+                            label = stringResource(R.string.label_gross),
+                            selected = priceInputMode == context.getString(R.string.label_gross).uppercase(),
+                            onClick = { priceInputMode = context.getString(R.string.label_gross).uppercase() },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ChoiceChip(
+                            label = stringResource(R.string.label_net),
+                            selected = priceInputMode == context.getString(R.string.label_net).uppercase(),
+                            onClick = { priceInputMode = context.getString(R.string.label_net).uppercase() },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -838,92 +948,24 @@ fun TaxiRideFormScreen(
                     }
                 }
 
+                if (isKeyboardVisible) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    saveAndCameraButtons()
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
             // 9. BOTÓN GUARDAR (Anclado en la parte inferior)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(CarreraColors.Background)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            if (!isKeyboardVisible) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .background(CarreraColors.Background)
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    // Botón Guardar principal
-                    Button(
-                        onClick = {
-                            if (!isSubmitting) {
-                                saveTaxiRide()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CarreraColors.GreenPrimary,
-                            contentColor = CarreraColors.Background
-                        ),
-                        enabled = !isSubmitting,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = stringResource(R.string.save),
-                                tint = CarreraColors.Background,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isSubmitting) {
-                                    stringResource(R.string.saving)
-                                } else if (rideId > 0) {
-                                    stringResource(R.string.update_upper)
-                                } else {
-                                    stringResource(R.string.save_upper)
-                                },
-                                style = TextStyle(
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-
-                    // Botón de Cámara secundario
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(CarreraColors.Surface)
-                            .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
-                            .clickable {
-                                val file = ImageUtils.createTempImageFile(context)
-                                tempPhotoFile = file
-                                val uri = FileProvider.getUriForFile(
-                                    context,
-                                    "${application.packageName}.provider",
-                                    file
-                                )
-                                cameraLauncher.launch(uri)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (ticketPhotoPath != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
-                            contentDescription = "Cámara",
-                            tint = if (ticketPhotoPath != null) CarreraColors.GreenPrimary else CarreraColors.OnBackground,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    saveAndCameraButtons()
                 }
             }
         }
@@ -947,6 +989,7 @@ fun ExpandableSection(
         label = "rotation"
     )
 
+    val focusManager = LocalFocusManager.current
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -956,7 +999,10 @@ fun ExpandableSection(
                 .clip(RoundedCornerShape(16.dp))
                 .background(CarreraColors.Surface)
                 .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
-                .clickable { onToggle() }
+                .clickable {
+                    focusManager.clearFocus()
+                    onToggle()
+                }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1024,6 +1070,7 @@ fun ChoiceChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val focusManager = LocalFocusManager.current
     val backgroundColor = if (selected) CarreraColors.GreenPrimary else CarreraColors.Surface
     val contentColor = if (selected) CarreraColors.Background else CarreraColors.OnBackground
     val borderModifier = if (selected) {
@@ -1037,7 +1084,10 @@ fun ChoiceChip(
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .then(borderModifier)
-            .clickable { onClick() }
+            .clickable {
+                focusManager.clearFocus()
+                onClick()
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1068,16 +1118,20 @@ fun LabeledTextField(
     isError: Boolean = false,
     enabled: Boolean = true,
     readOnly: Boolean = false,
-    cornerRadius: Int = 16
+    cornerRadius: Int = 16,
+    isSubtle: Boolean = false,
+    isLarge: Boolean = false,
+    suffixText: String? = null,
+    focusRequester: FocusRequester? = null
 ) {
     Column(modifier = modifier) {
         if (label.isNotEmpty()) {
             Text(
                 text = label,
                 style = TextStyle(
-                    fontSize = 13.sp,
+                    fontSize = if (isSubtle) 12.sp else 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = CarreraColors.TextSecondary
+                    color = if (isSubtle) CarreraColors.TextSecondary.copy(alpha = 0.7f) else CarreraColors.TextSecondary
                 ),
                 modifier = Modifier.padding(bottom = 6.dp)
             )
@@ -1089,9 +1143,9 @@ fun LabeledTextField(
             enabled = enabled,
             readOnly = readOnly,
             textStyle = TextStyle(
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = CarreraColors.OnBackground
+                fontSize = if (isLarge) 28.sp else if (isSubtle) 14.sp else 16.sp,
+                fontWeight = if (isLarge) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSubtle) CarreraColors.OnBackground.copy(alpha = 0.8f) else CarreraColors.OnBackground
             ),
             cursorBrush = SolidColor(CarreraColors.GreenPrimary),
             keyboardOptions = KeyboardOptions(
@@ -1102,100 +1156,60 @@ fun LabeledTextField(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(CarreraColors.Surface, RoundedCornerShape(cornerRadius.dp))
+                        .background(
+                            if (isSubtle) Color.Transparent else CarreraColors.Surface,
+                            RoundedCornerShape(cornerRadius.dp)
+                        )
                         .border(
                             width = 1.dp,
-                            color = if (isError) Color.Red else CarreraColors.BorderSubtle,
+                            color = if (isError) Color.Red else if (isSubtle) CarreraColors.BorderSubtle.copy(alpha = 0.6f) else CarreraColors.BorderSubtle,
                             shape = RoundedCornerShape(cornerRadius.dp)
                         )
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(
+                            horizontal = if (isLarge) 18.dp else if (isSubtle) 12.dp else 16.dp,
+                            vertical = if (isLarge) 18.dp else if (isSubtle) 10.dp else 14.dp
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (icon != null) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = CarreraColors.TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                            tint = if (isSubtle) CarreraColors.TextSecondary.copy(alpha = 0.6f) else CarreraColors.TextSecondary,
+                            modifier = Modifier.size(if (isSubtle) 18.dp else 20.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(if (isSubtle) 8.dp else 12.dp))
                     }
                     Box(modifier = Modifier.weight(1f)) {
                         if (value.isEmpty()) {
                             Text(
                                 text = placeholder,
                                 style = TextStyle(
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = CarreraColors.TextSecondary
+                                    fontSize = if (isLarge) 28.sp else if (isSubtle) 14.sp else 16.sp,
+                                    fontWeight = if (isLarge) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSubtle) CarreraColors.TextSecondary.copy(alpha = 0.5f) else CarreraColors.TextSecondary
                                 )
                             )
                         }
                         innerTextField()
                     }
+                    if (suffixText != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = suffixText,
+                            style = TextStyle(
+                                fontSize = if (isLarge) 22.sp else if (isSubtle) 14.sp else 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSubtle) CarreraColors.TextSecondary.copy(alpha = 0.6f) else CarreraColors.TextSecondary
+                            )
+                        )
+                    }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
         )
     }
 }
 
-/**
- * Campo gigante de precio protagonista
- */
-@Composable
-fun PriceField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String = "0.00",
-    modifier: Modifier = Modifier
-) {
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Decimal,
-            imeAction = ImeAction.Done
-        ),
-        textStyle = TextStyle(
-            fontSize = 56.sp,
-            fontWeight = FontWeight.Bold,
-            color = CarreraColors.OnBackground,
-            textAlign = TextAlign.Center
-        ),
-        cursorBrush = SolidColor(CarreraColors.GreenPrimary),
-        decorationBox = { innerTextField ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (value.isEmpty()) {
-                        Text(
-                            text = placeholder,
-                            style = TextStyle(
-                                fontSize = 56.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CarreraColors.TextSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                        )
-                    }
-                    innerTextField()
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "€",
-                    style = TextStyle(
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CarreraColors.OnBackground
-                    ),
-                    modifier = Modifier.alignBy(FirstBaseline)
-                )
-            }
-        },
-        modifier = modifier.fillMaxWidth()
-    )
-}

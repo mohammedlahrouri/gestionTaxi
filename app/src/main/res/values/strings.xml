@@ -55,7 +55,7 @@
     <string name="no_destination">Sin destino</string>
 
     <!-- Taxi Ride Form -->
-    <string name="new_ride_title">Nueva Carrera</string>
+    <string name="new_ride_title">Carrera</string>
     <string name="ride_type_taxi">Taxi</string>
     <string name="edit_ride_title">Editar Carrera</string>
     <string name="warning_date_mismatch">Atención: estás registrando una carrera para el %1$s</string>
@@ -86,7 +86,7 @@
     <string name="commission_error">La comisión debe ser menor al 100%</string>
 
     <!-- Expense Form -->
-    <string name="new_expense_title">Nuevo Gasto</string>
+    <string name="new_expense_title">Gasto</string>
     <string name="edit_expense_title">Editar Gasto</string>
     <string name="expense_warning_today">Estás registrando un gasto para la fecha actual</string>
     <string name="expense_warning_date">Estás registrando un gasto para el %1$s</string>
@@ -112,6 +112,7 @@
     <string name="tab_day">Jornada</string>
     <string name="tab_week">Semana</string>
     <string name="tab_month">Mes</string>
+    <string name="tab_year">Anual</string>
     <string name="gross_income_day">Ingresos Brutos (Hoy)</string>
     <string name="gross_income_week">Ingresos Brutos (Semana)</string>
     <string name="gross_income_month">Ingresos Brutos (Mes)</string>
@@ -130,6 +131,7 @@
     <string name="trend_daily">Tendencia diaria (7 días)</string>
     <string name="trend_weekly">Tendencia semanal (7 semanas)</string>
     <string name="trend_monthly">Tendencia mensual (7 meses)</string>
+    <string name="trend_yearly">Tendencia anual (7 años)</string>
     <string name="income">Ingresos</string>
     <string name="expenses">Gastos</string>
     <string name="net">Neto</string>
@@ -243,6 +245,7 @@
     <string name="dialog_export_day">Exportar día</string>
     <string name="dialog_export_week">Exportar semana</string>
     <string name="dialog_export_month">Exportar mes</string>
+    <string name="dialog_export_year">Exportar año</string>
     <string name="dialog_export_range">Exportar rango</string>
     <string name="dialog_export_range_title">Exportar datos por rango</string>
     <string name="dialog_export_range_msg">Los datos financieros desde %1$s hasta %2$s serán exportados. Ambos días incluidos. El archivo se guardará en Descargas.</string>
@@ -348,6 +351,7 @@
     <string name="chart_title_day">Hoy</string>
     <string name="chart_title_week">Esta semana</string>
     <string name="chart_title_month">Este mes</string>
+    <string name="chart_title_year">Este año</string>
 
     <string name="short_fuel">COMB</string>
     <string name="short_other">VAR</string>
@@ -456,19 +460,19 @@
     <string name="expenses_month">Gastos Mes</string>
 
     <!-- Price Screen -->
-    <string name="title_calculate_price">Calcular Precio</string>
+    <string name="title_calculate_price">Presupuesto</string>
     <string name="card_madrid_rates_title">Tarifas de %1$s</string>
-    <string name="configurar_otras_ciudades_msg">Para configurar otras ciudades, ve a Ajustes > Tarifas y precios</string>
+    <string name="configurar_otras_ciudades_msg">Para configurar otras ciudades, ve a Ajustes > Tarifas y presupuesto</string>
     <string name="label_select_tariff">Selecciona la tarifa</string>
 
-    <string name="label_workday">Laboral (+ Tarifa 1)</string>
-    <string name="label_holiday">No laboral (+ Tarifa 2)</string>
+    <string name="label_workday">Laboral (+ 1)</string>
+    <string name="label_holiday">No laboral (+ 2)</string>
     <string name="cd_workday">Laboral</string>
     <string name="cd_holiday">No laboral</string>
     <string name="label_kilometers">Kilómetros</string>
     <string name="label_traffic_level">Nivel de tráfico</string>
-    <string name="action_calculate_price">Calcular precio</string>
-    <string name="label_estimated_price">Precio estimado</string>
+    <string name="action_calculate_price">Calcular presupuesto</string>
+    <string name="label_estimated_price">Presupuesto estimado</string>
     <string name="tariff_1">Tarifa 1</string>
     <string name="tariff_2">Tarifa 2</string>
     <string name="tariff_3">Tarifa 3</string>
@@ -478,12 +482,32 @@
     <string name="traffic_light">Leve</string>
     <string name="traffic_moderate">Mucho</string>
     <string name="traffic_heavy">Demasiado</string>
+    
+    <string name="create_manual_quote_title">Crear presupuesto manual</string>
+    <string name="manual_quote_header">Presupuesto Manual</string>
+    <string name="label_manual_tariff_name">Nombre de tarifa</string>
+    <string name="label_tariff_start_price">Precio inicio de tarifa</string>
+    <string name="label_tariff_price_per_km">Precio por kilómetro</string>
+    <string name="label_surcharge_name">Nombre del suplemento</string>
+    <string name="label_surcharge_price">Precio del suplemento</string>
+    <string name="label_surcharge_quantity">Cantidad</string>
+    <string name="btn_add_surcharge">Añadir suplemento</string>
+    <string name="label_user_total_price">Precio total del servicio (€)</string>
+    <string name="label_calculated_price">Precio calculado: %s</string>
+    <string name="btn_copy_calculated">Copiar</string>
+    <string name="surcharges_added_title">Suplementos añadidos:</string>
+    <string name="empty_surcharges">No se han añadido suplementos</string>
+    <string name="toast_fill_surcharge_fields">Por favor, rellene el nombre, precio y cantidad del suplemento</string>
+    <string name="quote_adjustment_item">Ajuste manual de presupuesto</string>
 
     <!-- Other Screen -->
     <string name="title_other_options">Otras opciones</string>
+    <string name="category_tools">Herramientas de trabajo</string>
+    <string name="category_config">Configuración y datos</string>
+    <string name="category_community">Comunidad y soporte</string>
     <string name="label_select_option">Selecciona una opción</string>
-    <string name="option_prices">Precios</string>
-    <string name="desc_prices">Calcular precios de trayectos</string>
+    <string name="option_prices">Presupuesto</string>
+    <string name="desc_prices">Calcular presupuesto de trayectos</string>
     <string name="option_invoices">Facturas</string>
     <string name="desc_invoices">Generar facturas para clientes</string>
     <string name="option_whatsapp">WhatsApp ayuda</string>
@@ -506,6 +530,8 @@
     <string name="donation_499_title">Donación 4,99 €</string>
     <string name="donation_199_title">Donación 1,99 €</string>
     <string name="donation_099_title">Donación 0,99 €</string>
+    <string name="donation_banner_message">Este es un proyecto independiente, completamente gratuito y libre de publicidad que protege tu privacidad guardando los datos solo en tu dispositivo. Si la app te ayuda en tu día a día, considera realizar una pequeña contribución para apoyar su mantenimiento y desarrollo.</string>
+    <string name="donation_banner_button">Hacer una aportación</string>
     <string name="card_tip_title">Consejo del día</string>
     <string name="card_tip_content">Mantén un registro diario de tus carreras para optimizar tus rutas y maximizar tus ganancias.</string>
 
@@ -560,12 +586,12 @@
     <string name="label_price_per_km">Precio km</string>
     <string name="label_surcharge">Suplemento</string>
     <string name="action_save">Guardar</string>
-    <string name="title_tariffs">Tarifas y precios</string>
+    <string name="title_tariffs">Tarifas y presupuesto</string>
     <string name="action_add_tariff">Añadir tarifa</string>
     <string name="empty_tariffs_msg">No hay tarifas configuradas</string>
     <string name="dialog_delete_tariff_title">Eliminar tarifa</string>
     <string name="dialog_delete_tariff_msg">¿Estás seguro de que quieres eliminar la tarifa %1$s?</string>
-    <string name="settings_tariffs_title">Tarifas y precios</string>
+    <string name="settings_tariffs_title">Tarifas y presupuesto</string>
     <string name="settings_tariffs_desc">Gestiona tus tarifas fijas o variables</string>
     <string name="settings_tariffs_content_desc">Icono de tarifas</string>
     <string name="city_label">Ciudad actual: %1$s</string>
@@ -819,4 +845,22 @@
     <string name="vat_short">IVA</string>
     <string name="report_range_short">Rango</string>
     <string name="report_week_short">Semana</string>
+    <!-- Fuel Prices (Spain) -->
+    <string name="option_fuel_prices">Combustible</string>
+    <string name="title_fuel_prices">Precios de Combustible</string>
+    <string name="select_fuel_type">Selecciona tu combustible</string>
+    <string name="province_detected">Provincia: %1$s</string>
+    <string name="change_province">Cambiar provincia</string>
+    <string name="select_province">Seleccionar Provincia</string>
+    <string name="cheapest_stations_title">Las 10 gasolineras más baratas</string>
+    <string name="fuel_gnc">GNC</string>
+    <string name="fuel_glp">GLP</string>
+    <string name="fuel_gasolina95">Gasolina 95</string>
+    <string name="fuel_gasolina98">Gasolina 98</string>
+    <string name="fuel_diesel">Diésel</string>
+    <string name="error_loading_fuel_prices">Error al cargar los precios. Inténtalo de nuevo.</string>
+    <string name="loading_fuel_prices">Buscando gasolineras...</string>
+    <string name="no_stations_found">No se encontraron gasolineras con este combustible en tu provincia.</string>
+    <string name="search_province">Buscar provincia...</string>
+    <string name="btn_refresh">Actualizar</string>
 </resources>

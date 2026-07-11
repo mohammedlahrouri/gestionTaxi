@@ -21,6 +21,16 @@ class TariffViewModel(private val application: GestionTaxiApplication) : ViewMod
         initialValue = "Madrid"
     )
 
+    val madridCalculationsCount: StateFlow<Int> = application.getMadridCalculationsCount().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0
+    )
+
+    fun incrementMadridCalculationsCount() = viewModelScope.launch {
+        application.incrementMadridCalculationsCount()
+    }
+
     val allTariffs: StateFlow<List<Tariff>> = repository.allTariffs.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

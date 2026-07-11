@@ -65,6 +65,11 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         val (start, end) = DateUtils.getMonthRange(date)
         return DateRange(start, end)
     }
+
+    private fun getYearRange(date: Date = Date()): DateRange {
+        val (start, end) = DateUtils.getYearRange(date)
+        return DateRange(start, end)
+    }
     
     private suspend fun getWeekRange(date: Date = Date()): DateRange {
         val context = getContext()
@@ -309,6 +314,21 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     
     suspend fun getMonthFuelExpensesForDate(date: Date): Double {
         val range = getMonthRange(date)
+        return getTotalExpensesByTypeAndDateRange(ExpenseType.FUEL, range.start, range.end)
+    }
+
+    suspend fun getYearExpensesForDate(date: Date): Double {
+        val range = getYearRange(date)
+        return getTotalExpensesByDateRange(range.start, range.end)
+    }
+    
+    suspend fun getYearExpenseCountForDate(date: Date): Int {
+        val range = getYearRange(date)
+        return expenseDao.getExpenseCountByDateRange(range.start, range.end) ?: 0
+    }
+    
+    suspend fun getYearFuelExpensesForDate(date: Date): Double {
+        val range = getYearRange(date)
         return getTotalExpensesByTypeAndDateRange(ExpenseType.FUEL, range.start, range.end)
     }
     

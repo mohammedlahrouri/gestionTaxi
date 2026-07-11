@@ -55,7 +55,7 @@
     <string name="no_destination">Sans destination</string>
 
     <!-- Taxi Ride Form -->
-    <string name="new_ride_title">Nouvelle Course</string>
+    <string name="new_ride_title">Course</string>
     <string name="edit_ride_title">Modifier Course</string>
     <string name="warning_date_mismatch">Attention : vous enregistrez une course pour le %1$s</string>
     <string name="label_origin">Origine</string>
@@ -85,7 +85,7 @@
     <string name="commission_error">La commission doit être inférieure à 100%</string>
 
     <!-- Expense Form -->
-    <string name="new_expense_title">Nouvelle Dépense</string>
+    <string name="new_expense_title">Dépense</string>
     <string name="edit_expense_title">Modifier Dépense</string>
     <string name="expense_warning_today">Vous enregistrez une dépense pour aujourd\'hui</string>
     <string name="expense_warning_date">Vous enregistrez une dépense pour %1$s</string>
@@ -111,6 +111,7 @@
     <string name="tab_day">Journée</string>
     <string name="tab_week">Semaine</string>
     <string name="tab_month">Mois</string>
+    <string name="tab_year">Annuel</string>
     <string name="gross_income_day">Revenus Bruts (Hoy)</string>
     <string name="gross_income_week">Revenus Bruts (Semaine)</string>
     <string name="gross_income_month">Revenus Bruts (Mois)</string>
@@ -129,6 +130,7 @@
     <string name="trend_daily">Tendance quotidienne (7 jours)</string>
     <string name="trend_weekly">Tendance hebdomadaire (7 semaines)</string>
     <string name="trend_monthly">Tendance mensuelle (7 mois)</string>
+    <string name="trend_yearly">Tendance annuelle (7 ans)</string>
     <string name="income">Revenus</string>
     <string name="expenses">Dépenses</string>
     <string name="net">Net</string>
@@ -242,6 +244,7 @@
     <string name="dialog_export_day">Exporter la journée</string>
     <string name="dialog_export_week">Exporter la semaine</string>
     <string name="dialog_export_month">Exporter le mois</string>
+    <string name="dialog_export_year">Exporter l\'année</string>
     <string name="dialog_export_range">Exporter période</string>
     <string name="dialog_export_range_title">Exporter période</string>
     <string name="dialog_export_range_msg">Les données financières du %1$s au %2$s seront exportées (les deux jours inclus). Le fichier sera enregistré dans le dossier de téléchargements.</string>
@@ -345,6 +348,7 @@
     <string name="chart_title_day">Aujourd\'hui</string>
     <string name="chart_title_week">Cette semaine</string>
     <string name="chart_title_month">Ce mois</string>
+    <string name="chart_title_year">Cette année</string>
     <string name="short_fuel">CARB</string>
     <string name="short_other">DIVERS</string>
     <string name="label_fuel">Carburant</string>
@@ -444,18 +448,18 @@
     <string name="expenses_month">Dépenses Mois</string>
 
     <!-- Price Screen -->
-    <string name="title_calculate_price">Calculer le prix</string>
+    <string name="title_calculate_price">Budget</string>
     <string name="card_madrid_rates_title">Tarifs de %1$s</string>
-    <string name="configurar_otras_ciudades_msg">Pour configurer d\'autres villes, allez dans Paramètres > Tarifs et prix</string>
+    <string name="configurar_otras_ciudades_msg">Pour configurer d\'autres villes, allez dans Paramètres > Tarifs et budget</string>
     <string name="label_select_tariff">Sélectionnez le tarif</string>
-    <string name="label_workday">Ouvrable (+ Tarif 1)</string>
-    <string name="label_holiday">Férié/Nuit (+ Tarif 2)</string>
+    <string name="label_workday">Ouvrable (+ 1)</string>
+    <string name="label_holiday">Férié/Nuit (+ 2)</string>
     <string name="cd_workday">Ouvrable</string>
     <string name="cd_holiday">Férié</string>
     <string name="label_kilometers">Kilomètres</string>
     <string name="label_traffic_level">Niveau de trafic</string>
-    <string name="action_calculate_price">Calculer prix</string>
-    <string name="label_estimated_price">Prix estimé</string>
+    <string name="action_calculate_price">Calculer le budget</string>
+    <string name="label_estimated_price">Budget estimé</string>
     <string name="tariff_1">Tarif 1</string>
     <string name="tariff_2">Tarif 2</string>
     <string name="tariff_3">Tarif 3</string>
@@ -468,9 +472,12 @@
 
     <!-- Other Screen -->
     <string name="title_other_options">Autres options</string>
+    <string name="category_tools">Outils de travail</string>
+    <string name="category_config">Paramètres et données</string>
+    <string name="category_community">Communauté et support</string>
     <string name="label_select_option">Sélectionnez une option</string>
-    <string name="option_prices">Prix</string>
-    <string name="desc_prices">Calculer prix des trajets</string>
+    <string name="option_prices">Budget</string>
+    <string name="desc_prices">Calculer le budget des trajets</string>
     <string name="option_invoices">Factures</string>
     <string name="desc_invoices">Générer factures pour clients</string>
     <string name="option_whatsapp">Aide WhatsApp</string>
@@ -493,6 +500,8 @@
     <string name="donation_499_title">Don 4,99 €</string>
     <string name="donation_199_title">Don 1,99 €</string>
     <string name="donation_099_title">Don 0,99 €</string>
+    <string name="donation_banner_message">Ceci est un projet indépendant, entièrement gratuit et sans publicité, qui protège votre vie privée en stockant les données uniquement sur votre appareil. Si l\'application vous aide dans votre travail quotidien, pensez à faire une petite contribution pour soutenir sa maintenance et son développement.</string>
+    <string name="donation_banner_button">Soutenir le projet</string>
     <string name="card_tip_title">Conseil du jour</string>
     <string name="card_tip_content">Tenez un registre quotidien de vos courses pour optimiser vos itinéraires et maximiser vos gains.</string>
 
@@ -547,12 +556,12 @@
     <string name="label_price_per_km">Prix au km</string>
     <string name="label_surcharge">Supplément</string>
     <string name="action_save">Enregistrer</string>
-    <string name="title_tariffs">Tarifs et prix</string>
+    <string name="title_tariffs">Tarifs et budget</string>
     <string name="action_add_tariff">Ajouter un tarif</string>
     <string name="empty_tariffs_msg">Aucun tarif configuré</string>
     <string name="dialog_delete_tariff_title">Supprimer le tarif</string>
     <string name="dialog_delete_tariff_msg">Êtes-vous sûr de vouloir supprimer le tarif %1$s ?</string>
-    <string name="settings_tariffs_title">Tarifs et prix</string>
+    <string name="settings_tariffs_title">Tarifs et budget</string>
     <string name="settings_tariffs_desc">Gérez vos tarifs fixes ou variables</string>
     <string name="settings_tariffs_content_desc">Icône des tarifs</string>
     <string name="city_label">Ville actuelle : %1$s</string>
@@ -815,4 +824,22 @@
     <string name="vat_short">TVA</string>
     <string name="report_range_short">Intervalle</string>
     <string name="report_week_short">Semaine</string>
+    <!-- Fuel Prices (Spain) -->
+    <string name="option_fuel_prices">Carburant</string>
+    <string name="title_fuel_prices">Prix du carburant</string>
+    <string name="select_fuel_type">Sélectionnez votre carburant</string>
+    <string name="province_detected">Province: %1$s</string>
+    <string name="change_province">Changer de province</string>
+    <string name="select_province">Sélectionner la province</string>
+    <string name="cheapest_stations_title">Les 10 stations les moins chères</string>
+    <string name="fuel_gnc">GNC</string>
+    <string name="fuel_glp">GPL</string>
+    <string name="fuel_gasolina95">Sans Plomb 95</string>
+    <string name="fuel_gasolina98">Sans Plomb 98</string>
+    <string name="fuel_diesel">Gazole</string>
+    <string name="error_loading_fuel_prices">Erreur lors du chargement des prix. Réessayez.</string>
+    <string name="loading_fuel_prices">Recherche de stations-service...</string>
+    <string name="no_stations_found">Aucune station-service trouvée pour ce carburant dans votre province.</string>
+    <string name="search_province">Rechercher une province...</string>
+    <string name="btn_refresh">Actualiser</string>
 </resources>

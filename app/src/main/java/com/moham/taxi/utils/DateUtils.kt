@@ -380,4 +380,30 @@ object DateUtils {
         
         return Pair(startOfWeek, endOfWeek)
     }
+
+    /**
+     * Obtiene el rango de fechas para el año que contiene la fecha especificada
+     */
+    fun getYearRange(date: Date = Date()): Pair<Date, Date> {
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+        
+        calendar.set(Calendar.MONTH, Calendar.JANUARY)
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfYear = calendar.time
+        
+        calendar.set(Calendar.MONTH, Calendar.DECEMBER)
+        calendar.set(Calendar.DAY_OF_MONTH, 31)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfYear = calendar.time
+        
+        return Pair(startOfYear, endOfYear)
+    }
 }

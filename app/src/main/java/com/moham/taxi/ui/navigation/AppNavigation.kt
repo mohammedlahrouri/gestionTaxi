@@ -20,6 +20,8 @@ import com.moham.taxi.ui.screens.TariffsScreen
 import com.moham.taxi.ui.screens.TariffFormScreen
 import com.moham.taxi.ui.screens.SurchargeFormScreen
 import com.moham.taxi.ui.screens.QuoteFormScreen
+import com.moham.taxi.ui.screens.FuelPricesScreen
+import com.moham.taxi.ui.screens.ManualQuoteScreen
 import com.moham.taxi.ui.screens.OtherScreen
 import com.moham.taxi.ui.screens.ExtraModulesScreen
 import com.moham.taxi.ui.screens.PaymentMethodScreen
@@ -357,6 +359,20 @@ fun AppNavigation(navController: NavHostController, preloadData: SplashScreenPre
             exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) {
             QuoteFormScreen(navController)
+        }
+        composable(
+            route = AppScreens.ManualQuote.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
+            ManualQuoteScreen(navController)
+        }
+        composable(
+            route = AppScreens.FuelPrices.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
+            FuelPricesScreen(navController)
         }
     }
 }

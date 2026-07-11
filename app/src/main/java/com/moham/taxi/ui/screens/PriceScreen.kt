@@ -1,120 +1,197 @@
 package com.moham.taxi.ui.screens
 
-import androidx.compose.ui.res.stringResource
-import com.moham.taxi.R
-
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Brightness4
-import androidx.compose.material.icons.filled.Brightness7
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.Money
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Traffic
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import java.text.NumberFormat
-import java.util.*
-import com.moham.taxi.ui.navigation.AppScreens
-import com.moham.taxi.ui.components.AutoSizeText
-import com.moham.taxi.ui.components.formatCurrency
-import com.moham.taxi.ui.screens.BottomNavBar
-import androidx.compose.ui.platform.LocalContext
-import com.moham.taxi.utils.PriceUtils
 import com.moham.taxi.GestionTaxiApplication
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import com.moham.taxi.data.model.Tariff
-import com.moham.taxi.data.model.Surcharge
+import com.moham.taxi.R
 import com.moham.taxi.data.model.QuoteData
 import com.moham.taxi.data.model.QuoteItem
+import com.moham.taxi.data.model.Surcharge
+import com.moham.taxi.data.model.Tariff
+import com.moham.taxi.data.service.GeocodingService
+import com.moham.taxi.data.service.PlaceSuggestion
+import com.moham.taxi.ui.components.AutoSizeText
+import com.moham.taxi.ui.components.formatCurrency
+import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.viewmodel.TariffViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.moham.taxi.utils.PriceUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import android.widget.Toast
+import java.util.Locale
+import kotlin.math.roundToInt
+
+enum class PriceStep {
+    SELECT_ADDRESSES,
+    SELECT_TARIFF,
+    SUMMARY
+}
+
+// Opciones de tarifa de Madrid solicitadas por el usuario
+enum class MadridTariffOption(val displayName: String, val tariff: MadridTariff, val isWorkday: Boolean) {
+    T1("Tarifa 1", MadridTariff.T1, true),
+    T2("Tarifa 2", MadridTariff.T2, false),
+    T3_AFTER_1("Tarifa 3 y después 1", MadridTariff.T3, true),
+    T3_AFTER_2("Tarifa 3 y después 2", MadridTariff.T3, false),
+    T4_FIXED("Tarifa 4 fija", MadridTariff.T4, true),
+    T7_AFTER_1("Tarifa 7 después 1", MadridTariff.T7, true),
+    T7_AFTER_2("Tarifa 7 después 2", MadridTariff.T7, false)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PriceScreen(navController: NavController) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val application = context.applicationContext as GestionTaxiApplication
     val tariffViewModel: TariffViewModel = viewModel(
         factory = TariffViewModel.Factory(application)
     )
     val currentCity by tariffViewModel.currentCity.collectAsState()
+    val allTariffs by tariffViewModel.allTariffs.collectAsState()
+    val allSurcharges by tariffViewModel.allSurcharges.collectAsState()
 
-    if (currentCity == "Madrid") {
-        MadridPriceScreen(navController, currentCity)
-    } else {
-        NonMadridPriceScreen(navController, currentCity, tariffViewModel)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MadridPriceScreen(navController: NavController, currentCity: String) {
-    val context = LocalContext.current
-    var selectedTariff by remember { mutableStateOf<MadridTariff?>(null) }
-    var isWorkday by remember { mutableStateOf(true) }
-    var kilometers by remember { mutableStateOf("") }
-    var selectedTraffic by remember { mutableStateOf<TrafficLevel?>(null) }
-    var price by remember { mutableStateOf<Double?>(null) }
-    var showSummary by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Control de paso/pantalla actual
+    var currentStep by remember { mutableStateOf(PriceStep.SELECT_ADDRESSES) }
+
+    // Paso 1: Estados de búsqueda de direcciones
+    var originQuery by remember { mutableStateOf("") }
+    var destinationQuery by remember { mutableStateOf("") }
+    var selectedOrigin by remember { mutableStateOf<PlaceSuggestion?>(null) }
+    var selectedDestination by remember { mutableStateOf<PlaceSuggestion?>(null) }
+    var originSuggestions by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
+    var destinationSuggestions by remember { mutableStateOf<List<PlaceSuggestion>>(emptyList()) }
+
+    // Estados de cálculo de ruta
+    var isRoutingLoading by remember { mutableStateOf(false) }
+    var calculatedDistanceKm by remember { mutableStateOf(0.0) }
+    var calculatedDurationSec by remember { mutableStateOf(0.0) }
+
+    // Paso 2: Estados de kilómetros y tarifas
+    var kilometers by remember { mutableStateOf("") }
+    var isTariffDropdownExpanded by remember { mutableStateOf(false) }
+    var isTrafficDropdownExpanded by remember { mutableStateOf(false) }
     
-    // Configurar el manejo del botón Atrás para volver a la pantalla Otras opciones
+    // Madrid
+    var selectedMadridTariffOption by remember { mutableStateOf<MadridTariffOption?>(null) }
+    var selectedTraffic by remember { mutableStateOf<TrafficLevel>(TrafficLevel.NONE) }
+
+    // Otras ciudades
+    var selectedNonMadridTariff by remember { mutableStateOf<Tariff?>(null) }
+    val selectedSurcharges = remember { mutableStateMapOf<Long, Boolean>() }
+    val surchargeQuantities = remember { mutableStateMapOf<Long, Int>() }
+
+    // Paso 3: Precio final
+    var price by remember { mutableStateOf<Double?>(null) }
+
+    // BackHandler inteligente según el paso actual
     BackHandler {
-        navController.navigate(AppScreens.Other.route) {
-            popUpTo(AppScreens.Other.route) {
-                inclusive = false
+        when (currentStep) {
+            PriceStep.SELECT_ADDRESSES -> {
+                navController.navigate(AppScreens.Other.route) {
+                    popUpTo(AppScreens.Other.route) { inclusive = false }
+                    launchSingleTop = true
+                }
             }
-            launchSingleTop = true
-            // Las animaciones se manejan en AppNavigation.kt
+            PriceStep.SELECT_TARIFF -> {
+                currentStep = PriceStep.SELECT_ADDRESSES
+            }
+            PriceStep.SUMMARY -> {
+                currentStep = PriceStep.SELECT_TARIFF
+            }
         }
     }
 
-    val tariffs = listOf(
-        MadridTariff.T1, MadridTariff.T2, MadridTariff.T3, MadridTariff.T4, MadridTariff.T7
-    )
+    // Debounce para sugerencias de origen
+    LaunchedEffect(originQuery) {
+        if (originQuery.trim().length >= 3 && originQuery != selectedOrigin?.displayName) {
+            delay(600)
+            originSuggestions = GeocodingService.getSuggestions(originQuery, currentCity)
+        } else if (originQuery.isEmpty() || originQuery == selectedOrigin?.displayName) {
+            originSuggestions = emptyList()
+        }
+    }
+
+    // Debounce para sugerencias de destino
+    LaunchedEffect(destinationQuery) {
+        if (destinationQuery.trim().length >= 3 && destinationQuery != selectedDestination?.displayName) {
+            delay(600)
+            destinationSuggestions = GeocodingService.getSuggestions(destinationQuery, currentCity)
+        } else if (destinationQuery.isEmpty() || destinationQuery == selectedDestination?.displayName) {
+            destinationSuggestions = emptyList()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.title_calculate_price)) },
+                title = {
+                    Text(
+                        when (currentStep) {
+                            PriceStep.SELECT_ADDRESSES -> "Presupuesto: Direcciones"
+                            PriceStep.SELECT_TARIFF -> "Presupuesto: Tarifa"
+                            PriceStep.SUMMARY -> "Presupuesto: Resumen"
+                        }
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        when (currentStep) {
+                            PriceStep.SELECT_ADDRESSES -> {
+                                navController.navigate(AppScreens.Other.route) {
+                                    popUpTo(AppScreens.Other.route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                            PriceStep.SELECT_TARIFF -> currentStep = PriceStep.SELECT_ADDRESSES
+                            PriceStep.SUMMARY -> currentStep = PriceStep.SELECT_TARIFF
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
+                    }
+                }
             )
         },
         bottomBar = {
-            // Reutilizamos el BottomNavBar del HomeScreen
             BottomNavBar(
                 selectedItem = 3, // Seleccionamos "Otras"
                 onItemSelected = { index ->
                     when (index) {
                         0 -> navController.navigate(AppScreens.Home.route) {
-                            popUpTo(AppScreens.Home.route) {
-                                inclusive = false
-                            }
+                            popUpTo(AppScreens.Home.route) { inclusive = false }
                             launchSingleTop = true
                         }
                         1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
@@ -124,404 +201,766 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
                 }
             )
         }
-    ){ paddingValues ->
-        Column(
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (showSummary) {
-                // Summary view - bigger!
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-                    elevation = CardDefaults.cardElevation(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                when (currentStep) {
+                    PriceStep.SELECT_ADDRESSES -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(
-                                text = stringResource(R.string.selected_tariff),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = selectedTariff?.displayName ?: "",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                        
-                        if (selectedTraffic != null && selectedTariff != MadridTariff.T4) {
                             Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text(
-                                    text = stringResource(R.string.label_traffic_level),
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                // Campo Origen
+                                OutlinedTextField(
+                                    value = originQuery,
+                                    onValueChange = { originQuery = it },
+                                    label = { Text("Buscar origen") },
+                                    placeholder = { Text("Buscar origen") },
+                                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                    trailingIcon = {
+                                        if (originQuery.isNotEmpty()) {
+                                            IconButton(onClick = {
+                                                originQuery = ""
+                                                selectedOrigin = null
+                                                originSuggestions = emptyList()
+                                            }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
                                 )
-                                Text(
-                                    text = stringResource(selectedTraffic!!.labelResId),
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+
+                                if (originSuggestions.isNotEmpty()) {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 200.dp),
+                                        elevation = CardDefaults.cardElevation(4.dp)
+                                    ) {
+                                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                                            items(originSuggestions) { suggestion ->
+                                                Text(
+                                                    text = suggestion.displayName,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            selectedOrigin = suggestion
+                                                            originQuery = suggestion.displayName
+                                                            originSuggestions = emptyList()
+                                                        }
+                                                        .padding(12.dp),
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Campo Destino
+                                OutlinedTextField(
+                                    value = destinationQuery,
+                                    onValueChange = { destinationQuery = it },
+                                    label = { Text("Buscar destino") },
+                                    placeholder = { Text("Buscar destino") },
+                                    leadingIcon = { Icon(Icons.Default.Navigation, contentDescription = null) },
+                                    trailingIcon = {
+                                        if (destinationQuery.isNotEmpty()) {
+                                            IconButton(onClick = {
+                                                destinationQuery = ""
+                                                selectedDestination = null
+                                                destinationSuggestions = emptyList()
+                                            }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
                                 )
+
+                                if (destinationSuggestions.isNotEmpty()) {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 200.dp),
+                                        elevation = CardDefaults.cardElevation(4.dp)
+                                    ) {
+                                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                                            items(destinationSuggestions) { suggestion ->
+                                                Text(
+                                                    text = suggestion.displayName,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            selectedDestination = suggestion
+                                                            destinationQuery = suggestion.displayName
+                                                            destinationSuggestions = emptyList()
+                                                            focusManager.clearFocus()
+                                                        }
+                                                        .padding(12.dp),
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                        
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Botón Calcular Manual
+                        OutlinedButton(
+                            onClick = {
+                                selectedOrigin = null
+                                selectedDestination = null
+                                originQuery = ""
+                                destinationQuery = ""
+                                kilometers = ""
+                                calculatedDistanceKm = 0.0
+                                calculatedDurationSec = 0.0
+                                currentStep = PriceStep.SELECT_TARIFF
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(
-                                text = stringResource(R.string.label_estimated_price),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                            Text("Calcular manual", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        // Botón Siguiente
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isRoutingLoading = true
+                                    val start = selectedOrigin
+                                    val end = selectedDestination
+                                    if (start != null && end != null) {
+                                        val result = GeocodingService.getRouteDistance(
+                                            startLat = start.latitude, startLon = start.longitude,
+                                            endLat = end.latitude, endLon = end.longitude
+                                        )
+                                        if (result != null) {
+                                            val adjustedDistance = when {
+                                                result.distanceKm < 10.0 -> result.distanceKm * 1.05
+                                                result.distanceKm > 50.0 -> result.distanceKm * 1.01
+                                                result.distanceKm > 20.0 -> result.distanceKm * 1.025
+                                                else -> result.distanceKm
+                                            }
+                                            calculatedDistanceKm = adjustedDistance
+                                            calculatedDurationSec = result.durationSeconds
+                                            kilometers = String.format(Locale.US, "%.2f", adjustedDistance)
+                                        } else {
+                                            Toast.makeText(context, "No se pudo calcular la ruta automáticamente. Puede introducir los kilómetros manualmente.", Toast.LENGTH_LONG).show()
+                                            kilometers = ""
+                                            calculatedDistanceKm = 0.0
+                                            calculatedDurationSec = 0.0
+                                        }
+                                    } else {
+                                        // En caso de que hayan escrito manualmente y no seleccionaron del autocompletado
+                                        kilometers = ""
+                                        calculatedDistanceKm = 0.0
+                                        calculatedDurationSec = 0.0
+                                    }
+                                    isRoutingLoading = false
+                                    currentStep = PriceStep.SELECT_TARIFF
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            enabled = originQuery.isNotBlank() && destinationQuery.isNotBlank()
+                        ) {
+                            Text("Siguiente", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.ArrowForward, contentDescription = null)
+                        }
+                    }
+
+                    PriceStep.SELECT_TARIFF -> {
+                        val showKmInput = if (currentCity == "Madrid") {
+                            selectedMadridTariffOption != MadridTariffOption.T4_FIXED
+                        } else {
+                            selectedNonMadridTariff?.isFixed != true
+                        }
+
+                        if (calculatedDistanceKm > 0.0) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Trayecto estimado:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Origen: ${selectedOrigin?.displayName ?: originQuery}", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("Destino: ${selectedDestination?.displayName ?: destinationQuery}", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            if (!showKmInput) {
+                                                Text("Distancia: ${String.format(Locale.US, "%.2f", calculatedDistanceKm)} km", fontWeight = FontWeight.Bold)
+                                            }
+                                            if (calculatedDurationSec > 0.0) {
+                                                if (!showKmInput) Spacer(modifier = Modifier.height(2.dp))
+                                                Text("Duración: ${formatDuration(calculatedDurationSec)}", fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                        if (showKmInput) {
+                                            OutlinedTextField(
+                                                value = kilometers,
+                                                onValueChange = {
+                                                    if (it.isEmpty() || it.toDoubleOrNull() != null) kilometers = it
+                                                },
+                                                label = { Text("Distancia (km)") },
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                                singleLine = true,
+                                                modifier = Modifier.width(160.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (showKmInput && calculatedDistanceKm <= 0.0) {
+                            OutlinedTextField(
+                                value = kilometers,
+                                onValueChange = {
+                                    if (it.isEmpty() || it.toDoubleOrNull() != null) kilometers = it
+                                },
+                                label = { Text("Kilómetros") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            AutoSizeText(
-                                text = formatCurrency(price!!),
+                        }
+
+                        if (currentCity == "Madrid") {
+                            ExposedDropdownMenuBox(
+                                expanded = isTariffDropdownExpanded,
+                                onExpandedChange = { isTariffDropdownExpanded = !isTariffDropdownExpanded }
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedMadridTariffOption?.displayName ?: "Selecciona tarifa",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Tarifa") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTariffDropdownExpanded) },
+                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    )
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = isTariffDropdownExpanded,
+                                    onDismissRequest = { isTariffDropdownExpanded = false }
+                                ) {
+                                    MadridTariffOption.values().forEach { option ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(option.displayName, fontWeight = FontWeight.Bold)
+                                                    val desc = when (option) {
+                                                        MadridTariffOption.T1 -> "Laborables de día (07:00 a 21:00)"
+                                                        MadridTariffOption.T2 -> "Noches, fines de semana y festivos"
+                                                        MadridTariffOption.T3_AFTER_1 -> "Carrera mínima de 22€ con 9km incl., luego Tarifa 1"
+                                                        MadridTariffOption.T3_AFTER_2 -> "Carrera mínima de 22€ con 9km incl., luego Tarifa 2"
+                                                        MadridTariffOption.T4_FIXED -> "Tarifa plana al aeropuerto (33.00€)"
+                                                        MadridTariffOption.T7_AFTER_1 -> "Carrera mínima de 8€ con 1.45km incl., luego Tarifa 1"
+                                                        MadridTariffOption.T7_AFTER_2 -> "Carrera mínima de 8€ con 1.45km incl., luego Tarifa 2"
+                                                    }
+                                                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+                                                }
+                                            },
+                                            onClick = {
+                                                selectedMadridTariffOption = option
+                                                isTariffDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Modificador de Tráfico para Madrid
+                            if (selectedMadridTariffOption != null && selectedMadridTariffOption != MadridTariffOption.T4_FIXED) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                ExposedDropdownMenuBox(
+                                    expanded = isTrafficDropdownExpanded,
+                                    onExpandedChange = { isTrafficDropdownExpanded = !isTrafficDropdownExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        value = stringResource(selectedTraffic.labelResId),
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Nivel de tráfico previsto") },
+                                        leadingIcon = {
+                                            Icon(
+                                                selectedTraffic.icon,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTrafficDropdownExpanded) },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = isTrafficDropdownExpanded,
+                                        onDismissRequest = { isTrafficDropdownExpanded = false }
+                                    ) {
+                                        TrafficLevel.values().forEach { level ->
+                                            DropdownMenuItem(
+                                                leadingIcon = {
+                                                    Icon(level.icon, contentDescription = null)
+                                                },
+                                                text = {
+                                                    Text(stringResource(level.labelResId))
+                                                },
+                                                onClick = {
+                                                    selectedTraffic = level
+                                                    isTrafficDropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Otras ciudades: listado de tarifas de la DB
+                            if (allTariffs.isEmpty()) {
+                                Text("No hay tarifas configuradas para esta ciudad en los Ajustes.", color = MaterialTheme.colorScheme.error)
+                            } else {
+                                ExposedDropdownMenuBox(
+                                    expanded = isTariffDropdownExpanded,
+                                    onExpandedChange = { isTariffDropdownExpanded = !isTariffDropdownExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedNonMadridTariff?.let { PriceUtils.formatTariffNameForDisplay(it.name) } ?: "Selecciona tarifa",
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Tarifa") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isTariffDropdownExpanded) },
+                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = isTariffDropdownExpanded,
+                                        onDismissRequest = { isTariffDropdownExpanded = false }
+                                    ) {
+                                        allTariffs.forEach { tariff ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Column {
+                                                        Text(PriceUtils.formatTariffNameForDisplay(tariff.name), fontWeight = FontWeight.Bold)
+                                                        if (tariff.isFixed) {
+                                                            Text("Tarifa Fija: ${formatCurrency(tariff.fixedPrice ?: 0.0)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+                                                        } else {
+                                                            Text("Base: ${formatCurrency(tariff.baseFare ?: 0.0)} + ${formatCurrency(tariff.pricePerKm ?: 0.0)}/km", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+                                                        }
+                                                    }
+                                                },
+                                                onClick = {
+                                                    selectedNonMadridTariff = tariff
+                                                    isTariffDropdownExpanded = false
+                                                }
+                                            )
+                                    }
+                                }
+                            }
+                        }
+
+                            // Cargar suplementos de otras ciudades
+                            if (allSurcharges.isNotEmpty()) {
+                                Text("Suplementos y paquetes:", fontWeight = FontWeight.Bold)
+                                allSurcharges.forEach { surcharge ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        if (surcharge.isPerItem) {
+                                            val quantity = surchargeQuantities[surcharge.id] ?: 0
+                                            Text(surcharge.name, modifier = Modifier.weight(1f))
+                                            IconButton(onClick = { if (quantity > 0) surchargeQuantities[surcharge.id] = quantity - 1 }) {
+                                                Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                            Text("$quantity", modifier = Modifier.padding(horizontal = 8.dp))
+                                            IconButton(onClick = { surchargeQuantities[surcharge.id] = quantity + 1 }) {
+                                                Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        } else {
+                                            val checked = selectedSurcharges[surcharge.id] ?: false
+                                            Text(surcharge.name, modifier = Modifier.weight(1f))
+                                            Switch(checked = checked, onCheckedChange = { selectedSurcharges[surcharge.id] = it })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Botón Calcular
+                        val isCalculateEnabled = if (currentCity == "Madrid") {
+                            selectedMadridTariffOption != null && (selectedMadridTariffOption == MadridTariffOption.T4_FIXED || kilometers.isNotEmpty())
+                        } else {
+                            selectedNonMadridTariff != null && (selectedNonMadridTariff!!.isFixed || kilometers.isNotEmpty())
+                        }
+
+                        Button(
+                            onClick = {
+                                val kmVal = kilometers.toDoubleOrNull() ?: 0.0
+                                if (currentCity == "Madrid") {
+                                    val option = selectedMadridTariffOption!!
+                                    val calculated = calculatePrice(
+                                        tariff = option.tariff,
+                                        isWorkday = option.isWorkday,
+                                        km = kmVal,
+                                        traffic = selectedTraffic
+                                    )
+                                    if (calculated != null) {
+                                        price = PriceUtils.roundToNearestFiveCents(calculated)
+                                        coroutineScope.launch {
+                                            tariffViewModel.incrementMadridCalculationsCount()
+                                        }
+
+                                        // Crear QuoteData
+                                        val items = mutableListOf<QuoteItem>()
+                                        when (option.tariff) {
+                                            MadridTariff.T1 -> {
+                                                items.add(QuoteItem(context.getString(R.string.quote_fare_start, "1"), null, 2.55, 2.55))
+                                                items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.40, kmVal * 1.40))
+                                            }
+                                            MadridTariff.T2 -> {
+                                                items.add(QuoteItem(context.getString(R.string.quote_fare_start, "2"), null, 3.20, 3.20))
+                                                items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.60, kmVal * 1.60))
+                                            }
+                                            MadridTariff.T3 -> {
+                                                items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "3"), null, 22.0, 22.0))
+                                                val extraKm = (kmVal - 9.0).coerceAtLeast(0.0)
+                                                if (extraKm > 0) {
+                                                    val p = if (option.isWorkday) 1.40 else 1.60
+                                                    items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
+                                                }
+                                            }
+                                            MadridTariff.T4 -> {
+                                                items.add(QuoteItem(context.getString(R.string.quote_flat_airport, "4"), null, 33.0, 33.0))
+                                            }
+                                            MadridTariff.T7 -> {
+                                                items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "7"), null, 8.0, 8.0))
+                                                val extraKm = (kmVal - 1.45).coerceAtLeast(0.0)
+                                                if (extraKm > 0) {
+                                                    val p = if (option.isWorkday) 1.40 else 1.60
+                                                    items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
+                                                }
+                                            }
+                                            else -> {}
+                                        }
+
+                                        if (selectedTraffic != TrafficLevel.NONE && option.tariff != MadridTariff.T4) {
+                                            val surch = selectedTraffic.surcharge
+                                            if (option.tariff == MadridTariff.T3 || option.tariff == MadridTariff.T7) {
+                                                val extraKm = if (option.tariff == MadridTariff.T3) (kmVal - 9.0).coerceAtLeast(0.0) else (kmVal - 1.45).coerceAtLeast(0.0)
+                                                if (extraKm > 0.0) {
+                                                    items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
+                                                } else if (selectedTraffic == TrafficLevel.MODERATE || selectedTraffic == TrafficLevel.HEAVY) {
+                                                    items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge_base), null, surch, surch))
+                                                }
+                                            } else {
+                                                items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
+                                            }
+                                        }
+
+                                        val itemsSum = items.sumOf { it.total }
+                                        val diff = price!! - itemsSum
+                                        if (diff > 0.01) {
+                                            items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
+                                        } else if (diff < -0.01) {
+                                            items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
+                                        }
+
+                                        application.currentQuote = QuoteData(
+                                            title = context.getString(R.string.quote_title_format, currentCity),
+                                            items = items,
+                                            totalAmount = price!!
+                                        )
+                                        
+                                        // Guardar direcciones en la app para pre-rellenar
+                                        application.currentOrigin = selectedOrigin?.displayName ?: originQuery
+                                        application.currentDestination = selectedDestination?.displayName ?: destinationQuery
+                                        
+                                        currentStep = PriceStep.SUMMARY
+                                    }
+                                } else {
+                                    // Cálculo no Madrid
+                                    val t = selectedNonMadridTariff!!
+                                    var total = 0.0
+                                    if (t.isFixed) {
+                                        total = t.fixedPrice ?: 0.0
+                                    } else {
+                                        val base = t.baseFare ?: 0.0
+                                        val perKm = t.pricePerKm ?: 0.0
+                                        val sur = t.surcharge ?: 0.0
+                                        total = base + (kmVal * perKm) + sur
+                                    }
+
+                                    allSurcharges.forEach { s ->
+                                        if (s.isPerItem) {
+                                            val q = surchargeQuantities[s.id] ?: 0
+                                            total += s.price * q
+                                        } else {
+                                            if (selectedSurcharges[s.id] == true) {
+                                                total += s.price
+                                            }
+                                        }
+                                    }
+
+                                    price = PriceUtils.roundToNearestFiveCents(total)
+
+                                    val items = mutableListOf<QuoteItem>()
+                                    if (t.isFixed) {
+                                        items.add(QuoteItem(PriceUtils.formatTariffNameForDisplay(t.name), null, t.fixedPrice ?: 0.0, t.fixedPrice ?: 0.0))
+                                    } else {
+                                        items.add(QuoteItem(context.getString(R.string.quote_fare_start, PriceUtils.formatTariffNameForDisplay(t.name)), null, t.baseFare ?: 0.0, t.baseFare ?: 0.0))
+                                        items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, t.pricePerKm ?: 0.0, kmVal * (t.pricePerKm ?: 0.0)))
+                                        if ((t.surcharge ?: 0.0) > 0.0) {
+                                            items.add(QuoteItem(context.getString(R.string.label_surcharge), null, t.surcharge!!, t.surcharge!!))
+                                        }
+                                    }
+
+                                    allSurcharges.forEach { s ->
+                                        if (s.isPerItem) {
+                                            val q = surchargeQuantities[s.id] ?: 0
+                                            if (q > 0) {
+                                                items.add(QuoteItem(s.name, q.toDouble(), s.price, s.price * q))
+                                            }
+                                        } else {
+                                            if (selectedSurcharges[s.id] == true) {
+                                                items.add(QuoteItem(s.name, null, s.price, s.price))
+                                            }
+                                        }
+                                    }
+
+                                    val itemsSum = items.sumOf { it.total }
+                                    val diff = price!! - itemsSum
+                                    if (diff > 0.01) {
+                                        items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
+                                    } else if (diff < -0.01) {
+                                        items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
+                                    }
+
+                                    application.currentQuote = QuoteData(
+                                        title = context.getString(R.string.quote_title_format, currentCity),
+                                        items = items,
+                                        totalAmount = price!!
+                                    )
+
+                                    // Guardar direcciones en la app para pre-rellenar
+                                    application.currentOrigin = selectedOrigin?.displayName ?: originQuery
+                                    application.currentDestination = selectedDestination?.displayName ?: destinationQuery
+
+                                    currentStep = PriceStep.SUMMARY
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            enabled = isCalculateEnabled
+                        ) {
+                            Text("Calcular", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    PriceStep.SUMMARY -> {
+                        // Tarjeta de precio principal
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                            elevation = CardDefaults.cardElevation(8.dp)
+                        ) {
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                maxFontSize = 56.sp,
-                                minFontSize = 36.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-                
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            val app = navController.context.applicationContext as GestionTaxiApplication
-                            val billingData = app.getBillingData().first()
-                            val isValid = billingData.name.isNotBlank() && billingData.nif.isNotBlank() && billingData.street.isNotBlank() && billingData.city.isNotBlank() && billingData.postalCode.isNotBlank()
-                            if (isValid) {
-                                navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
-                            } else {
-                                Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
-                                navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
+                                    .padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = "Presupuesto estimado",
+                                    fontSize = 18.sp,
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                                AutoSizeText(
+                                    text = formatCurrency(price ?: 0.0),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxFontSize = 56.sp,
+                                    minFontSize = 36.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text(stringResource(R.string.create_quote), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                }
-                
-                Button(
-                    onClick = { showSummary = false },
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Text(stringResource(R.string.back_to_settings), fontSize = 18.sp)
-                }
-                
-            } else {
-                // Información sobre disponibilidad para Madrid
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DirectionsCar,
-                            contentDescription = stringResource(R.string.card_madrid_rates_title),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(end = 12.dp)
-                        )
-                        Column {
-                            Text(
-                                text = stringResource(R.string.card_madrid_rates_title, currentCity),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = stringResource(R.string.configurar_otras_ciudades_msg),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-                
-                // Selector de tarifa
-                Text(stringResource(R.string.label_select_tariff), fontWeight = FontWeight.Bold)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    tariffs.forEach { tariff ->
-                        val tariffIcon = when (tariff) {
-                            MadridTariff.T1, MadridTariff.T2 -> Icons.Filled.DirectionsCar
-                            MadridTariff.T3, MadridTariff.T4 -> Icons.Filled.Flight
-                            MadridTariff.T7 -> Icons.Filled.DirectionsBus
-                        }
+
+                        // Resumen de detalles del viaje
                         Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { selectedTariff = tariff },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (selectedTariff == tariff) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                            ),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(tariffIcon, contentDescription = null)
-                                Text(stringResource(R.string.tariff_prefix, tariff.displayName), fontSize = 14.sp, textAlign = TextAlign.Center)
-                            }
-                        }
-                    }
-                }
-                // Selector laborable/no laborable si aplica
-                if (selectedTariff == MadridTariff.T3 || selectedTariff == MadridTariff.T7) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Card(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .clickable { isWorkday = true },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isWorkday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Brightness7, contentDescription = stringResource(R.string.cd_workday))
-                                Text(stringResource(R.string.label_workday), modifier = Modifier.padding(start = 4.dp))
-                            }
-                        }
-                        Card(
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .clickable { isWorkday = false },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (!isWorkday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.NightsStay, contentDescription = stringResource(R.string.cd_holiday))
-                                Text(stringResource(R.string.label_holiday), modifier = Modifier.padding(start = 4.dp))
-                            }
-                        }
-                    }
-                }
-                // Campo de kilómetros
-                OutlinedTextField(
-                    value = kilometers,
-                    onValueChange = {
-                        if (it.isEmpty() || it.toDoubleOrNull() != null) kilometers = it
-                    },
-                    label = { Text(stringResource(R.string.label_kilometers)) },
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                // Selector de tráfico
-                val trafficEnabled = selectedTariff != MadridTariff.T4 && selectedTariff != null
-                Text(stringResource(R.string.label_traffic_level), fontWeight = FontWeight.Bold)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TrafficLevel.values().forEach { level ->
-                        Card(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(4.dp)
-                                .clickable(enabled = trafficEnabled) { selectedTraffic = level },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (selectedTraffic == level && trafficEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(level.icon, contentDescription = stringResource(level.labelResId))
-                                Text(stringResource(level.labelResId), fontSize = 12.sp, textAlign = TextAlign.Center)
-                            }
-                        }
-                    }
-                }
-                // Botón calcular
-                Button(
-                    onClick = {
-                        val calculatedPrice = calculatePrice(
-                            tariff = selectedTariff,
-                            isWorkday = isWorkday,
-                            km = kilometers.toDoubleOrNull() ?: 0.0,
-                            traffic = selectedTraffic
-                        )
-                        if (calculatedPrice != null) {
-                            price = PriceUtils.roundToNearestFiveCents(calculatedPrice)
-                            
-                            // Generar el QuoteData para Madrid
-                            val items = mutableListOf<QuoteItem>()
-                            val kmVal = kilometers.toDoubleOrNull() ?: 0.0
-                            
-                            when (selectedTariff) {
-                                MadridTariff.T1 -> {
-                                    items.add(QuoteItem(context.getString(R.string.quote_fare_start, "T1"), null, 2.55, 2.55))
-                                    items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.40, kmVal * 1.40))
+                                Text("Detalles del trayecto", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                
+                                Column {
+                                    Text("Origen:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                    Text(selectedOrigin?.displayName ?: originQuery, style = MaterialTheme.typography.bodyMedium)
                                 }
-                                MadridTariff.T2 -> {
-                                    items.add(QuoteItem(context.getString(R.string.quote_fare_start, "T2"), null, 3.20, 3.20))
-                                    items.add(QuoteItem(context.getString(R.string.quote_kilometers), kmVal, 1.60, kmVal * 1.60))
+                                
+                                Column {
+                                    Text("Destino:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                    Text(selectedDestination?.displayName ?: destinationQuery, style = MaterialTheme.typography.bodyMedium)
                                 }
-                                MadridTariff.T3 -> {
-                                    items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "T3"), null, 22.0, 22.0))
-                                    val extraKm = (kmVal - 9.0).coerceAtLeast(0.0)
-                                    if (extraKm > 0) {
-                                        val p = if (isWorkday) 1.40 else 1.60
-                                        items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
-                                    }
-                                }
-                                MadridTariff.T4 -> {
-                                    items.add(QuoteItem(context.getString(R.string.quote_flat_airport, "T4"), null, 33.0, 33.0))
-                                }
-                                MadridTariff.T7 -> {
-                                    items.add(QuoteItem(context.getString(R.string.quote_minimum_trip, "T7"), null, 8.0, 8.0))
-                                    val extraKm = (kmVal - 1.45).coerceAtLeast(0.0)
-                                    if (extraKm > 0) {
-                                        val p = if (isWorkday) 1.40 else 1.60
-                                        items.add(QuoteItem(context.getString(R.string.quote_extra_km), extraKm, p, extraKm * p))
-                                    }
-                                }
-                                else -> {}
-                            }
-                            
-                            if (selectedTraffic != null && selectedTraffic != TrafficLevel.NONE) {
-                                val surch = selectedTraffic!!.surcharge
-                                if (selectedTariff == MadridTariff.T3 || selectedTariff == MadridTariff.T7) {
-                                    val extraKm = if (selectedTariff == MadridTariff.T3) (kmVal - 9.0).coerceAtLeast(0.0) else (kmVal - 1.45).coerceAtLeast(0.0)
-                                    if (extraKm > 0.0) {
-                                        items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
-                                    } else if (selectedTraffic == TrafficLevel.MODERATE || selectedTraffic == TrafficLevel.HEAVY) {
-                                        items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge_base), null, surch, surch))
-                                    }
-                                } else if (selectedTariff != MadridTariff.T4) {
-                                    items.add(QuoteItem(context.getString(R.string.quote_traffic_surcharge), null, surch, surch))
-                                }
-                            }
 
-                            val itemsSum = items.sumOf { it.total }
-                            val diff = price!! - itemsSum
-                            if (diff > 0.01) {
-                                items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
-                            } else if (diff < -0.01) {
-                                items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
-                            }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text("Distancia:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                        val kmVal = kilometers.toDoubleOrNull() ?: 0.0
+                                        Text("${String.format(Locale.US, "%.2f", kmVal)} km", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                    if (calculatedDurationSec > 0.0) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text("Duración estimada:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                            Text(formatDuration(calculatedDurationSec), style = MaterialTheme.typography.bodyMedium)
+                                        }
+                                    }
+                                }
 
-                            val app = navController.context.applicationContext as GestionTaxiApplication
-                            app.currentQuote = QuoteData(
-                                title = context.getString(R.string.quote_title_format, currentCity),
-                                items = items,
-                                totalAmount = price!!
-                            )
-                            showSummary = true
+                                Column {
+                                    Text("Tarifa seleccionada:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                    val tariffName = if (currentCity == "Madrid") {
+                                        selectedMadridTariffOption?.displayName ?: ""
+                                    } else {
+                                        PriceUtils.formatTariffNameForDisplay(selectedNonMadridTariff?.name ?: "")
+                                    }
+                                    Text(tariffName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
-                    },
-                    enabled = selectedTariff != null && kilometers.isNotEmpty() && (selectedTariff == MadridTariff.T4 || selectedTraffic != null)
-                ) {
-                    Text(stringResource(R.string.action_calculate_price))
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Botones de acción
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val billingData = application.getBillingData().first()
+                                    val isValid = billingData.name.isNotBlank() && billingData.nif.isNotBlank() && billingData.street.isNotBlank() && billingData.city.isNotBlank() && billingData.postalCode.isNotBlank()
+                                    if (isValid) {
+                                        navController.navigate(AppScreens.QuoteForm.route)
+                                    } else {
+                                        Toast.makeText(context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
+                                        navController.navigate(AppScreens.BillingData.route)
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Text("Crear presupuesto (PDF)", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                // Reiniciar estados
+                                originQuery = ""
+                                destinationQuery = ""
+                                selectedOrigin = null
+                                selectedDestination = null
+                                originSuggestions = emptyList()
+                                destinationSuggestions = emptyList()
+                                kilometers = ""
+                                price = null
+                                selectedMadridTariffOption = null
+                                selectedTraffic = TrafficLevel.NONE
+                                selectedNonMadridTariff = null
+                                selectedSurcharges.clear()
+                                surchargeQuantities.clear()
+                                calculatedDistanceKm = 0.0
+                                calculatedDurationSec = 0.0
+                                currentStep = PriceStep.SELECT_ADDRESSES
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp)
+                        ) {
+                            Text("Volver a empezar", fontSize = 16.sp)
+                        }
+                    }
                 }
-                // Resultado
-                if (price != null) {
+            }
+
+            // Indicador de carga de cálculo de rutas
+            if (isRoutingLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
-                        Text(
-                            text = stringResource(R.string.label_estimated_price),
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                            textAlign = TextAlign.Center,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        AutoSizeText(
-                            text = formatCurrency(price!!),
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                            maxFontSize = 36.sp,
-                            minFontSize = 22.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                val app = navController.context.applicationContext as GestionTaxiApplication
-                                val billingData = app.getBillingData().first()
-                                val isValid = billingData.name.isNotBlank() && billingData.nif.isNotBlank() && billingData.street.isNotBlank() && billingData.city.isNotBlank() && billingData.postalCode.isNotBlank()
-                                if (isValid) {
-                                    navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
-                                } else {
-                                    Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
-                                    navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text(stringResource(R.string.create_quote))
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text("Calculando distancia y ruta...", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -529,7 +968,18 @@ fun MadridPriceScreen(navController: NavController, currentCity: String) {
     }
 }
 
-// Tarifas y lógica
+// Reutilizamos el formateador de tiempo
+fun formatDuration(seconds: Double): String {
+    val mins = (seconds / 60.0).roundToInt()
+    if (mins < 60) {
+        return "$mins min"
+    }
+    val hours = mins / 60
+    val remainingMins = mins % 60
+    return if (remainingMins == 0) "${hours}h" else "${hours}h ${remainingMins}min"
+}
+
+// Estructuras locales para mantener la lógica original de Madrid sin romper dependencias
 sealed class MadridTariff(val displayName: String) {
     object T1 : MadridTariff("1")
     object T2 : MadridTariff("2")
@@ -539,12 +989,13 @@ sealed class MadridTariff(val displayName: String) {
 }
 
 enum class TrafficLevel(val labelResId: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector, val surcharge: Double) {
-    NONE(R.string.traffic_none, Icons.Default.Traffic, 1.0),
+    NONE(R.string.traffic_none, Icons.Default.Traffic, 0.0),
     LIGHT(R.string.traffic_light, Icons.Default.Traffic, 2.5),
     MODERATE(R.string.traffic_moderate, Icons.Default.Traffic, 5.0),
     HEAVY(R.string.traffic_heavy, Icons.Default.Traffic, 10.0)
 }
 
+// Lógica de cálculo original de tarifas de Madrid
 fun calculatePrice(
     tariff: MadridTariff?,
     isWorkday: Boolean,
@@ -565,7 +1016,7 @@ fun calculatePrice(
                 (traffic?.surcharge ?: 0.0)
             } else {
                 when (traffic) {
-                    TrafficLevel.MODERATE, TrafficLevel.HEAVY -> traffic.surcharge
+                    TrafficLevel.MODERATE, TrafficLevel.HEAVY -> traffic.surcharge ?: 0.0
                     else -> 0.0
                 }
             }
@@ -582,7 +1033,7 @@ fun calculatePrice(
                 (traffic?.surcharge ?: 0.0)
             } else {
                 when (traffic) {
-                    TrafficLevel.MODERATE, TrafficLevel.HEAVY -> traffic.surcharge
+                    TrafficLevel.MODERATE, TrafficLevel.HEAVY -> traffic.surcharge ?: 0.0
                     else -> 0.0
                 }
             }
@@ -591,328 +1042,10 @@ fun calculatePrice(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NonMadridPriceScreen(navController: NavController, currentCity: String, tariffViewModel: TariffViewModel) {
-    val context = LocalContext.current
-    val allTariffs by tariffViewModel.allTariffs.collectAsState()
-    val allSurcharges by tariffViewModel.allSurcharges.collectAsState()
-
-    var selectedTariff by remember { mutableStateOf<Tariff?>(null) }
-    var kilometers by remember { mutableStateOf("") }
-    
-    // Estado para los suplementos
-    val selectedSurcharges = remember { mutableStateMapOf<Long, Boolean>() }
-    val surchargeQuantities = remember { mutableStateMapOf<Long, Int>() }
-    var price by remember { mutableStateOf<Double?>(null) }
-    var showSummary by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
-    BackHandler {
-        navController.navigate(AppScreens.Other.route) {
-            popUpTo(AppScreens.Other.route) { inclusive = false }
-            launchSingleTop = true
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.title_calculate_price)) })
-        },
-        bottomBar = {
-            BottomNavBar(
-                selectedItem = 3,
-                onItemSelected = { index ->
-                    when (index) {
-                        0 -> navController.navigate(AppScreens.Home.route) {
-                            popUpTo(AppScreens.Home.route) { inclusive = false }
-                            launchSingleTop = true
-                        }
-                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
-                        2 -> navController.navigate(AppScreens.Statistics.route)
-                        3 -> navController.navigate(AppScreens.Other.route)
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (showSummary) {
-                // Summary view - bigger!
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-                    elevation = CardDefaults.cardElevation(8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.selected_tariff),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = selectedTariff?.name ?: "",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                        
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.label_estimated_price),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            AutoSizeText(
-                                text = formatCurrency(price!!),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp),
-                                maxFontSize = 56.sp,
-                                minFontSize = 36.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-                
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            val app = navController.context.applicationContext as GestionTaxiApplication
-                            val billingData = app.getBillingData().first()
-                            val isValid = billingData.name.isNotBlank() && billingData.nif.isNotBlank() && billingData.street.isNotBlank() && billingData.city.isNotBlank() && billingData.postalCode.isNotBlank()
-                            if (isValid) {
-                                navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
-                            } else {
-                                Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
-                                navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text(stringResource(R.string.create_quote), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                }
-                
-                Button(
-                    onClick = { showSummary = false },
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Text(stringResource(R.string.back_to_settings), fontSize = 18.sp)
-                }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(end = 12.dp))
-                        Column {
-                            Text(text = stringResource(R.string.card_madrid_rates_title, currentCity), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text(text = stringResource(R.string.add_rates_from_settings), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
-                }
-
-                Text(stringResource(R.string.label_select_tariff), fontWeight = FontWeight.Bold)
-                if (allTariffs.isEmpty()) {
-                    Text(stringResource(R.string.empty_tariffs_msg), color = MaterialTheme.colorScheme.error)
-                } else {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        allTariffs.forEach { tariff ->
-                            Card(
-                                modifier = Modifier.weight(1f).clickable { selectedTariff = tariff },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (selectedTariff == tariff) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-                                )
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(tariff.name, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (selectedTariff != null && !selectedTariff!!.isFixed) {
-                    OutlinedTextField(
-                        value = kilometers,
-                        onValueChange = { if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) kilometers = it },
-                        label = { Text(stringResource(R.string.label_kilometers)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                if (allSurcharges.isNotEmpty()) {
-                    Text(stringResource(R.string.surcharges_and_packages), fontWeight = FontWeight.Bold)
-                    allSurcharges.forEach { surcharge ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                            if (surcharge.isPerItem) {
-                                val quantity = surchargeQuantities[surcharge.id] ?: 0
-                                Text(surcharge.name, modifier = Modifier.weight(1f))
-                                IconButton(onClick = { if (quantity > 0) surchargeQuantities[surcharge.id] = quantity - 1 }) {
-                                    Text("-", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Text("$quantity", modifier = Modifier.padding(horizontal = 8.dp))
-                                IconButton(onClick = { surchargeQuantities[surcharge.id] = quantity + 1 }) {
-                                    Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                                }
-                            } else {
-                                val checked = selectedSurcharges[surcharge.id] ?: false
-                                Text(surcharge.name, modifier = Modifier.weight(1f))
-                                Switch(checked = checked, onCheckedChange = { selectedSurcharges[surcharge.id] = it })
-                            }
-                        }
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        val t = selectedTariff
-                        if (t != null) {
-                            var total = 0.0
-                            if (t.isFixed) {
-                                total = t.fixedPrice ?: 0.0
-                            } else {
-                                val km = kilometers.toDoubleOrNull() ?: 0.0
-                                val base = t.baseFare ?: 0.0
-                                val perKm = t.pricePerKm ?: 0.0
-                                val sur = t.surcharge ?: 0.0
-                                total = base + (km * perKm) + sur
-                            }
-                            
-                            allSurcharges.forEach { s ->
-                                if (s.isPerItem) {
-                                    val q = surchargeQuantities[s.id] ?: 0
-                                    total += s.price * q
-                                } else {
-                                    if (selectedSurcharges[s.id] == true) {
-                                        total += s.price
-                                    }
-                                }
-                            }
-                            price = PriceUtils.roundToNearestFiveCents(total)
-
-                            val items = mutableListOf<QuoteItem>()
-                            if (t.isFixed) {
-                                items.add(QuoteItem(t.name, null, t.fixedPrice ?: 0.0, t.fixedPrice ?: 0.0))
-                            } else {
-                                val km = kilometers.toDoubleOrNull() ?: 0.0
-                                items.add(QuoteItem(context.getString(R.string.quote_fare_start, t.name), null, t.baseFare ?: 0.0, t.baseFare ?: 0.0))
-                                items.add(QuoteItem(context.getString(R.string.quote_kilometers), km, t.pricePerKm ?: 0.0, km * (t.pricePerKm ?: 0.0)))
-                                if ((t.surcharge ?: 0.0) > 0.0) {
-                                    items.add(QuoteItem(context.getString(R.string.label_surcharge), null, t.surcharge!!, t.surcharge!!))
-                                }
-                            }
-                            
-                            allSurcharges.forEach { s ->
-                                if (s.isPerItem) {
-                                    val q = surchargeQuantities[s.id] ?: 0
-                                    if (q > 0) {
-                                        items.add(QuoteItem(s.name, q.toDouble(), s.price, s.price * q))
-                                    }
-                                } else {
-                                    if (selectedSurcharges[s.id] == true) {
-                                        items.add(QuoteItem(s.name, null, s.price, s.price))
-                                    }
-                                }
-                            }
-
-                            val itemsSum = items.sumOf { it.total }
-                            val diff = price!! - itemsSum
-                            if (diff > 0.01) {
-                                items.add(QuoteItem(context.getString(R.string.quote_time_traffic_estimation), null, diff, diff))
-                            } else if (diff < -0.01) {
-                                items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
-                            }
-
-                            val app = navController.context.applicationContext as GestionTaxiApplication
-                            app.currentQuote = QuoteData(
-                                title = context.getString(R.string.quote_title_format, currentCity),
-                                items = items,
-                                totalAmount = price!!
-                            )
-                            showSummary = true
-                        }
-                    },
-                    enabled = selectedTariff != null && (selectedTariff!!.isFixed || kilometers.isNotEmpty()),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.action_calculate_price))
-                }
-
-                if (price != null) {
-                    Card(modifier = Modifier.fillMaxWidth().padding(top = 24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)) {
-                        Text(text = stringResource(R.string.label_estimated_price), modifier = Modifier.fillMaxWidth().padding(top = 16.dp), textAlign = TextAlign.Center, color = Color.White, fontWeight = FontWeight.Bold)
-                        AutoSizeText(
-                            text = formatCurrency(price!!),
-                            modifier = Modifier.fillMaxWidth().padding(24.dp),
-                            maxFontSize = 36.sp,
-                            minFontSize = 22.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                val app = navController.context.applicationContext as GestionTaxiApplication
-                                val billingData = app.getBillingData().first()
-                                val isValid = billingData.name.isNotBlank() && billingData.nif.isNotBlank() && billingData.street.isNotBlank() && billingData.city.isNotBlank() && billingData.postalCode.isNotBlank()
-                                if (isValid) {
-                                    navController.navigate(com.moham.taxi.ui.navigation.AppScreens.QuoteForm.route)
-                                } else {
-                                    Toast.makeText(navController.context, context.getString(R.string.billing_data_missing_toast), Toast.LENGTH_LONG).show()
-                                    navController.navigate(com.moham.taxi.ui.navigation.AppScreens.BillingData.route)
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Text(stringResource(R.string.create_quote))
-                    }
-                }
-            }
-        }
-    }
+// Borde decorativo para selección
+private object RowDefaults {
+    val RowBorder @Composable get() = androidx.compose.foundation.BorderStroke(
+        width = 2.dp,
+        color = MaterialTheme.colorScheme.primary
+    )
 }

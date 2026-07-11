@@ -7,4 +7,22 @@
     <string name="language_german">Alemán</string>
     <string name="language_system_default">Sistema (predeterminado)</string>
     <string name="paid_via">Pagado mediante: %1$s</string>
+    <!-- Fuel Prices (Spain) -->
+    <string name="option_fuel_prices">Combustible</string>
+    <string name="title_fuel_prices">Precios de Combustible</string>
+    <string name="select_fuel_type">Selecciona tu combustible</string>
+    <string name="province_detected">Provincia: %1$s</string>
+    <string name="change_province">Cambiar provincia</string>
+    <string name="select_province">Seleccionar Provincia</string>
+    <string name="cheapest_stations_title">Las 10 gasolineras más baratas</string>
+    <string name="fuel_gnc">GNC</string>
+    <string name="fuel_glp">GLP</string>
+    <string name="fuel_gasolina95">Gasolina 95</string>
+    <string name="fuel_gasolina98">Gasolina 98</string>
+    <string name="fuel_diesel">Diésel</string>
+    <string name="error_loading_fuel_prices">Error al cargar los precios. Inténtalo de nuevo.</string>
+    <string name="loading_fuel_prices">Buscando gasolineras...</string>
+    <string name="no_stations_found">No se encontraron gasolineras con este combustible en tu provincia.</string>
+    <string name="search_province">Buscar provincia...</string>
+    <string name="btn_refresh">Actualizar</string>
 </resources>

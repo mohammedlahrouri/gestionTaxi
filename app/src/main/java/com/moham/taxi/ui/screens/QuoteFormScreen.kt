@@ -26,8 +26,8 @@ fun QuoteFormScreen(navController: NavController) {
     val application = context.applicationContext as GestionTaxiApplication
     val coroutineScope = rememberCoroutineScope()
 
-    var origin by remember { mutableStateOf("") }
-    var destination by remember { mutableStateOf("") }
+    var origin by remember { mutableStateOf(application.currentOrigin ?: "") }
+    var destination by remember { mutableStateOf(application.currentDestination ?: "") }
     var serviceDate by remember { mutableStateOf("") }
     var serviceTime by remember { mutableStateOf("") }
 

@@ -45,4 +45,18 @@ object PriceUtils {
     fun roundAndFormatPrice(price: Double): String {
         return formatPrice(roundToNearestFiveCents(price))
     }
+    
+    /**
+     * Limpia el nombre de una tarifa para que solo muestre el número si tiene formato de "Tarifa X"
+     */
+    fun formatTariffNameForDisplay(name: String): String {
+        val regex = Regex("^(?i)(tarifa|tariff|tarif)\\s*(.*)$")
+        val match = regex.matchEntire(name)
+        return if (match != null) {
+            val suffix = match.groupValues[2]
+            if (suffix.isNotBlank()) suffix else name
+        } else {
+            name
+        }
+    }
 }

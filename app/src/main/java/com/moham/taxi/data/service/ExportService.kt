@@ -562,6 +562,89 @@ class ExportService(
         }
     }
 
+    suspend fun exportYearData(selectedDate: Date): ExportResult = withContext(Dispatchers.IO) {
+        try {
+            val calendar = Calendar.getInstance()
+            calendar.time = selectedDate
+            
+            calendar.set(Calendar.MONTH, Calendar.JANUARY)
+            calendar.set(Calendar.DAY_OF_MONTH, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startOfYear = calendar.time
+            
+            calendar.set(Calendar.MONTH, Calendar.DECEMBER)
+            calendar.set(Calendar.DAY_OF_MONTH, 31)
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
+            calendar.set(Calendar.MILLISECOND, 999)
+            val endOfYear = calendar.time
+            
+            val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
+            val fileName = "Taxi_Anio_${yearFormat.format(selectedDate)}_${fileNameDateFormat.format(Date())}.pdf"
+            
+            val result = savePdfToFile(fileName) { document ->
+                generateYearReportPdf(document, startOfYear, endOfYear)
+            }
+            return@withContext if (result != null) {
+                ExportResult.Success(result, fileName)
+            } else {
+                ExportResult.Error("No se pudo guardar el archivo de exportación anual")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ExportService", "Error al exportar datos anuales: ${e.message}", e)
+            return@withContext ExportResult.Error(
+                "Error al exportar datos anuales: ${e.localizedMessage ?: e.message ?: "Error desconocido"}",
+                e
+            )
+        }
+    }
+
+    suspend fun exportYearDataCsv(selectedDate: Date): ExportResult = withContext(Dispatchers.IO) {
+        try {
+            val calendar = Calendar.getInstance()
+            calendar.time = selectedDate
+
+            calendar.set(Calendar.MONTH, Calendar.JANUARY)
+            calendar.set(Calendar.DAY_OF_MONTH, 1)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startOfYear = calendar.time
+
+            calendar.set(Calendar.MONTH, Calendar.DECEMBER)
+            calendar.set(Calendar.DAY_OF_MONTH, 31)
+            calendar.set(Calendar.HOUR_OF_DAY, 23)
+            calendar.set(Calendar.MINUTE, 59)
+            calendar.set(Calendar.SECOND, 59)
+            calendar.set(Calendar.MILLISECOND, 999)
+            val endOfYear = calendar.time
+
+            val rides = taxiRideRepository.getTaxiRidesByDateRange(startOfYear, endOfYear).first()
+            val expenses = expenseRepository.getExpensesByDateRange(startOfYear, endOfYear).first()
+            val csv = buildPeriodCsv(startOfYear, endOfYear, rides, expenses)
+
+            val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
+            val fileName = "Taxi_Anio_${yearFormat.format(selectedDate)}_${fileNameDateFormat.format(Date())}.csv"
+            val uri = saveTextToFile(fileName, "text/csv", csv)
+            return@withContext if (uri != null) {
+                ExportResult.Success(uri, fileName)
+            } else {
+                ExportResult.Error("No se pudo guardar el archivo CSV de exportación anual")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ExportService", "Error al exportar CSV anual: ${e.message}", e)
+            ExportResult.Error(
+                "Error al exportar CSV anual: ${e.localizedMessage ?: e.message ?: "Error desconocido"}",
+                e
+            )
+        }
+    }
+
     suspend fun exportRangeData(startDate: Date, endDate: Date): ExportResult = withContext(Dispatchers.IO) {
         try {
             val fileName = "Taxi_Rango_${fileSafeDateFormat.format(startDate)}_a_${fileSafeDateFormat.format(endDate)}_${fileNameDateFormat.format(Date())}.pdf"
@@ -788,6 +871,31 @@ class ExportService(
         return@withContext exportTickets(startOfMonth, endOfMonth, fileNamePrefix)
     }
 
+    suspend fun exportYearDataTickets(selectedDate: Date): ExportResult = withContext(Dispatchers.IO) {
+        val calendar = Calendar.getInstance()
+        calendar.time = selectedDate
+        
+        calendar.set(Calendar.MONTH, Calendar.JANUARY)
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfYear = calendar.time
+        
+        calendar.set(Calendar.MONTH, Calendar.DECEMBER)
+        calendar.set(Calendar.DAY_OF_MONTH, 31)
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfYear = calendar.time
+        
+        val yearFormat = SimpleDateFormat("yyyy", Locale.getDefault())
+        val fileNamePrefix = "Taxi_Tickets_Anio_${yearFormat.format(selectedDate)}"
+        return@withContext exportTickets(startOfYear, endOfYear, fileNamePrefix)
+    }
+
     suspend fun exportRangeDataTickets(startDate: Date, endDate: Date): ExportResult = withContext(Dispatchers.IO) {
         val fileNamePrefix = "Taxi_Tickets_Rango_${fileSafeDateFormat.format(startDate)}_a_${fileSafeDateFormat.format(endDate)}"
         return@withContext exportTickets(startDate, endDate, fileNamePrefix)
@@ -907,6 +1015,35 @@ class ExportService(
         addMonthlyWeeklySummarySectionPdf(document, rides, startDate, firstDayOfWeekValue)
         addMonthlyDailyPerformanceSectionPdf(document, rides, expenses, startDate, endDate)
         addMonthlyWeeklyDetailsSectionPdf(document, rides, startDate, firstDayOfWeekValue)
+        addDisclaimerPdf(document)
+    }
+
+    private suspend fun generateYearReportPdf(document: Document, startDate: Date, endDate: Date) {
+        document.pdfDocument.defaultPageSize = PageSize.A4.rotate()
+        val rides = taxiRideRepository.getTaxiRidesByDateRange(startDate, endDate).first()
+        val expenses = expenseRepository.getExpensesByDateRange(startDate, endDate).first()
+        val totalIncome = taxiRideRepository.getTotalIncomeByDateRange(startDate, endDate)
+        val totalExpenses = expenseRepository.getTotalExpensesByDateRange(startDate, endDate)
+        val profit = totalIncome - totalExpenses
+        val incomeByPaymentMethod = rides.groupBy { it.paymentMethod }
+            .mapValues { (_, items) -> items.sumOf { it.price } to items.size }
+        val appPlatformData = taxiRideRepository.getAppIncomeByPlatform(startDate, endDate)
+        val platformData = taxiRideRepository.getIncomeByPlatform(startDate, endDate)
+        val withoutPlatform = taxiRideRepository.getIncomeWithoutPlatform(startDate, endDate)
+        val yearFormat = SimpleDateFormat("yyyy", Locale("es", "ES"))
+
+        addReportHeader(
+            document,
+            "Informe anual: ${yearFormat.format(startDate)}",
+            "${dateFormat.format(startDate)} - ${dateFormat.format(endDate)}"
+        )
+        addSummarySection(document, totalIncome, totalExpenses, profit)
+        addPaymentMethodSectionPdf(document, incomeByPaymentMethod, appPlatformData)
+        addServiceTypeSection(document, rides)
+        addPlatformSectionPdf(document, platformData, withoutPlatform)
+        addExpensesSectionPdf(document, expenses)
+        addRangeGroupedRidesSectionPdf(document, rides, startDate, endDate)
+        addRangeTotalsFooter(document, rides)
         addDisclaimerPdf(document)
     }
 

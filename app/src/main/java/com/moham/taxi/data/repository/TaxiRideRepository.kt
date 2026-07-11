@@ -541,6 +541,66 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         val summaries = taxiRideDao.getNetIncomeByPlatform(monthRange.first, monthRange.second)
         return mapPlatformSummaries(summaries)
     }
+
+    /**
+     * Obtiene el ingreso del año de una fecha específica.
+     */
+    suspend fun getYearIncomeForDate(date: Date): Double {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        return taxiRideDao.getTotalIncomeByDateRange(yearRange.first, yearRange.second) ?: 0.0
+    }
+
+    suspend fun getYearTipsForDate(date: Date): Double {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        return taxiRideDao.getTotalTipsByDateRange(yearRange.first, yearRange.second) ?: 0.0
+    }
+
+    suspend fun getYearTipsByMethodForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getTipsByMethod(yearRange.first, yearRange.second)
+        return summaries.associate { it.paymentMethod to it.total }
+    }
+
+    /**
+     * Obtiene el número de carreras del año de una fecha específica.
+     */
+    suspend fun getYearRideCountForDate(date: Date): Int {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        return taxiRideDao.getRideCountByDateRange(yearRange.first, yearRange.second) ?: 0
+    }
+
+    /**
+     * Obtiene el desglose de ingresos por método de pago para el año de una fecha específica.
+     */
+    suspend fun getYearIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getTotalByPaymentMethod(yearRange.first, yearRange.second)
+        return summaries.associate { it.paymentMethod to it.total }
+    }
+
+    suspend fun getYearAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getAppIncomeByPlatform(yearRange.first, yearRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getYearAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getAppNetIncomeByPlatform(yearRange.first, yearRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getYearIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getTotalIncomeByPlatform(yearRange.first, yearRange.second)
+        return mapPlatformSummaries(summaries)
+    }
+
+    suspend fun getYearNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val summaries = taxiRideDao.getNetIncomeByPlatform(yearRange.first, yearRange.second)
+        return mapPlatformSummaries(summaries)
+    }
     
     /**
      * Inserta una nueva carrera en la base de datos

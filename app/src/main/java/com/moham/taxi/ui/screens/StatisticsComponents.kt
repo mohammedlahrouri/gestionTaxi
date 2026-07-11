@@ -915,6 +915,16 @@ fun StatsTrendChart(points: List<TrendPoint>, title: String) {
                     color = StatsIncome,
                     style = Stroke(width = 3f, cap = StrokeCap.Round)
                 )
+
+                fun platformColor(name: String) = when {
+                    name.contains("directo", true) || name.equals("direct", true) -> StatsIncome
+                    name.contains("freenow", true) -> StatsOrange
+                    name.contains("uber", true) -> StatsGray
+                    name.contains("cabify", true) -> StatsPurple
+                    name.contains("bolt", true) -> Color(0xFF22C55E)
+                    else -> StatsBlue
+                }
+
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

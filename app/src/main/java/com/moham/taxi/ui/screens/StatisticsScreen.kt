@@ -128,6 +128,20 @@ fun StatisticsScreen(navController: NavHostController) {
     var tipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var weekTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var monthTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var yearIncome by remember { mutableStateOf(0.0) }
+    var yearExpenses by remember { mutableStateOf(0.0) }
+    var yearNet by remember { mutableStateOf(0.0) }
+    var yearRideCount by remember { mutableStateOf(0) }
+    var yearExpenseCount by remember { mutableStateOf(0) }
+    var yearFuelExpenses by remember { mutableStateOf(0.0) }
+    var yearPaymentMethodBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var yearAppPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var yearTotalPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var yearNetPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    var yearMeterIncome by remember { mutableStateOf(0.0) }
+    var yearFixedIncome by remember { mutableStateOf(0.0) }
+    var yearTips by remember { mutableStateOf(0.0) }
+    var yearTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = Date())
@@ -211,6 +225,29 @@ fun StatisticsScreen(navController: NavHostController) {
                 monthMeterIncome = totals.first
                 monthFixedIncome = totals.second
             }
+            
+            // Datos anuales basados en la fecha seleccionada
+            yearIncome = taxiRideViewModel.getYearIncomeForDate(selectedDate)
+            yearExpenses = expenseViewModel.getYearExpensesForDate(selectedDate)
+            yearNet = yearIncome
+            yearRideCount = taxiRideViewModel.getYearRideCountForDate(selectedDate)
+            yearExpenseCount = expenseViewModel.getYearExpenseCountForDate(selectedDate)
+            yearFuelExpenses = expenseViewModel.getYearFuelExpensesForDate(selectedDate)
+            yearPaymentMethodBreakdown = taxiRideViewModel.getYearIncomeByPaymentMethodForDate(selectedDate)
+            yearAppPlatformBreakdown = taxiRideViewModel.getYearAppIncomeByPlatformForDate(selectedDate)
+            yearTotalPlatformBreakdown = taxiRideViewModel.getYearIncomeByPlatformForDate(selectedDate)
+            yearNetPlatformBreakdown = taxiRideViewModel.getYearNetIncomeByPlatformForDate(selectedDate)
+            if (tipsEnabled) {
+                yearTips = taxiRideViewModel.getYearTipsForDate(selectedDate)
+                yearTipsByMethod = taxiRideViewModel.getYearTipsByMethodForDate(selectedDate)
+            } else {
+                yearTips = 0.0
+                yearTipsByMethod = emptyMap()
+            }
+            taxiRideViewModel.getYearServiceTypeTotalsForDate(selectedDate).let { totals ->
+                yearMeterIncome = totals.first
+                yearFixedIncome = totals.second
+            }
         }
     }
     
@@ -219,6 +256,7 @@ fun StatisticsScreen(navController: NavHostController) {
     val dayFormat = remember { SimpleDateFormat("dd", Locale.getDefault()) }
     val weekFormat = remember { SimpleDateFormat("dd/MM", Locale.getDefault()) }
     val monthFormat = remember { SimpleDateFormat("MMM", Locale.getDefault()) }
+    val yearFormat = remember { SimpleDateFormat("yyyy", Locale.getDefault()) }
 
     val firstDayOfWeek = application.getFirstDayOfWeek().collectAsState(initial = Calendar.MONDAY).value
     val (startOfWeek, endOfWeek) = com.moham.taxi.utils.DateUtils.getWeekRange(selectedDate, firstDayOfWeek)
@@ -231,12 +269,17 @@ fun StatisticsScreen(navController: NavHostController) {
     val endOfMonth = calMonth.time
     val monthRangeText = "${dateFormat.format(startOfMonth)} - ${dateFormat.format(endOfMonth)}"
 
+    val (startOfYear, endOfYear) = com.moham.taxi.utils.DateUtils.getYearRange(selectedDate)
+    val yearRangeText = "${dateFormat.format(startOfYear)} - ${dateFormat.format(endOfYear)}"
+
     var lastSevenDaysIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
     var lastSevenDaysExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
     var lastSevenWeeksIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
     var lastSevenWeeksExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
     var lastSevenMonthsIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
     var lastSevenMonthsExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenYearsIncome by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
+    var lastSevenYearsExpenses by remember { mutableStateOf(listOf<Pair<Date, Double>>()) }
 
     LaunchedEffect(selectedDate) {
         withContext(Dispatchers.IO) {
@@ -286,19 +329,38 @@ fun StatisticsScreen(navController: NavHostController) {
         }
     }
 
+    LaunchedEffect(selectedDate) {
+        withContext(Dispatchers.IO) {
+            val incData = mutableListOf<Pair<Date, Double>>()
+            val expData = mutableListOf<Pair<Date, Double>>()
+            val cal = Calendar.getInstance().apply { time = selectedDate; add(Calendar.YEAR, -6) }
+            repeat(7) {
+                val d = cal.time
+                incData.add(d to taxiRideViewModel.getYearIncomeForDate(d))
+                expData.add(d to expenseViewModel.getYearExpensesForDate(d))
+                cal.add(Calendar.YEAR, 1)
+            }
+            lastSevenYearsIncome = incData
+            lastSevenYearsExpenses = expData
+        }
+    }
+
     var selectedTab by remember { mutableIntStateOf(0) }
 
     val dayTrend = buildTrendPoints(lastSevenDaysIncome, lastSevenDaysExpenses, dayFormat)
     val weekTrend = buildTrendPoints(lastSevenWeeksIncome, lastSevenWeeksExpenses, weekFormat)
     val monthTrend = buildTrendPoints(lastSevenMonthsIncome, lastSevenMonthsExpenses, monthFormat)
+    val yearTrend = buildTrendPoints(lastSevenYearsIncome, lastSevenYearsExpenses, yearFormat)
 
     val dayGross = totalPlatformBreakdown.values.sum()
     val weekGross = weekTotalPlatformBreakdown.values.sum()
     val monthGross = monthTotalPlatformBreakdown.values.sum()
+    val yearGross = yearTotalPlatformBreakdown.values.sum()
 
     val dayCommission = (dayGross - dateIncome).coerceAtLeast(0.0)
     val weekCommission = (weekGross - weekIncome).coerceAtLeast(0.0)
     val monthCommission = (monthGross - monthIncome).coerceAtLeast(0.0)
+    val yearCommission = (yearGross - yearIncome).coerceAtLeast(0.0)
 
     val periodData = when (selectedTab) {
         0 -> StatsPeriodData(
@@ -337,7 +399,7 @@ fun StatisticsScreen(navController: NavHostController) {
             trend = weekTrend,
             trendTitle = stringResource(R.string.trend_weekly)
         )
-        else -> StatsPeriodData(
+        2 -> StatsPeriodData(
             period = stringResource(R.string.chart_title_month),
             range = monthRangeText,
             gross = monthGross,
@@ -354,6 +416,24 @@ fun StatisticsScreen(navController: NavHostController) {
             tipsByMethod = monthTipsByMethod,
             trend = monthTrend,
             trendTitle = stringResource(R.string.trend_monthly)
+        )
+        else -> StatsPeriodData(
+            period = stringResource(R.string.chart_title_year),
+            range = yearRangeText,
+            gross = yearGross,
+            commissions = yearCommission,
+            net = yearNet,
+            expenses = yearExpenses,
+            fuel = yearFuelExpenses,
+            otherExpenses = yearExpenses - yearFuelExpenses,
+            paymentMethods = buildPaymentMethods(yearPaymentMethodBreakdown, yearAppPlatformBreakdown),
+            platforms = buildPlatformItems(yearTotalPlatformBreakdown, yearNetPlatformBreakdown),
+            meterTotal = yearMeterIncome,
+            fixedTotal = yearFixedIncome,
+            tipsTotal = yearTips,
+            tipsByMethod = yearTipsByMethod,
+            trend = yearTrend,
+            trendTitle = stringResource(R.string.trend_yearly)
         )
     }
 
@@ -494,7 +574,8 @@ fun StatisticsScreen(navController: NavHostController) {
                     listOf(
                         stringResource(R.string.tab_day),
                         stringResource(R.string.tab_week),
-                        stringResource(R.string.tab_month)
+                        stringResource(R.string.tab_month),
+                        stringResource(R.string.tab_year)
                     ).forEachIndexed { index, title ->
                         val selected = selectedTab == index
                         Box(

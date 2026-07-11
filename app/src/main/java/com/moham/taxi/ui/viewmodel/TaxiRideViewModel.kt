@@ -307,6 +307,48 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     suspend fun getMonthTipsByMethodForDate(date: Date): Map<String, Double> {
         return repository.getMonthTipsByMethodForDate(date)
     }
+
+    suspend fun getYearIncomeForDate(date: Date): Double {
+        return repository.getYearIncomeForDate(date)
+    }
+
+    suspend fun getYearRideCountForDate(date: Date): Int {
+        return repository.getYearRideCountForDate(date)
+    }
+
+    suspend fun getYearIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
+        return repository.getYearIncomeByPaymentMethodForDate(date)
+    }
+
+    suspend fun getYearTipsForDate(date: Date): Double {
+        return repository.getYearTipsForDate(date)
+    }
+
+    suspend fun getYearTipsByMethodForDate(date: Date): Map<String, Double> {
+        return repository.getYearTipsByMethodForDate(date)
+    }
+
+    suspend fun getYearAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getYearAppIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getYearAppNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getYearAppNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getYearIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getYearIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getYearNetIncomeByPlatformForDate(date: Date): Map<String, Double> {
+        return repository.getYearNetIncomeByPlatformForDate(date)
+    }
+
+    suspend fun getYearServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+        val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
+        val rides = repository.getTaxiRidesByDateRange(yearRange.first, yearRange.second).first()
+        return calculateServiceTypeTotals(rides)
+    }
     
     // Obtener comparativa de ingresos respecto a la semana anterior
     suspend fun getWeekOverWeekComparison(): Pair<Double, Double> {

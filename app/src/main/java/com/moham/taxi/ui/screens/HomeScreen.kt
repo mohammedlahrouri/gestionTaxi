@@ -971,6 +971,15 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 showIcon = oldVersionEnabled
             )
             
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            DonationBannerCard(
+                onDonateClick = {
+                    navController.navigate(AppScreens.Donations.route)
+                },
+                modernThemeEnabled = modernThemeEnabled
+            )
+            
             Spacer(modifier = Modifier.height(24.dp))
         }
 
@@ -1845,4 +1854,51 @@ fun RecentActivityCard(
         }
     }
 }
+
+@Composable
+fun DonationBannerCard(
+    onDonateClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    modernThemeEnabled: Boolean = false
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard
+        ),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.fillMaxWidth(),
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp)
+        ) {
+
+            Text(
+                text = stringResource(R.string.donation_banner_message),
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.7f),
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = onDonateClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryBlue,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(40.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.donation_banner_button),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
 

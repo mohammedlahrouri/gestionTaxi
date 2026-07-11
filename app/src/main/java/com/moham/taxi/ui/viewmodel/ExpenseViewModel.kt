@@ -240,6 +240,18 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
     suspend fun getMonthFuelExpensesForDate(date: Date): Double {
         return repository.getMonthFuelExpensesForDate(date)
     }
+
+    suspend fun getYearExpensesForDate(date: Date): Double {
+        return repository.getYearExpensesForDate(date)
+    }
+
+    suspend fun getYearExpenseCountForDate(date: Date): Int {
+        return repository.getYearExpenseCountForDate(date)
+    }
+
+    suspend fun getYearFuelExpensesForDate(date: Date): Double {
+        return repository.getYearFuelExpensesForDate(date)
+    }
     
     class ExpenseViewModelFactory(private val repository: ExpenseRepository) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

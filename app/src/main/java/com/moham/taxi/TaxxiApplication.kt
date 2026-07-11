@@ -61,6 +61,8 @@ class GestionTaxiApplication : Application() {
     private var cachedSelectedDate: Date? = null
     var cachedBillingData: BillingData? = null
     var currentQuote: com.moham.taxi.data.model.QuoteData? = null
+    var currentOrigin: String? = null
+    var currentDestination: String? = null
     
     // Base de datos y DAOs
     private val database by lazy { AppDatabase.getDatabase(this, applicationScope) }
@@ -117,6 +119,7 @@ class GestionTaxiApplication : Application() {
         val PRIVACY_POLICY_ACCEPTED_KEY = booleanPreferencesKey("privacy_policy_accepted")
         val OLD_VERSION_ENABLED_KEY = booleanPreferencesKey("old_version_enabled")
         val MODERN_THEME_ENABLED_KEY = booleanPreferencesKey("modern_theme_enabled")
+        val MADRID_CALCULATIONS_COUNT_KEY = intPreferencesKey("madrid_calculations_count")
     }
     
     // Método para guardar si el reto diario está habilitado
@@ -459,6 +462,19 @@ class GestionTaxiApplication : Application() {
     suspend fun saveHasShownUpdateV3Dialog(shown: Boolean) {
         dataStore.edit { preferences ->
             preferences[UPDATE_V3_DIALOG_SHOWN_KEY] = shown
+        }
+    }
+
+    fun getMadridCalculationsCount(): Flow<Int> {
+        return dataStore.data.map { preferences ->
+            preferences[MADRID_CALCULATIONS_COUNT_KEY] ?: 0
+        }
+    }
+
+    suspend fun incrementMadridCalculationsCount() {
+        dataStore.edit { preferences ->
+            val current = preferences[MADRID_CALCULATIONS_COUNT_KEY] ?: 0
+            preferences[MADRID_CALCULATIONS_COUNT_KEY] = current + 1
         }
     }
 

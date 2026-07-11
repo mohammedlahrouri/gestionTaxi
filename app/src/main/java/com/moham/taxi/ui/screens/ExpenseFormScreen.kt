@@ -67,6 +67,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -111,6 +114,7 @@ fun ExpenseFormScreen(
         }
     }
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val application = context.applicationContext as GestionTaxiApplication
     
     // ViewModel
@@ -298,6 +302,7 @@ fun ExpenseFormScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
+                            focusManager.clearFocus()
                             if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
                                 navController.popBackStack()
                             }
@@ -320,6 +325,11 @@ fun ExpenseFormScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
         ) {
             // Mostrar advertencia si es la fecha de hoy
             if (isToday) {
@@ -407,6 +417,7 @@ fun ExpenseFormScreen(
                             .selectable(
                                 selected = selectedExpenseType == ExpenseType.FUEL,
                                 onClick = {
+                                    focusManager.clearFocus()
                                     selectedExpenseType = ExpenseType.FUEL
                                     descriptionError = false
                                     maintenanceKilometersError = false
@@ -452,6 +463,7 @@ fun ExpenseFormScreen(
                             .selectable(
                                 selected = selectedExpenseType == ExpenseType.MAINTENANCE,
                                 onClick = {
+                                    focusManager.clearFocus()
                                     selectedExpenseType = ExpenseType.MAINTENANCE
                                     descriptionError = false
                                     maintenanceKilometersError = false
@@ -497,6 +509,7 @@ fun ExpenseFormScreen(
                             .selectable(
                                 selected = selectedExpenseType == ExpenseType.OTHER,
                                 onClick = {
+                                    focusManager.clearFocus()
                                     selectedExpenseType = ExpenseType.OTHER
                                     descriptionError = false
                                     maintenanceKilometersError = false
@@ -685,6 +698,7 @@ fun ExpenseFormScreen(
                         stringResource(R.string.save_expense_button)
                     },
                     onClick = {
+                        focusManager.clearFocus()
                         if (!isSubmitting) {
                             saveExpense()
                         }
@@ -703,6 +717,7 @@ fun ExpenseFormScreen(
                 if (ticketPhotosEnabled) {
                     Button(
                         onClick = {
+                            focusManager.clearFocus()
                             val file = ImageUtils.createTempImageFile(context)
                             tempPhotoFile = file
                             val uri = FileProvider.getUriForFile(
@@ -729,6 +744,7 @@ fun ExpenseFormScreen(
 
                 Button(
                     onClick = { 
+                        focusManager.clearFocus()
                         if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
                             navController.popBackStack() 
                         }

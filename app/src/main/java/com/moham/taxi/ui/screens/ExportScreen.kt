@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
@@ -66,6 +67,7 @@ private enum class ExportPeriod {
     DAY,
     WEEK,
     MONTH,
+    YEAR,
     RANGE
 }
 
@@ -189,109 +191,120 @@ fun ExportScreen(navController: NavController) {
                     if (period == ExportPeriod.RANGE) {
                         Text(stringResource(R.string.dialog_export_range), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                            OutlinedCard(modifier = Modifier.weight(1f), onClick = { showRangeStartPicker = true }) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(stringResource(R.string.dialog_export_select_start_date), fontWeight = FontWeight.Medium)
-                                    Text(rangeStartDate.format(dateFormatter), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showRangeStartPicker = true }
+                                    .padding(8.dp)
+                            ) {
+                                Text(stringResource(R.string.dialog_export_select_start_date), fontWeight = FontWeight.Medium)
+                                Text(rangeStartDate.format(dateFormatter), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            OutlinedCard(modifier = Modifier.weight(1f), onClick = { showRangeEndPicker = true }) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(stringResource(R.string.dialog_export_select_end_date), fontWeight = FontWeight.Medium)
-                                    Text(rangeEndDate.format(dateFormatter), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showRangeEndPicker = true }
+                                    .padding(8.dp)
+                            ) {
+                                Text(stringResource(R.string.dialog_export_select_end_date), fontWeight = FontWeight.Medium)
+                                Text(rangeEndDate.format(dateFormatter), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     } else {
-                        Text(stringResource(R.string.dialog_export_selected_date), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { showSingleDatePicker = true }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showSingleDatePicker = true }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(selectedDate.format(dateFormatter), fontWeight = FontWeight.Medium)
-                                    Text(stringResource(R.string.dialog_date_change_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(selectedDate.format(dateFormatter), fontWeight = FontWeight.Medium)
+                                Text(stringResource(R.string.dialog_date_change_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
 
                     Text(stringResource(R.string.dialog_export_format_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { showFormatPicker = true }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showFormatPicker = true }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = when (exportFormat) {
-                                        0 -> stringResource(R.string.dialog_export_format_pdf)
-                                        1 -> stringResource(R.string.dialog_export_format_csv)
-                                        else -> "Tickets"
-                                    },
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = stringResource(R.string.dialog_date_change_desc),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = when (exportFormat) {
+                                    0 -> stringResource(R.string.dialog_export_format_pdf)
+                                    1 -> stringResource(R.string.dialog_export_format_csv)
+                                    else -> "Tickets"
+                                },
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.dialog_date_change_desc),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
-                    Text(stringResource(R.string.dialog_export_select_period), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.outlinedCardColors(),
-                            onClick = { period = ExportPeriod.DAY }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { period = ExportPeriod.DAY }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = period == ExportPeriod.DAY, onClick = { period = ExportPeriod.DAY })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.dialog_export_day), fontWeight = FontWeight.Medium)
-                            }
+                            RadioButton(selected = period == ExportPeriod.DAY, onClick = { period = ExportPeriod.DAY })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.dialog_export_day), fontWeight = FontWeight.Medium)
                         }
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.outlinedCardColors(),
-                            onClick = { period = ExportPeriod.WEEK }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { period = ExportPeriod.WEEK }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = period == ExportPeriod.WEEK, onClick = { period = ExportPeriod.WEEK })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.dialog_export_week), fontWeight = FontWeight.Medium)
-                            }
+                            RadioButton(selected = period == ExportPeriod.WEEK, onClick = { period = ExportPeriod.WEEK })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.dialog_export_week), fontWeight = FontWeight.Medium)
                         }
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.outlinedCardColors(),
-                            onClick = { period = ExportPeriod.MONTH }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { period = ExportPeriod.MONTH }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = period == ExportPeriod.MONTH, onClick = { period = ExportPeriod.MONTH })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.dialog_export_month), fontWeight = FontWeight.Medium)
-                            }
+                            RadioButton(selected = period == ExportPeriod.MONTH, onClick = { period = ExportPeriod.MONTH })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.dialog_export_month), fontWeight = FontWeight.Medium)
                         }
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.outlinedCardColors(),
-                            onClick = { period = ExportPeriod.RANGE }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { period = ExportPeriod.YEAR }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = period == ExportPeriod.RANGE, onClick = { period = ExportPeriod.RANGE })
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(stringResource(R.string.dialog_export_range), fontWeight = FontWeight.Medium)
-                            }
+                            RadioButton(selected = period == ExportPeriod.YEAR, onClick = { period = ExportPeriod.YEAR })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.dialog_export_year), fontWeight = FontWeight.Medium)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { period = ExportPeriod.RANGE }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = period == ExportPeriod.RANGE, onClick = { period = ExportPeriod.RANGE })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.dialog_export_range), fontWeight = FontWeight.Medium)
                         }
                     }
 
@@ -326,6 +339,16 @@ fun ExportScreen(navController: NavController) {
                                             0 -> application.exportService.exportMonthData(dateToExport)
                                             1 -> application.exportService.exportMonthDataCsv(dateToExport)
                                             else -> application.exportService.exportMonthDataTickets(dateToExport)
+                                        }
+                                    }
+                                }
+                                ExportPeriod.YEAR -> {
+                                    val dateToExport = Date.from(selectedDate.atStartOfDay(zone).toInstant())
+                                    exportAndShare {
+                                        when (exportFormat) {
+                                            0 -> application.exportService.exportYearData(dateToExport)
+                                            1 -> application.exportService.exportYearDataCsv(dateToExport)
+                                            else -> application.exportService.exportYearDataTickets(dateToExport)
                                         }
                                     }
                                 }

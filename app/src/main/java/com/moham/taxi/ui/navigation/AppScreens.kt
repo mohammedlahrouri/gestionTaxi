@@ -39,6 +39,8 @@ sealed class AppScreens(val route: String) {
     object Tariffs : AppScreens("tariffs")
     object Export : AppScreens("export")
     object QuoteForm : AppScreens("quote_form")
+    object ManualQuote : AppScreens("manual_quote")
+    object FuelPrices : AppScreens("fuel_prices")
     object TariffForm : AppScreens("tariff_form") {
         fun createRouteWithId(id: Long): String {
             return "$route/$id"
@@ -85,6 +87,8 @@ sealed class AppScreens(val route: String) {
                 Tariffs.route -> Tariffs
                 Export.route -> Export
                 TariffForm.route -> TariffForm
+                ManualQuote.route -> ManualQuote
+                FuelPrices.route -> FuelPrices
                 null -> Login
                 else -> throw IllegalArgumentException("Route $route is not recognized")
             }
