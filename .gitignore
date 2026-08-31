@@ -24,3 +24,6 @@ local.properties
 /patch_dialogs.py
 /update_backup_service.patch
 /new diseño estadisticas/
+google-services.json
+app/google-services.json
+*.log
