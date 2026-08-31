@@ -196,4 +196,16 @@ interface TaxiRideDao {
         """
     )
     suspend fun getTipsByMethod(startDate: Date, endDate: Date): List<PaymentSummary>
+
+    @Query("SELECT * FROM taxi_rides WHERE isSynced = 0")
+    suspend fun getUnsyncedRides(): List<TaxiRide>
+
+    @Query("UPDATE taxi_rides SET isSynced = :isSynced, firestoreId = :firestoreId WHERE id = :id")
+    suspend fun updateSyncStatus(id: Long, isSynced: Boolean, firestoreId: String?)
+
+    @Query("SELECT * FROM taxi_rides WHERE firestoreId = :firestoreId LIMIT 1")
+    suspend fun getRideByFirestoreId(firestoreId: String): TaxiRide?
+
+    @Query("UPDATE taxi_rides SET isSynced = 0, firestoreId = NULL")
+    suspend fun resetSyncStatus()
 }

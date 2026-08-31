@@ -36,6 +36,7 @@ sealed class AppScreens(val route: String) {
     object Maintenance : AppScreens("maintenance")
     object Donations : AppScreens("donations")
     object OnlineBackup : AppScreens("online_backup")
+    object FleetConnection : AppScreens("fleet_connection")
     object Tariffs : AppScreens("tariffs")
     object Export : AppScreens("export")
     object QuoteForm : AppScreens("quote_form")
@@ -84,6 +85,7 @@ sealed class AppScreens(val route: String) {
                 Maintenance.route -> Maintenance
                 Donations.route -> Donations
                 OnlineBackup.route -> OnlineBackup
+                FleetConnection.route -> FleetConnection
                 Tariffs.route -> Tariffs
                 Export.route -> Export
                 TariffForm.route -> TariffForm

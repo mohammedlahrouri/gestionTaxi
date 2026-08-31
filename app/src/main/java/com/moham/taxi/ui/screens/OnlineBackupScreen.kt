@@ -106,15 +106,13 @@ fun OnlineBackupScreen(navController: NavHostController) {
                     GoogleSignInStatusCodes.INTERNAL_ERROR -> context.getString(R.string.backup_status_internal_error)
                     else -> context.getString(R.string.backup_status_code_error, e.statusCode)
                 }
-                if (result.resultCode == Activity.RESULT_OK) {
-                    viewModel.setErrorMessage("${context.getString(R.string.error_google_connection)} ($reason)")
+                if (e.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+                    viewModel.setErrorMessage("${context.getString(R.string.error_google_connection)} ($reason - Código: ${e.statusCode})")
                     return@rememberLauncherForActivityResult
                 }
             } catch (e: Exception) {
-                if (result.resultCode == Activity.RESULT_OK) {
-                    viewModel.setErrorMessage("${context.getString(R.string.error_google_connection)} (${e.localizedMessage ?: "Error"})")
-                    return@rememberLauncherForActivityResult
-                }
+                viewModel.setErrorMessage("${context.getString(R.string.error_google_connection)} (${e.localizedMessage ?: "Error"})")
+                return@rememberLauncherForActivityResult
             }
         }
 

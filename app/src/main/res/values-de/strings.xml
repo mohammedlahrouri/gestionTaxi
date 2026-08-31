@@ -605,6 +605,8 @@
 
     <string name="onboarding_data_source_title">Datenquelle</string>
     <string name="onboarding_data_source_subtitle">Wähle eine Option, um zu starten.</string>
+    <string name="onboarding_connect_fleet_title">Mit Flottenmanager verbinden</string>
+    <string name="onboarding_connect_fleet_subtitle">Verknüpfen Sie Ihr Konto mit einer Flotte, um Ihre Einnahmen und Ausgaben in Echtzeit zu synchronisieren.</string>
     <string name="onboarding_restore_drive_title">Von Drive wiederherstellen</string>
     <string name="onboarding_restore_drive_subtitle">Melde dich an und stelle dein Backup aus Google Drive wieder her.</string>
     <string name="onboarding_import_local_title">Lokal importieren</string>
@@ -854,4 +856,33 @@
     <string name="no_stations_found">Keine Tankstellen für diesen Kraftstoff in Ihrer Provinz gefunden.</string>
     <string name="search_province">Provinz suchen...</string>
     <string name="btn_refresh">Aktualisierung</string>
+    <string name="title_alerts">Alarme</string>
+    <string name="cheapest_station_badge">Günstigste</string>
+    <string name="traffic_incidents_preview_title">Verkehrsmeldungen</string>
+    <string name="traffic_incidents_preview_desc">Demnächst: Echtzeit-Verkehrsmeldungen in Ihrer Provinz.</string>
+    <string name="firebase_messages_preview_title">Hinweis</string>
+    <string name="firebase_messages_preview_desc">Atocha viel Publikum</string>
+    <string name="urgent_title">Dringend</string>
+
+    <!-- Fleet Connection -->
+    <string name="settings_fleet_title">Flotte</string>
+    <string name="settings_fleet_connect_title">Mit Flotte verbinden</string>
+    <string name="settings_fleet_connect_desc">Teilen Sie Ihre Einnahmen und Ausgaben in Echtzeit mit Ihrer Flotte</string>
+    <string name="fleet_connected_status_connected">Mit Flotte verbunden</string>
+    <string name="fleet_connected_status_disconnected">Keine Verbindung zur Flotte</string>
+    <string name="fleet_connected_code_label">Flottencode: %1$s</string>
+    <string name="fleet_connected_name_label">Flottenname: %1$s</string>
+    <string name="settings_fleet_connected_summary">Mit Flotte verbunden: %1$s</string>
+    <string name="fleet_connection_explanation">Wenn Sie sich mit einer Flotte verbinden, hat diese automatisch Echtzeit-Zugriff auf alle Ihre Einnahmen und Ausgaben und kann Ihnen Nachrichten senden.</string>
+    <string name="fleet_connect_with_code">Mit Code verbinden</string>
+    <string name="fleet_enter_code_dialog_title">Mit Code verbinden</string>
+    <string name="fleet_enter_code_dialog_desc">Geben Sie den Flottennamen und den 6-stelligen Code ein, der in Ihrer Flottenanwendung bereitgestellt wird, um die Verbindung herzustellen.</string>
+    <string name="fleet_name_placeholder">Flottenname</string>
+    <string name="fleet_code_placeholder">6-stelliger Code</string>
+    <string name="fleet_btn_connect">Verbinden</string>
+    <string name="fleet_btn_disconnect">Von Flotte trennen</string>
+    <string name="fleet_disconnect_confirm_title">Von Flotte trennen?</string>
+    <string name="fleet_disconnect_confirm_desc">Sind Sie sicher, dass Sie die Verbindung zur Flotte trennen möchten? Sie teilen Ihre Einnahmen und Ausgaben dann nicht mehr in Echtzeit.</string>
+    <string name="fleet_error_invalid_code">Der Code muss genau 6-stellig sein.</string>
+    <string name="fleet_error_invalid_name">Der Flottenname darf nicht leer sein.</string>
 </resources>

@@ -125,6 +125,7 @@ fun QuoteFormScreen(navController: NavController) {
                         )
 
                         if (pdfUri != null) {
+                            application.addQuoteToLatest(origin, destination, dateTime, quoteData)
                             Toast.makeText(context, context.getString(R.string.quote_generated_success), Toast.LENGTH_SHORT).show()
                             PdfGenerator.sharePdf(context, pdfUri)
                             navController.popBackStack()

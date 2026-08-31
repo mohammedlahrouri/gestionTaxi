@@ -81,6 +81,8 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.scheduleFirebaseSyncDebounced()
+        application.triggerImmediateFirebaseSync()
         id
     }
     
@@ -91,15 +93,28 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.scheduleFirebaseSyncDebounced()
+        application.triggerImmediateFirebaseSync()
     }
     
     suspend fun delete(taxiRide: TaxiRide) = withContext(Dispatchers.IO) {
+        val application = context.applicationContext as GestionTaxiApplication
+        if (!taxiRide.firestoreId.isNullOrEmpty()) {
+            try {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("rides")
+                    .document(taxiRide.firestoreId)
+                    .delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         taxiRideDao.delete(taxiRide)
         rideCache.remove(taxiRide.id)
         invalidateDateRangeCache()
         cleanupCache()
-        val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.triggerImmediateFirebaseSync()
     }
     
     suspend fun insertMultiple(taxiRides: List<TaxiRide>): List<Long> = withContext(Dispatchers.IO) {

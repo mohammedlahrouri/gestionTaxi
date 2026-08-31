@@ -128,6 +128,11 @@ import com.moham.taxi.ui.components.FinancialDetail
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.theme.*
+import com.moham.taxi.data.service.GasStation
+import com.moham.taxi.data.service.GasStationService
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Traffic
+import androidx.compose.material.icons.filled.Campaign
 import com.moham.taxi.ui.theme.IncomeWidgetBackground
 import com.moham.taxi.ui.theme.ExpenseWidgetBackground
 import com.moham.taxi.ui.theme.IncomeIconColor
@@ -230,6 +235,43 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     val dailyChallengeEnabled by application.isDailyChallengeEnabled().collectAsState(initial = false)
     val oldVersionEnabled by application.isOldVersionEnabled().collectAsState(initial = false)
     val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
+
+    // Alerts - Cheapest Gas Station and Rotating Billboard State
+    val currentCity by application.getCurrentCity().collectAsState(initial = "Madrid")
+    val selectedFuelType by application.getSelectedFuelType().collectAsState(initial = "gasolina 95")
+    
+    var cheapestStation by remember { mutableStateOf<GasStation?>(null) }
+    var isAlertsLoading by remember { mutableStateOf(false) }
+    var alertsError by remember { mutableStateOf(false) }
+    var currentSlideIndex by remember { mutableStateOf(0) }
+
+    LaunchedEffect(currentCity, selectedFuelType) {
+        val provinceId = GasStationService.getProvinceIdByCity(currentCity) ?: "28"
+        isAlertsLoading = true
+        alertsError = false
+        try {
+            val stations = GasStationService.getCheapestStationsByProvince(
+                context = context,
+                provinceId = provinceId,
+                fuelType = selectedFuelType,
+                forceRefresh = false
+            )
+            cheapestStation = stations.firstOrNull()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            alertsError = true
+            cheapestStation = null
+        } finally {
+            isAlertsLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(8000)
+            currentSlideIndex = (currentSlideIndex + 1) % 2
+        }
+    }
     
     // ViewModels
     val taxiRideViewModel: TaxiRideViewModel = viewModel(
@@ -956,6 +998,21 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 modernThemeEnabled = modernThemeEnabled,
                 showIcon = oldVersionEnabled
             )
+            
+            /*
+            AlertsBillboardCard(
+                cheapestStation = cheapestStation,
+                isLoading = isAlertsLoading,
+                hasError = alertsError,
+                selectedFuelType = selectedFuelType,
+                currentSlideIndex = currentSlideIndex,
+                onCardClick = {
+                    navController.navigate(AppScreens.FuelPrices.route)
+                },
+                modernThemeEnabled = modernThemeEnabled,
+                showIcon = oldVersionEnabled
+            )
+            */
             
             RecentActivityCard(
                 activities = recentActivity,
@@ -1896,6 +1953,272 @@ fun DonationBannerCard(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun AlertsBillboardCard(
+    cheapestStation: GasStation?,
+    isLoading: Boolean,
+    hasError: Boolean,
+    selectedFuelType: String,
+    currentSlideIndex: Int,
+    onCardClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    modernThemeEnabled: Boolean = false,
+    showIcon: Boolean = true
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onCardClick() },
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showIcon) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Notifications,
+                                contentDescription = null,
+                                tint = Color(0xFFF59E0B),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                    Text(
+                        text = stringResource(R.string.title_alerts),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        letterSpacing = 0.3.sp
+                    )
+                }
+
+                // Dot Indicators for the carousel
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    (0..1).forEach { index ->
+                        val isSelected = currentSlideIndex == index
+                        val dotColor = if (isSelected) Color(0xFFF59E0B) else Color.White.copy(alpha = 0.2f)
+                        val dotSize = if (isSelected) 8.dp else 6.dp
+                        Box(
+                            modifier = Modifier
+                                .size(dotSize)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Body depending on active slide
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when (currentSlideIndex) {
+                    0 -> {
+                        // Fuel Station Slide
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color(0xFFF59E0B), modifier = Modifier.size(24.dp))
+                            }
+                        } else if (hasError) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.error_loading_fuel_prices),
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        } else if (cheapestStation == null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.no_stations_found),
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.03f))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFF59E0B).copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocalGasStation,
+                                        contentDescription = null,
+                                        tint = Color(0xFFF59E0B),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = cheapestStation.name,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = cheapestStation.address,
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = cheapestStation.city,
+                                        fontSize = 9.sp,
+                                        color = Color.White.copy(alpha = 0.4f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                val price = cheapestStation.prices[selectedFuelType] ?: 0.0
+                                val formattedPrice = String.format(Locale.getDefault(), "%.3f", price)
+                                val fuelLabel = when (selectedFuelType) {
+                                    "gasolina 95" -> stringResource(R.string.fuel_gasolina95)
+                                    "gasolina 98" -> stringResource(R.string.fuel_gasolina98)
+                                    "diesel" -> stringResource(R.string.fuel_diesel)
+                                    "glp" -> stringResource(R.string.fuel_glp)
+                                    "gnc" -> stringResource(R.string.fuel_gnc)
+                                    else -> selectedFuelType
+                                }
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "$formattedPrice €",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFFF59E0B)
+                                    )
+                                    Text(
+                                        text = fuelLabel,
+                                        fontSize = 9.sp,
+                                        color = Color.White.copy(alpha = 0.5f),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stringResource(R.string.cheapest_station_badge),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFF59E0B),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color(0xFFF59E0B).copy(alpha = 0.1f))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    1 -> {
+                        // Firebase / Custom Messages Slide
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.03f))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.urgent_title),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFEF4444),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(R.string.firebase_messages_preview_desc),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

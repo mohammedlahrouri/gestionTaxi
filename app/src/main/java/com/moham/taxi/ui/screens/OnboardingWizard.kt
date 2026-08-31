@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -133,6 +134,7 @@ fun StartupScreen(navController: NavController) {
 }
 
 private enum class DataSourceChoice {
+    FLEET,
     DRIVE,
     LOCAL,
     SCRATCH
@@ -334,6 +336,7 @@ fun OnboardingStep1Screen(navController: NavController) {
         primaryEnabled = choice != null && !uiState.isBusy,
         onPrimary = {
             when (choice) {
+                DataSourceChoice.FLEET -> navController.navigate(AppScreens.FleetConnection.route)
                 DataSourceChoice.DRIVE -> {
                     if (uiState.driveSignedIn) {
                         scope.launch {
@@ -380,6 +383,13 @@ fun OnboardingStep1Screen(navController: NavController) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
+                DataSourceCard(
+                    title = stringResource(R.string.onboarding_connect_fleet_title),
+                    subtitle = stringResource(R.string.onboarding_connect_fleet_subtitle),
+                    icon = { Icon(Icons.Default.Group, contentDescription = null) },
+                    selected = choice == DataSourceChoice.FLEET,
+                    onClick = { choice = DataSourceChoice.FLEET }
+                )
                 DataSourceCard(
                     title = stringResource(R.string.onboarding_restore_drive_title),
                     subtitle = stringResource(R.string.onboarding_restore_drive_subtitle),

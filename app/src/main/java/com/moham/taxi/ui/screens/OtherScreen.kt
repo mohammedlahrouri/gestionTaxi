@@ -345,20 +345,20 @@ fun GridOptionCard(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
-            .height(90.dp)
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
+                .fillMaxWidth()
+                .heightIn(min = 90.dp)
+                .padding(horizontal = 10.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(iconColor.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -366,7 +366,7 @@ fun GridOptionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             
@@ -374,8 +374,9 @@ fun GridOptionCard(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.White,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
         }

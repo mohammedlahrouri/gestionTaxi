@@ -25,12 +25,16 @@ import com.moham.taxi.data.AppDatabase
 import com.moham.taxi.data.online.GoogleDriveAuthManager
 import com.moham.taxi.data.online.OnlineBackupRepository
 import com.moham.taxi.data.online.OnlineBackupWorker
+import com.moham.taxi.data.online.FirebaseSyncRepository
+import com.moham.taxi.data.online.FirebaseSyncWorker
 import com.moham.taxi.data.repository.ExpenseRepository
 import com.moham.taxi.data.repository.PaymentMethodRepository
 import com.moham.taxi.data.repository.ServicePlatformRepository
 import com.moham.taxi.data.repository.TaxiRideRepository
 import com.moham.taxi.data.service.ExportService
 import com.moham.taxi.data.service.BackupService
+import com.moham.taxi.data.model.SavedQuote
+import com.moham.taxi.data.model.QuoteData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,6 +58,8 @@ class GestionTaxiApplication : Application() {
         super.onCreate()
         // Reset any app-level locale override to align with device system language
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+        // Sincronizar datos con Firebase al iniciar la aplicación
+        scheduleFirebaseSyncDebounced()
     }
     
     // Sistema de caché para preferencias frecuentemente usadas
@@ -89,6 +95,9 @@ class GestionTaxiApplication : Application() {
     val onlineBackupRepository by lazy {
         OnlineBackupRepository(this, googleDriveAuthManager, taxiRideRepository, expenseRepository, database)
     }
+    val firebaseSyncRepository by lazy {
+        FirebaseSyncRepository(this, database)
+    }
     
     // Claves para almacenar preferencias
     companion object {
@@ -120,6 +129,11 @@ class GestionTaxiApplication : Application() {
         val OLD_VERSION_ENABLED_KEY = booleanPreferencesKey("old_version_enabled")
         val MODERN_THEME_ENABLED_KEY = booleanPreferencesKey("modern_theme_enabled")
         val MADRID_CALCULATIONS_COUNT_KEY = intPreferencesKey("madrid_calculations_count")
+        val LATEST_BUDGETS_KEY = stringPreferencesKey("latest_budgets")
+        val FLEET_CONNECTED_KEY = booleanPreferencesKey("fleet_connected")
+        val FLEET_CODE_KEY = stringPreferencesKey("fleet_code")
+        val FLEET_NAME_KEY = stringPreferencesKey("fleet_name")
+        val FLEET_ID_KEY = stringPreferencesKey("fleet_id")
     }
     
     // Método para guardar si el reto diario está habilitado
@@ -154,6 +168,56 @@ class GestionTaxiApplication : Application() {
 
     fun isTipsEnabled(): Flow<Boolean> {
         return flowOf(true)
+    }
+
+    suspend fun saveFleetConnection(connected: Boolean, name: String?, code: String?) {
+        dataStore.edit { preferences ->
+            preferences[FLEET_CONNECTED_KEY] = connected
+            if (name != null) {
+                preferences[FLEET_NAME_KEY] = name
+            } else {
+                preferences.remove(FLEET_NAME_KEY)
+            }
+            if (code != null) {
+                preferences[FLEET_CODE_KEY] = code
+            } else {
+                preferences.remove(FLEET_CODE_KEY)
+            }
+        }
+    }
+
+    fun isFleetConnected(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[FLEET_CONNECTED_KEY] ?: false
+        }
+    }
+
+    fun getFleetName(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[FLEET_NAME_KEY]
+        }
+    }
+
+    fun getFleetCode(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[FLEET_CODE_KEY]
+        }
+    }
+
+    suspend fun saveFleetId(id: String?) {
+        dataStore.edit { preferences ->
+            if (id != null) {
+                preferences[FLEET_ID_KEY] = id
+            } else {
+                preferences.remove(FLEET_ID_KEY)
+            }
+        }
+    }
+
+    fun getFleetId(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[FLEET_ID_KEY]
+        }
     }
 
     suspend fun saveTicketPhotosEnabled(enabled: Boolean) {
@@ -459,6 +523,18 @@ class GestionTaxiApplication : Application() {
         }
     }
 
+    fun getSelectedFuelType(): Flow<String> {
+        return dataStore.data.map { preferences ->
+            preferences[stringPreferencesKey("selected_fuel_type")] ?: "gasolina 95"
+        }
+    }
+
+    suspend fun saveSelectedFuelType(fuelType: String) {
+        dataStore.edit { preferences ->
+            preferences[stringPreferencesKey("selected_fuel_type")] = fuelType
+        }
+    }
+
     suspend fun saveHasShownUpdateV3Dialog(shown: Boolean) {
         dataStore.edit { preferences ->
             preferences[UPDATE_V3_DIALOG_SHOWN_KEY] = shown
@@ -507,6 +583,43 @@ class GestionTaxiApplication : Application() {
         )
     }
 
+    fun scheduleFirebaseSyncDebounced() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = OneTimeWorkRequestBuilder<FirebaseSyncWorker>()
+            .setInitialDelay(10, TimeUnit.SECONDS)
+            .setConstraints(constraints)
+            .build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "firebase_sync_debounced",
+            ExistingWorkPolicy.REPLACE,
+            request
+        )
+    }
+    
+    fun scheduleFirebaseSyncImmediate() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = OneTimeWorkRequestBuilder<FirebaseSyncWorker>()
+            .setConstraints(constraints)
+            .build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "firebase_sync_immediate",
+            ExistingWorkPolicy.REPLACE,
+            request
+        )
+    }
+
+    fun triggerImmediateFirebaseSync() {
+        applicationScope.launch {
+            if (firebaseSyncRepository.isFleetConnected()) {
+                firebaseSyncRepository.syncRidesAndExpenses()
+            }
+        }
+    }
+
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false
@@ -539,6 +652,55 @@ class GestionTaxiApplication : Application() {
             "es" -> "es"
             "fr" -> "fr"
             else -> "en"
+        }
+    }
+
+    fun getLatestBudgets(): Flow<String> {
+        return dataStore.data.map { preferences ->
+            preferences[LATEST_BUDGETS_KEY] ?: "[]"
+        }
+    }
+
+    suspend fun saveLatestBudgets(budgetsJson: String) {
+        dataStore.edit { preferences ->
+            preferences[LATEST_BUDGETS_KEY] = budgetsJson
+        }
+    }
+
+    suspend fun addQuoteToLatest(
+        origin: String,
+        destination: String,
+        dateTime: String,
+        quoteData: QuoteData
+    ) {
+        try {
+            val currentJson = getLatestBudgets().first()
+            val list = mutableListOf<SavedQuote>()
+            val arr = org.json.JSONArray(currentJson)
+            for (i in 0 until arr.length()) {
+                list.add(SavedQuote.fromJson(arr.getString(i)))
+            }
+            
+            val newQuote = SavedQuote(origin, destination, dateTime, quoteData)
+            val isDuplicate = list.any { 
+                it.origin == origin && 
+                it.destination == destination && 
+                it.dateTime == dateTime && 
+                it.quoteData.totalAmount == quoteData.totalAmount 
+            }
+            if (isDuplicate) return
+            
+            list.add(0, newQuote)
+            val limitedList = list.take(3)
+            
+            val newArr = org.json.JSONArray()
+            limitedList.forEach { 
+                newArr.put(it.toJson()) 
+            }
+            
+            saveLatestBudgets(newArr.toString())
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

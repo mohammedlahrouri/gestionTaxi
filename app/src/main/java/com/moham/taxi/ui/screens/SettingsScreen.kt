@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Group
 // Importación de DateRange eliminada
 import androidx.compose.material.icons.filled.Download
 
@@ -424,6 +425,55 @@ fun SettingsScreen(navController: NavController) {
             }
             
             Divider(modifier = Modifier.padding(vertical = 8.dp))
+            
+            // Sección de Flota
+            Text(
+                text = stringResource(R.string.settings_fleet_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
+            )
+            
+            val isFleetConnected by application.isFleetConnected().collectAsState(initial = false)
+            val fleetName by application.getFleetName().collectAsState(initial = null)
+            
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AppScreens.FleetConnection.route) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Group,
+                        contentDescription = stringResource(R.string.settings_fleet_connect_title),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_fleet_connect_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = if (isFleetConnected && !fleetName.isNullOrEmpty()) {
+                                stringResource(R.string.settings_fleet_connected_summary, fleetName!!)
+                            } else {
+                                stringResource(R.string.settings_fleet_connect_desc)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.settings_fleet_connect_title),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             

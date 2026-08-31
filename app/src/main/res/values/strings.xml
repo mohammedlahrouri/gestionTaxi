@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Gestion Taxi</string>
+    <string name="default_web_client_id">267394342620-dus8s6qpsij128gt3bp4tll8qgma3lq4.apps.googleusercontent.com</string>
     <string name="language_settings">Idioma</string>
     <string name="language_spanish">Español</string>
     <string name="language_english">Inglés</string>
@@ -650,6 +651,8 @@
 
     <string name="onboarding_data_source_title">Origen de datos</string>
     <string name="onboarding_data_source_subtitle">Selecciona una opción para empezar.</string>
+    <string name="onboarding_connect_fleet_title">Conectar con gestor de flota</string>
+    <string name="onboarding_connect_fleet_subtitle">Vincula tu cuenta con una flota para sincronizar tus ingresos y gastos en tiempo real.</string>
     <string name="onboarding_restore_drive_title">Restaurar copia Drive</string>
     <string name="onboarding_restore_drive_subtitle">Inicia sesión y restaura tu copia desde Google Drive.</string>
     <string name="onboarding_import_local_title">Importar local</string>
@@ -875,4 +878,33 @@
     <string name="no_stations_found">No se encontraron gasolineras con este combustible en tu provincia.</string>
     <string name="search_province">Buscar provincia...</string>
     <string name="btn_refresh">Actualizar</string>
+    <string name="title_alerts">Alertas</string>
+    <string name="cheapest_station_badge">Más barata</string>
+    <string name="traffic_incidents_preview_title">Tráfico e Incidencias</string>
+    <string name="traffic_incidents_preview_desc">Próximamente: incidencias de tráfico en tiempo real de tu provincia.</string>
+    <string name="firebase_messages_preview_title">Aviso</string>
+    <string name="firebase_messages_preview_desc">Atocha mucho público</string>
+    <string name="urgent_title">Urgente</string>
+
+    <!-- Fleet Connection -->
+    <string name="settings_fleet_title">Flota</string>
+    <string name="settings_fleet_connect_title">Conectar con flota</string>
+    <string name="settings_fleet_connect_desc">Comparte tus ingresos y gastos en tiempo real con tu flota</string>
+    <string name="fleet_connected_status_connected">Conectado a la flota</string>
+    <string name="fleet_connected_status_disconnected">Sin conexión a flota</string>
+    <string name="fleet_connected_code_label">Código de flota: %1$s</string>
+    <string name="fleet_connected_name_label">Nombre de flota: %1$s</string>
+    <string name="settings_fleet_connected_summary">Conectado a la flota: %1$s</string>
+    <string name="fleet_connection_explanation">Al conectar con una flota, esta podrá tener acceso en tiempo real a todos tus ingresos y gastos de forma automática, además de poder enviarte mensajes.</string>
+    <string name="fleet_connect_with_code">Conectar con código</string>
+    <string name="fleet_enter_code_dialog_title">Conectar con código</string>
+    <string name="fleet_enter_code_dialog_desc">Introduce el nombre de la flota y el código de 6 números que se te ha proporcionado en la aplicación de tu flota para establecer la conexión.</string>
+    <string name="fleet_name_placeholder">Nombre de la flota</string>
+    <string name="fleet_code_placeholder">Código de 6 números</string>
+    <string name="fleet_btn_connect">Conectar</string>
+    <string name="fleet_btn_disconnect">Desconectar de la flota</string>
+    <string name="fleet_disconnect_confirm_title">¿Desconectar de la flota?</string>
+    <string name="fleet_disconnect_confirm_desc">¿Estás seguro de que deseas desconectarte de la flota? Dejarás de compartir tus ingresos y gastos en tiempo real.</string>
+    <string name="fleet_error_invalid_code">El código debe tener exactamente 6 números.</string>
+    <string name="fleet_error_invalid_name">El nombre de la flota no puede estar vacío.</string>
 </resources>

@@ -640,6 +640,8 @@
 
     <string name="onboarding_data_source_title">Data source</string>
     <string name="onboarding_data_source_subtitle">Choose an option to get started.</string>
+    <string name="onboarding_connect_fleet_title">Connect with fleet manager</string>
+    <string name="onboarding_connect_fleet_subtitle">Link your account with a fleet to sync your income and expenses in real-time.</string>
     <string name="onboarding_restore_drive_title">Restore from Drive</string>
     <string name="onboarding_restore_drive_subtitle">Sign in and restore your backup from Google Drive.</string>
     <string name="onboarding_import_local_title">Import local</string>
@@ -875,4 +877,33 @@
     <string name="no_stations_found">No gas stations found for this fuel type in your province.</string>
     <string name="search_province">Search province...</string>
     <string name="btn_refresh">Update</string>
+    <string name="title_alerts">Alerts</string>
+    <string name="cheapest_station_badge">Cheapest</string>
+    <string name="traffic_incidents_preview_title">Traffic Incidents</string>
+    <string name="traffic_incidents_preview_desc">Coming soon: real-time traffic incidents in your province.</string>
+    <string name="firebase_messages_preview_title">Notice</string>
+    <string name="firebase_messages_preview_desc">Atocha busy</string>
+    <string name="urgent_title">Urgent</string>
+
+    <!-- Fleet Connection -->
+    <string name="settings_fleet_title">Fleet</string>
+    <string name="settings_fleet_connect_title">Connect to fleet</string>
+    <string name="settings_fleet_connect_desc">Share your income and expenses in real time with your fleet</string>
+    <string name="fleet_connected_status_connected">Connected to fleet</string>
+    <string name="fleet_connected_status_disconnected">No fleet connection</string>
+    <string name="fleet_connected_code_label">Fleet code: %1$s</string>
+    <string name="fleet_connected_name_label">Fleet name: %1$s</string>
+    <string name="settings_fleet_connected_summary">Connected to fleet: %1$s</string>
+    <string name="fleet_connection_explanation">By connecting with a fleet, they will automatically have real-time access to all your income and expenses, and can also send you messages.</string>
+    <string name="fleet_connect_with_code">Connect with code</string>
+    <string name="fleet_enter_code_dialog_title">Connect with code</string>
+    <string name="fleet_enter_code_dialog_desc">Enter the fleet name and the 6-digit code provided in your fleet application to establish the connection.</string>
+    <string name="fleet_name_placeholder">Fleet name</string>
+    <string name="fleet_code_placeholder">6-digit code</string>
+    <string name="fleet_btn_connect">Connect</string>
+    <string name="fleet_btn_disconnect">Disconnect from fleet</string>
+    <string name="fleet_disconnect_confirm_title">Disconnect from fleet?</string>
+    <string name="fleet_disconnect_confirm_desc">Are you sure you want to disconnect from the fleet? You will stop sharing your income and expenses in real time.</string>
+    <string name="fleet_error_invalid_code">The code must be exactly 6 digits.</string>
+    <string name="fleet_error_invalid_name">The fleet name cannot be empty.</string>
 </resources>

@@ -31,6 +31,7 @@ import com.moham.taxi.ui.screens.StatisticsScreen
 import com.moham.taxi.ui.screens.TaxiRideFormScreen
 import com.moham.taxi.ui.screens.TaxiRideListScreen
 import com.moham.taxi.ui.screens.OnlineBackupScreen
+import com.moham.taxi.ui.screens.FleetConnectionScreen
 import com.moham.taxi.ui.screens.OnboardingStep1Screen
 import com.moham.taxi.ui.screens.OnboardingStep2Screen
 import com.moham.taxi.ui.screens.OnboardingStep3Screen
@@ -312,6 +313,14 @@ fun AppNavigation(navController: NavHostController, preloadData: SplashScreenPre
             exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) {
             OnlineBackupScreen(navController)
+        }
+
+        composable(
+            route = AppScreens.FleetConnection.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
+            FleetConnectionScreen(navController)
         }
 
         composable(

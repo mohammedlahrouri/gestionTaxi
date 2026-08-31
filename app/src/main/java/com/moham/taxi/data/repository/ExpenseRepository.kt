@@ -95,6 +95,8 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.scheduleFirebaseSyncDebounced()
+        application.triggerImmediateFirebaseSync()
         id
     }
     
@@ -106,16 +108,29 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.scheduleFirebaseSyncDebounced()
+        application.triggerImmediateFirebaseSync()
     }
     
     suspend fun delete(expense: Expense) = withContext(Dispatchers.IO) {
+        val application = context.applicationContext as GestionTaxiApplication
+        if (!expense.firestoreId.isNullOrEmpty()) {
+            try {
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("expenses")
+                    .document(expense.firestoreId)
+                    .delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         expenseDao.delete(expense)
         expenseCache.remove(expense.id)
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
-        val application = context.applicationContext as GestionTaxiApplication
         application.savePendingBackup(true)
+        application.triggerImmediateFirebaseSync()
     }
     
     suspend fun insertMultiple(expenses: List<Expense>): List<Long> = withContext(Dispatchers.IO) {

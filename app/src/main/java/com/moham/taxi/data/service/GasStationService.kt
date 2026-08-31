@@ -236,7 +236,7 @@ object GasStationService {
                     val item = list.getJSONObject(i)
                     
                     val id = item.optString("IDEESS", "")
-                    val name = item.optString("Rotulo", "")
+                    val name = item.optString("Rótulo", "")
                     val address = item.optString("Dirección", "")
                     val postalCode = item.optString("C.P.", "")
                     val city = item.optString("Municipio", "")

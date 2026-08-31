@@ -103,4 +103,16 @@ interface ExpenseDao {
     // Expense type summaries
     @Query("SELECT type, SUM(amount) as total FROM expenses WHERE date BETWEEN :startDate AND :endDate GROUP BY type")
     suspend fun getExpensesByTypeInDateRange(startDate: Date, endDate: Date): List<ExpenseTypeSummary>
+
+    @Query("SELECT * FROM expenses WHERE isSynced = 0")
+    suspend fun getUnsyncedExpenses(): List<Expense>
+
+    @Query("UPDATE expenses SET isSynced = :isSynced, firestoreId = :firestoreId WHERE id = :id")
+    suspend fun updateSyncStatus(id: Long, isSynced: Boolean, firestoreId: String?)
+
+    @Query("SELECT * FROM expenses WHERE firestoreId = :firestoreId LIMIT 1")
+    suspend fun getExpenseByFirestoreId(firestoreId: String): Expense?
+
+    @Query("UPDATE expenses SET isSynced = 0, firestoreId = NULL")
+    suspend fun resetSyncStatus()
 }

@@ -614,6 +614,8 @@
 
     <string name="onboarding_data_source_title">Source des données</string>
     <string name="onboarding_data_source_subtitle">Choisissez une option pour commencer.</string>
+    <string name="onboarding_connect_fleet_title">Se connecter au gestionnaire de flotte</string>
+    <string name="onboarding_connect_fleet_subtitle">Associez votre compte à une flotte pour synchroniser vos revenus et dépenses en temps réel.</string>
     <string name="onboarding_restore_drive_title">Restaurer depuis Drive</string>
     <string name="onboarding_restore_drive_subtitle">Connectez-vous et restaurez votre sauvegarde depuis Google Drive.</string>
     <string name="onboarding_import_local_title">Importer en local</string>
@@ -854,4 +856,33 @@
     <string name="no_stations_found">Aucune station-service trouvée pour ce carburant dans votre province.</string>
     <string name="search_province">Rechercher une province...</string>
     <string name="btn_refresh">Actualiser</string>
+    <string name="title_alerts">Alertes</string>
+    <string name="cheapest_station_badge">La moins chère</string>
+    <string name="traffic_incidents_preview_title">Incidents de circulation</string>
+    <string name="traffic_incidents_preview_desc">Bientôt : incidents de trafic en temps réel dans votre province.</string>
+    <string name="firebase_messages_preview_title">Avis</string>
+    <string name="firebase_messages_preview_desc">Atocha beaucoup de public</string>
+    <string name="urgent_title">Urgent</string>
+
+    <!-- Fleet Connection -->
+    <string name="settings_fleet_title">Flotte</string>
+    <string name="settings_fleet_connect_title">Connexion à la flotte</string>
+    <string name="settings_fleet_connect_desc">Partagez vos revenus et dépenses en temps réel avec votre flotte</string>
+    <string name="fleet_connected_status_connected">Connecté à la flotte</string>
+    <string name="fleet_connected_status_disconnected">Pas de connexion à la flotte</string>
+    <string name="fleet_connected_code_label">Code de flotte : %1$s</string>
+    <string name="fleet_connected_name_label">Nom de la flotte : %1$s</string>
+    <string name="settings_fleet_connected_summary">Connecté à la flotte : %1$s</string>
+    <string name="fleet_connection_explanation">En vous connectant à une flotte, celle-ci aura automatiquement accès en temps réel à tous vos revenus et dépenses, et pourra également vous envoyer des messages.</string>
+    <string name="fleet_connect_with_code">Se connecter avec un code</string>
+    <string name="fleet_enter_code_dialog_title">Se connecter avec un code</string>
+    <string name="fleet_enter_code_dialog_desc">Saisissez le nom de la flotte et le code à 6 chiffres fourni dans votre application de flotte pour établir la connexion.</string>
+    <string name="fleet_name_placeholder">Nom de la flotte</string>
+    <string name="fleet_code_placeholder">Code à 6 chiffres</string>
+    <string name="fleet_btn_connect">Se connecter</string>
+    <string name="fleet_btn_disconnect">Se déconnecter de la flotte</string>
+    <string name="fleet_disconnect_confirm_title">Se déconnecter de la flotte ?</string>
+    <string name="fleet_disconnect_confirm_desc">Êtes-vous sûr de vouloir vous déconnecter de la flotte ? Vous cesserez de partager vos revenus et dépenses en temps réel.</string>
+    <string name="fleet_error_invalid_code">Le code doit comporter exactement 6 chiffres.</string>
+    <string name="fleet_error_invalid_name">Le nom de la flotte ne peut pas être vide.</string>
 </resources>

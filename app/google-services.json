@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "267394342620",
+    "project_id": "flotas-32442",
+    "storage_bucket": "flotas-32442.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267394342620:android:fa2b6b4fb8dca5c9175e19",
+        "android_client_info": {
+          "package_name": "com.moham.taxi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "267394342620-2j10rht9oi6vmjginkfk0vg58usp5ipk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.moham.taxi",
+            "certificate_hash": "1a1e0eab14c3a911c3abb22582845679b05cd5ff"
+          }
+        },
+        {
+          "client_id": "267394342620-dus8s6qpsij128gt3bp4tll8qgma3lq4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1WcaziPS-KQaiM98QSjWy0ca82UqEM54"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "267394342620-dus8s6qpsij128gt3bp4tll8qgma3lq4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

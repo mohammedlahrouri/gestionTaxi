@@ -33,6 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.moham.taxi.data.model.SavedQuote
+import com.moham.taxi.data.service.PdfGenerator
 import com.moham.taxi.GestionTaxiApplication
 import com.moham.taxi.R
 import com.moham.taxi.data.model.QuoteData
@@ -53,6 +57,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 enum class PriceStep {
+    SELECT_ACTION,
     SELECT_ADDRESSES,
     SELECT_TARIFF,
     SUMMARY
@@ -85,7 +90,27 @@ fun PriceScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
 
     // Control de paso/pantalla actual
-    var currentStep by remember { mutableStateOf(PriceStep.SELECT_ADDRESSES) }
+    var currentStep by remember { mutableStateOf(PriceStep.SELECT_ACTION) }
+
+    val destinationFocusRequester = remember { FocusRequester() }
+
+    val latestBudgetsJson by application.getLatestBudgets().collectAsState(initial = "[]")
+    val latestBudgets = remember(latestBudgetsJson) {
+        try {
+            val list = mutableListOf<SavedQuote>()
+            val arr = org.json.JSONArray(latestBudgetsJson)
+            for (i in 0 until arr.length()) {
+                list.add(SavedQuote.fromJson(arr.getString(i)))
+            }
+            list
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    val historicalOrigins = remember(latestBudgets) {
+        latestBudgets.map { it.origin }.distinct().take(2)
+    }
 
     // Paso 1: Estados de búsqueda de direcciones
     var originQuery by remember { mutableStateOf("") }
@@ -120,11 +145,14 @@ fun PriceScreen(navController: NavController) {
     // BackHandler inteligente según el paso actual
     BackHandler {
         when (currentStep) {
-            PriceStep.SELECT_ADDRESSES -> {
+            PriceStep.SELECT_ACTION -> {
                 navController.navigate(AppScreens.Other.route) {
                     popUpTo(AppScreens.Other.route) { inclusive = false }
                     launchSingleTop = true
                 }
+            }
+            PriceStep.SELECT_ADDRESSES -> {
+                currentStep = PriceStep.SELECT_ACTION
             }
             PriceStep.SELECT_TARIFF -> {
                 currentStep = PriceStep.SELECT_ADDRESSES
@@ -161,6 +189,7 @@ fun PriceScreen(navController: NavController) {
                 title = {
                     Text(
                         when (currentStep) {
+                            PriceStep.SELECT_ACTION -> "Presupuestos"
                             PriceStep.SELECT_ADDRESSES -> "Presupuesto: Direcciones"
                             PriceStep.SELECT_TARIFF -> "Presupuesto: Tarifa"
                             PriceStep.SUMMARY -> "Presupuesto: Resumen"
@@ -170,12 +199,13 @@ fun PriceScreen(navController: NavController) {
                 navigationIcon = {
                     IconButton(onClick = {
                         when (currentStep) {
-                            PriceStep.SELECT_ADDRESSES -> {
+                            PriceStep.SELECT_ACTION -> {
                                 navController.navigate(AppScreens.Other.route) {
                                     popUpTo(AppScreens.Other.route) { inclusive = false }
                                     launchSingleTop = true
                                 }
                             }
+                            PriceStep.SELECT_ADDRESSES -> currentStep = PriceStep.SELECT_ACTION
                             PriceStep.SELECT_TARIFF -> currentStep = PriceStep.SELECT_ADDRESSES
                             PriceStep.SUMMARY -> currentStep = PriceStep.SELECT_TARIFF
                         }
@@ -215,6 +245,225 @@ fun PriceScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 when (currentStep) {
+                    PriceStep.SELECT_ACTION -> {
+                        // Card for "Nuevo Presupuesto"
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    currentStep = PriceStep.SELECT_ADDRESSES
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary,
+                                            shape = RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Nuevo presupuesto",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "Calcular precio estimado usando direcciones o manual",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Subtitle "Últimos presupuestos"
+                        Text(
+                            text = "Últimos presupuestos",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+
+                        if (latestBudgets.isEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Description,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Text(
+                                            text = "No hay presupuestos recientes",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                latestBudgets.forEach { savedQuote ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                coroutineScope.launch {
+                                                    val billingData = application.getBillingData().first()
+                                                    val pdfUri = PdfGenerator.generateQuote(
+                                                        context = context,
+                                                        billingData = billingData,
+                                                        quoteData = savedQuote.quoteData,
+                                                        origin = savedQuote.origin,
+                                                        destination = savedQuote.destination,
+                                                        dateTime = savedQuote.dateTime
+                                                    )
+                                                    if (pdfUri != null) {
+                                                        PdfGenerator.sharePdf(context, pdfUri)
+                                                    } else {
+                                                        Toast.makeText(context, "Error al abrir el presupuesto", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                        ),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.secondaryContainer,
+                                                        shape = RoundedCornerShape(8.dp)
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Description,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                            
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "${savedQuote.origin} ➔ ${savedQuote.destination}",
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = savedQuote.dateTime,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            
+                                            Column(
+                                                horizontalAlignment = Alignment.End,
+                                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = formatCurrency(savedQuote.quoteData.totalAmount),
+                                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                IconButton(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val billingData = application.getBillingData().first()
+                                                            val pdfUri = PdfGenerator.generateQuote(
+                                                                context = context,
+                                                                billingData = billingData,
+                                                                quoteData = savedQuote.quoteData,
+                                                                origin = savedQuote.origin,
+                                                                destination = savedQuote.destination,
+                                                                dateTime = savedQuote.dateTime
+                                                            )
+                                                            if (pdfUri != null) {
+                                                                PdfGenerator.sharePdf(context, pdfUri)
+                                                            } else {
+                                                                Toast.makeText(context, "Error al compartir el presupuesto", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Share,
+                                                        contentDescription = "Compartir",
+                                                        tint = MaterialTheme.colorScheme.secondary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     PriceStep.SELECT_ADDRESSES -> {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -249,6 +498,61 @@ fun PriceScreen(navController: NavController) {
                                     singleLine = true
                                 )
 
+                                if (originQuery.isEmpty() && historicalOrigins.isNotEmpty()) {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                            Text(
+                                                text = "Ubicaciones recientes",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                            )
+                                            historicalOrigins.forEach { histOrigin ->
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            coroutineScope.launch {
+                                                                val suggestions = GeocodingService.getSuggestions(histOrigin, currentCity)
+                                                                val bestSuggestion = if (suggestions.isNotEmpty()) {
+                                                                    suggestions.first()
+                                                                } else {
+                                                                    PlaceSuggestion(histOrigin, 0.0, 0.0)
+                                                                }
+                                                                selectedOrigin = bestSuggestion
+                                                                originQuery = bestSuggestion.displayName
+                                                                originSuggestions = emptyList()
+                                                                destinationFocusRequester.requestFocus()
+                                                            }
+                                                        }
+                                                        .padding(12.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.History,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Text(
+                                                        text = histOrigin,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                                            }
+                                        }
+                                    }
+                                }
+
                                 if (originSuggestions.isNotEmpty()) {
                                     Card(
                                         modifier = Modifier
@@ -266,6 +570,7 @@ fun PriceScreen(navController: NavController) {
                                                             selectedOrigin = suggestion
                                                             originQuery = suggestion.displayName
                                                             originSuggestions = emptyList()
+                                                            destinationFocusRequester.requestFocus()
                                                         }
                                                         .padding(12.dp),
                                                     style = MaterialTheme.typography.bodyMedium
@@ -296,7 +601,7 @@ fun PriceScreen(navController: NavController) {
                                             }
                                         }
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().focusRequester(destinationFocusRequester),
                                     singleLine = true
                                 )
 
@@ -712,16 +1017,23 @@ fun PriceScreen(navController: NavController) {
                                         } else if (diff < -0.01) {
                                             items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
                                         }
-
-                                        application.currentQuote = QuoteData(
+                                        val quoteData = QuoteData(
                                             title = context.getString(R.string.quote_title_format, currentCity),
                                             items = items,
                                             totalAmount = price!!
                                         )
+                                        application.currentQuote = quoteData
                                         
                                         // Guardar direcciones en la app para pre-rellenar
-                                        application.currentOrigin = selectedOrigin?.displayName ?: originQuery
-                                        application.currentDestination = selectedDestination?.displayName ?: destinationQuery
+                                        val originText = selectedOrigin?.displayName ?: originQuery
+                                        val destText = selectedDestination?.displayName ?: destinationQuery
+                                        application.currentOrigin = originText
+                                        application.currentDestination = destText
+                                        
+                                        val currentDateTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                                        coroutineScope.launch {
+                                            application.addQuoteToLatest(originText, destText, currentDateTime, quoteData)
+                                        }
                                         
                                         currentStep = PriceStep.SUMMARY
                                     }
@@ -783,15 +1095,23 @@ fun PriceScreen(navController: NavController) {
                                         items.add(QuoteItem(context.getString(R.string.quote_round_adjustment), null, diff, diff))
                                     }
 
-                                    application.currentQuote = QuoteData(
+                                    val quoteData = QuoteData(
                                         title = context.getString(R.string.quote_title_format, currentCity),
                                         items = items,
                                         totalAmount = price!!
                                     )
+                                    application.currentQuote = quoteData
 
                                     // Guardar direcciones en la app para pre-rellenar
-                                    application.currentOrigin = selectedOrigin?.displayName ?: originQuery
-                                    application.currentDestination = selectedDestination?.displayName ?: destinationQuery
+                                     val originText = selectedOrigin?.displayName ?: originQuery
+                                     val destText = selectedDestination?.displayName ?: destinationQuery
+                                     application.currentOrigin = originText
+                                     application.currentDestination = destText
+
+                                     val currentDateTime = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                                     coroutineScope.launch {
+                                         application.addQuoteToLatest(originText, destText, currentDateTime, quoteData)
+                                     }
 
                                     currentStep = PriceStep.SUMMARY
                                 }

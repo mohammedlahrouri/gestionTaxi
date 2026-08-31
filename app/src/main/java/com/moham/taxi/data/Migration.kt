@@ -251,3 +251,12 @@ val MIGRATION_18_19 = object : Migration(18, 19) {
     }
 }
 
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `isSynced` INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `firestoreId` TEXT DEFAULT NULL")
+        database.execSQL("ALTER TABLE `expenses` ADD COLUMN `isSynced` INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE `expenses` ADD COLUMN `firestoreId` TEXT DEFAULT NULL")
+    }
+}
+

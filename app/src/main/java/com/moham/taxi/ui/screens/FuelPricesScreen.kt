@@ -61,7 +61,7 @@ fun FuelPricesScreen(navController: NavController) {
     
     // UI State
     var selectedProvince by remember { mutableStateOf<Province?>(null) }
-    var selectedFuelType by remember { mutableStateOf("gasolina 95") } // Default fuel type
+    val selectedFuelType by application.getSelectedFuelType().collectAsState(initial = "gasolina 95")
     var stationsList by remember { mutableStateOf<List<GasStation>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
@@ -262,7 +262,9 @@ fun FuelPricesScreen(navController: NavController) {
                                 ) 
                             },
                             onClick = {
-                                selectedFuelType = typeKey
+                                scope.launch {
+                                    application.saveSelectedFuelType(typeKey)
+                                }
                                 isFuelDropdownExpanded = false
                             }
                         )

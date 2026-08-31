@@ -44,7 +44,9 @@ data class TaxiRide(
     val tariffId: Long? = null,
     val rideDurationMinutes: Int? = null,
     val ticketPhotoPath: String? = null,
-    val realDate: Date = Date()
+    val realDate: Date = Date(),
+    val isSynced: Boolean = false,
+    val firestoreId: String? = null
 ) {
     companion object {
         const val SERVICE_TYPE_METER = "METER"

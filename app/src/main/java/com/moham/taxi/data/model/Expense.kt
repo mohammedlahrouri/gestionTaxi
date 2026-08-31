@@ -38,7 +38,9 @@ data class Expense(
     val amount: Double,
     val date: Date = Date(),
     val ticketPhotoPath: String? = null,
-    val realDate: Date = Date()
+    val realDate: Date = Date(),
+    val isSynced: Boolean = false,
+    val firestoreId: String? = null
 ) {
     /**
      * Valida que los datos del gasto sean correctos
