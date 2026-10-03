@@ -27,8 +27,16 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     fun insert(taxiRide: TaxiRide) = viewModelScope.launch {
         repository.insert(taxiRide)
     }
+
+    suspend fun insertSuspend(taxiRide: TaxiRide): Long {
+        return repository.insert(taxiRide)
+    }
     
     fun update(taxiRide: TaxiRide) = viewModelScope.launch {
+        repository.update(taxiRide)
+    }
+
+    suspend fun updateSuspend(taxiRide: TaxiRide) {
         repository.update(taxiRide)
     }
     
@@ -66,8 +74,10 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         // Calcular ingresos por método de pago
         val incomeByMethod = mutableMapOf<String, Double>()
         monthRides.forEach { ride ->
-            val method = ride.paymentMethod
-            incomeByMethod[method] = (incomeByMethod[method] ?: 0.0) + ride.price
+            if (!isCancelledPaymentMethod(ride.paymentMethod)) {
+                val method = ride.paymentMethod
+                incomeByMethod[method] = (incomeByMethod[method] ?: 0.0) + ride.price
+            }
         }
         
         return incomeByMethod
@@ -91,6 +101,14 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
     
     suspend fun getIncomeByPaymentMethodForDate(date: Date): Map<String, Double> {
         return repository.getIncomeByPaymentMethodForDate(date)
+    }
+
+    suspend fun getDailyIncomesForDateRange(startDate: Date, endDate: Date): Map<String, Double> {
+        return repository.getDailyIncomesForDateRange(startDate, endDate)
+    }
+
+    suspend fun getIncomeByPaymentMethodForDateRange(startDate: Date, endDate: Date): Map<String, Double> {
+        return repository.getIncomeByPaymentMethodForDateRange(startDate, endDate)
     }
 
     suspend fun getAppIncomeByPlatformForDate(date: Date): Map<String, Double> {
@@ -149,13 +167,13 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         return repository.getMonthRideCount()
     }
 
-    suspend fun getServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+    suspend fun getServiceTypeTotalsForDate(date: Date): ServiceTypeTotals {
         val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(date)
         val rides = repository.getTaxiRidesByDateRange(dayRange.first, dayRange.second).first()
         return calculateServiceTypeTotals(rides)
     }
 
-    suspend fun getWeekServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+    suspend fun getWeekServiceTypeTotalsForDate(date: Date): ServiceTypeTotals {
         val context = repository.getContext()
         val application = context.applicationContext as GestionTaxiApplication
         val firstDayOfWeekValue = application.getFirstDayOfWeek().first()
@@ -164,22 +182,32 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         return calculateServiceTypeTotals(rides)
     }
 
-    suspend fun getMonthServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+    suspend fun getMonthServiceTypeTotalsForDate(date: Date): ServiceTypeTotals {
         val monthRange = com.moham.taxi.utils.DateUtils.getMonthRange(date)
         val rides = repository.getTaxiRidesByDateRange(monthRange.first, monthRange.second).first()
         return calculateServiceTypeTotals(rides)
     }
 
-    private fun calculateServiceTypeTotals(rides: List<TaxiRide>): Pair<Double, Double> {
+    private fun calculateServiceTypeTotals(rides: List<TaxiRide>): ServiceTypeTotals {
         var meterTotal = 0.0
         var fixedTotal = 0.0
+        var meterCancelledTotal = 0.0
         rides.forEach { ride ->
-            when (ride.serviceType) {
-                TaxiRide.SERVICE_TYPE_METER -> meterTotal += ride.price
-                TaxiRide.SERVICE_TYPE_FIXED -> fixedTotal += ride.price
+            val isCancelled = isCancelledPaymentMethod(ride.paymentMethod)
+            val isMeter = ride.serviceType == TaxiRide.SERVICE_TYPE_METER || (ride.serviceType == null && ride.tariffId != null)
+            val isFixed = ride.serviceType == TaxiRide.SERVICE_TYPE_FIXED
+            if (isMeter) {
+                meterTotal += ride.price
+                if (isCancelled) {
+                    meterCancelledTotal += ride.price
+                }
+            } else if (isFixed) {
+                if (!isCancelled) {
+                    fixedTotal += ride.price
+                }
             }
         }
-        return Pair(meterTotal, fixedTotal)
+        return ServiceTypeTotals(meterTotal, fixedTotal, meterCancelledTotal)
     }
     
     // Nuevas funciones para estadísticas más detalladas
@@ -219,10 +247,12 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         daysOfWeek.values.forEach { incomeByDay[it] = 0.0 }
         
         rides.forEach { ride ->
-            calendar.time = ride.date
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            val dayName = daysOfWeek[dayOfWeek] ?: "Desconocido"
-            incomeByDay[dayName] = (incomeByDay[dayName] ?: 0.0) + ride.price
+            if (!isCancelledPaymentMethod(ride.paymentMethod)) {
+                calendar.time = ride.date
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                val dayName = daysOfWeek[dayOfWeek] ?: "Desconocido"
+                incomeByDay[dayName] = (incomeByDay[dayName] ?: 0.0) + ride.price
+            }
         }
         
         return incomeByDay
@@ -344,7 +374,7 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         return repository.getYearNetIncomeByPlatformForDate(date)
     }
 
-    suspend fun getYearServiceTypeTotalsForDate(date: Date): Pair<Double, Double> {
+    suspend fun getYearServiceTypeTotalsForDate(date: Date): ServiceTypeTotals {
         val yearRange = com.moham.taxi.utils.DateUtils.getYearRange(date)
         val rides = repository.getTaxiRidesByDateRange(yearRange.first, yearRange.second).first()
         return calculateServiceTypeTotals(rides)
@@ -435,13 +465,20 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         // Calcular ingresos por método de pago
         val incomeByMethod = mutableMapOf<String, Double>()
         weekRides.forEach { ride ->
-            val method = ride.paymentMethod
-            incomeByMethod[method] = (incomeByMethod[method] ?: 0.0) + ride.price
+            if (!isCancelledPaymentMethod(ride.paymentMethod)) {
+                val method = ride.paymentMethod
+                incomeByMethod[method] = (incomeByMethod[method] ?: 0.0) + ride.price
+            }
         }
         
         return incomeByMethod
     }
     
+    fun isCancelledPaymentMethod(paymentMethod: String?): Boolean {
+        val lower = paymentMethod?.trim()?.lowercase() ?: return false
+        return lower in listOf("cancelado", "rechazado", "cancelada")
+    }
+
     class TaxiRideViewModelFactory(private val repository: TaxiRideRepository) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(TaxiRideViewModel::class.java)) {
@@ -452,3 +489,9 @@ class TaxiRideViewModel(private val repository: TaxiRideRepository) : ViewModel(
         }
     }
 }
+
+data class ServiceTypeTotals(
+    val meterTotal: Double,
+    val fixedTotal: Double,
+    val meterCancelledTotal: Double
+)

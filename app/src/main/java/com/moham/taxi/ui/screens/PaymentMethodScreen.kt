@@ -33,6 +33,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -60,6 +61,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.moham.taxi.ui.navigation.AppScreens
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoCamera
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentMethodScreen(navController: NavHostController) {
@@ -76,12 +82,25 @@ fun PaymentMethodScreen(navController: NavHostController) {
     // Estado para el formulario de nuevo método de pago
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showConfigureDialog by remember { mutableStateOf(false) }
+    var methodToConfigure by remember { mutableStateOf<PaymentMethod?>(null) }
+    var selectedConfigurePolicy by remember { mutableStateOf(PaymentMethod.POLICY_OPTIONAL) }
     var methodToDelete by remember { mutableStateOf<PaymentMethod?>(null) }
     var newMethodName by remember { mutableStateOf("") }
+    var newMethodPhotoPolicy by remember { mutableStateOf(PaymentMethod.POLICY_OPTIONAL) }
     var nameError by remember { mutableStateOf(false) }
+    var nameErrorMessage by remember { mutableStateOf("") }
     
     // Obtener métodos de pago
     val paymentMethods by paymentMethodViewModel.allPaymentMethods.collectAsState(initial = emptyList())
+    val sortedPaymentMethods = remember(paymentMethods) {
+        paymentMethods
+            .distinctBy { it.name.trim().lowercase() }
+            .sortedWith(
+                compareBy<PaymentMethod> { PaymentMethod.getPaymentMethodSortOrder(it.name) }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+            )
+    }
     
     // Coroutine scope y SnackbarHostState
     val scope = rememberCoroutineScope()
@@ -94,7 +113,13 @@ fun PaymentMethodScreen(navController: NavHostController) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = { 
+                newMethodName = ""
+                newMethodPhotoPolicy = PaymentMethod.POLICY_OPTIONAL
+                nameError = false
+                nameErrorMessage = ""
+                showAddDialog = true 
+            }) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = stringResource(R.string.cd_add_payment_method)
@@ -115,7 +140,7 @@ fun PaymentMethodScreen(navController: NavHostController) {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
-            if (paymentMethods.isEmpty()) {
+            if (sortedPaymentMethods.isEmpty()) {
                 Text(
                     text = stringResource(R.string.empty_payment_methods_msg),
                     style = MaterialTheme.typography.bodyLarge,
@@ -126,12 +151,19 @@ fun PaymentMethodScreen(navController: NavHostController) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(paymentMethods) { method ->
+                    items(sortedPaymentMethods) { method ->
                         PaymentMethodItem(
                             paymentMethod = method,
+                            onClick = {
+                                methodToConfigure = method
+                                selectedConfigurePolicy = method.ticketPhotoPolicy
+                                showConfigureDialog = true
+                            },
                             onDelete = {
-                                methodToDelete = method
-                                showDeleteConfirmDialog = true
+                                if (!method.isDefault()) {
+                                    methodToDelete = method
+                                    showDeleteConfirmDialog = true
+                                }
                             }
                         )
                     }
@@ -142,33 +174,63 @@ fun PaymentMethodScreen(navController: NavHostController) {
         // Diálogo para añadir nuevo método de pago
         if (showAddDialog) {
             AlertDialog(
-                onDismissRequest = { showAddDialog = false },
+                onDismissRequest = { 
+                    newMethodName = ""
+                    newMethodPhotoPolicy = PaymentMethod.POLICY_OPTIONAL
+                    nameError = false
+                    nameErrorMessage = ""
+                    showAddDialog = false 
+                },
                 title = { Text(stringResource(R.string.dialog_new_payment_method_title)) },
                 text = {
-                    Column {
-                        Text(stringResource(R.string.label_enter_payment_method_name))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TaxiTextField(
-                            value = newMethodName,
-                            onValueChange = { 
-                                newMethodName = it
-                                nameError = false
-                            },
-                            label = stringResource(R.string.label_name),
-                            isError = nameError,
-                            errorMessage = if (nameError) stringResource(R.string.error_name_empty) else ""
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column {
+                            Text(stringResource(R.string.label_enter_payment_method_name))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TaxiTextField(
+                                value = newMethodName,
+                                onValueChange = { 
+                                    newMethodName = it
+                                    nameError = false
+                                    nameErrorMessage = ""
+                                },
+                                label = stringResource(R.string.label_name),
+                                isError = nameError,
+                                errorMessage = nameErrorMessage
+                            )
+                        }
+
+                        PhotoPolicySelector(
+                            selectedPolicy = newMethodPhotoPolicy,
+                            onSelectPolicy = { newMethodPhotoPolicy = it }
                         )
                     }
                 },
                 confirmButton = {
                     TaxiButton(
                         onClick = {
-                            if (newMethodName.isBlank()) {
+                            val trimmed = newMethodName.trim()
+                            if (trimmed.isBlank()) {
                                 nameError = true
+                                nameErrorMessage = context.getString(R.string.error_name_empty)
+                            } else if (PaymentMethod.isDefaultPaymentMethod(trimmed)) {
+                                nameError = true
+                                nameErrorMessage = context.getString(R.string.error_payment_method_default)
+                            } else if (paymentMethods.any { it.name.trim().equals(trimmed, ignoreCase = true) }) {
+                                nameError = true
+                                nameErrorMessage = context.getString(R.string.error_payment_method_exists)
                             } else {
                                 scope.launch {
-                                    paymentMethodViewModel.insert(PaymentMethod(name = newMethodName))
+                                    paymentMethodViewModel.insert(
+                                        PaymentMethod(
+                                            name = trimmed,
+                                            ticketPhotoPolicy = newMethodPhotoPolicy
+                                        )
+                                    )
                                     newMethodName = ""
+                                    newMethodPhotoPolicy = PaymentMethod.POLICY_OPTIONAL
+                                    nameError = false
+                                    nameErrorMessage = ""
                                     showAddDialog = false
                                     snackbarHostState.showSnackbar(context.getString(R.string.msg_payment_method_added))
                                 }
@@ -181,7 +243,57 @@ fun PaymentMethodScreen(navController: NavHostController) {
                     TextButton(
                         onClick = { 
                             newMethodName = ""
+                            newMethodPhotoPolicy = PaymentMethod.POLICY_OPTIONAL
+                            nameError = false
+                            nameErrorMessage = ""
                             showAddDialog = false 
+                        }
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        // Diálogo para configurar política de foto de método existente
+        if (showConfigureDialog && methodToConfigure != null) {
+            val method = methodToConfigure!!
+            AlertDialog(
+                onDismissRequest = { 
+                    showConfigureDialog = false 
+                    methodToConfigure = null
+                },
+                title = { 
+                    Text("${stringResource(R.string.dialog_configure_payment_method)}: ${method.name}")
+                },
+                text = {
+                    Column {
+                        PhotoPolicySelector(
+                            selectedPolicy = selectedConfigurePolicy,
+                            onSelectPolicy = { selectedConfigurePolicy = it }
+                        )
+                    }
+                },
+                confirmButton = {
+                    TaxiButton(
+                        onClick = {
+                            scope.launch {
+                                paymentMethodViewModel.update(
+                                    method.copy(ticketPhotoPolicy = selectedConfigurePolicy)
+                                )
+                                showConfigureDialog = false
+                                methodToConfigure = null
+                                snackbarHostState.showSnackbar(context.getString(R.string.msg_payment_method_updated))
+                            }
+                        },
+                        text = stringResource(R.string.save)
+                    )
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { 
+                            showConfigureDialog = false
+                            methodToConfigure = null
                         }
                     ) {
                         Text(stringResource(R.string.cancel))
@@ -191,7 +303,7 @@ fun PaymentMethodScreen(navController: NavHostController) {
         }
         
         // Diálogo de confirmación para eliminar método de pago
-        if (showDeleteConfirmDialog) {
+        if (showDeleteConfirmDialog && methodToDelete?.isDefault() == false) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmDialog = false },
                 title = { Text(stringResource(R.string.dialog_delete_payment_method_title)) },
@@ -225,12 +337,94 @@ fun PaymentMethodScreen(navController: NavHostController) {
 }
 
 @Composable
+fun PhotoPolicySelector(
+    selectedPolicy: String,
+    onSelectPolicy: (String) -> Unit
+) {
+    val options = listOf(
+        Triple(
+            PaymentMethod.POLICY_NO_PHOTO,
+            stringResource(R.string.photo_policy_no_photo),
+            stringResource(R.string.photo_policy_no_photo_desc)
+        ),
+        Triple(
+            PaymentMethod.POLICY_OPTIONAL,
+            stringResource(R.string.photo_policy_optional),
+            stringResource(R.string.photo_policy_optional_desc)
+        ),
+        Triple(
+            PaymentMethod.POLICY_MANDATORY,
+            stringResource(R.string.photo_policy_mandatory),
+            stringResource(R.string.photo_policy_mandatory_desc)
+        )
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.payment_method_photo_policy_label),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        options.forEach { (policy, title, description) ->
+            val isSelected = selectedPolicy == policy
+            OutlinedCard(
+                onClick = { onSelectPolicy(policy) },
+                colors = CardDefaults.outlinedCardColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface
+                ),
+                border = if (isSelected) {
+                    androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                } else {
+                    androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = { onSelectPolicy(policy) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PaymentMethodItem(
     paymentMethod: PaymentMethod,
+    onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isDefault = paymentMethod.isDefault()
+    val policyBadgeText = when (paymentMethod.ticketPhotoPolicy) {
+        PaymentMethod.POLICY_NO_PHOTO -> stringResource(R.string.badge_no_photo)
+        PaymentMethod.POLICY_MANDATORY -> stringResource(R.string.badge_photo_mandatory)
+        else -> stringResource(R.string.badge_photo_optional)
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -240,19 +434,78 @@ fun PaymentMethodItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = paymentMethod.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = paymentMethod.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (isDefault) {
+                        SuggestionChip(
+                            onClick = onClick,
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.payment_method_default_badge),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = when (paymentMethod.ticketPhotoPolicy) {
+                            PaymentMethod.POLICY_MANDATORY -> MaterialTheme.colorScheme.error
+                            PaymentMethod.POLICY_NO_PHOTO -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    Text(
+                        text = policyBadgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (paymentMethod.ticketPhotoPolicy) {
+                            PaymentMethod.POLICY_MANDATORY -> MaterialTheme.colorScheme.error
+                            PaymentMethod.POLICY_NO_PHOTO -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            else -> MaterialTheme.colorScheme.primary
+                        },
+                        fontWeight = if (paymentMethod.ticketPhotoPolicy == PaymentMethod.POLICY_MANDATORY) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
             
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.cd_delete_payment_method),
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.edit),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (!isDefault) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.cd_delete_payment_method),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
         }
     }
 }
+

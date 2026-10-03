@@ -74,6 +74,8 @@
     <string name="payment_cash">Cash</string>
     <string name="payment_card">Card</string>
     <string name="payment_via_app">Via App</string>
+    <string name="payment_cancelled">Cancelled</string>
+    <string name="meter_uncollected_cancelled">Uncollected due to cancellation</string>
     <string name="error_select_payment">Please select a payment method</string>
     <string name="error_valid_price">Please enter a valid price</string>
     <string name="label_amount_with_commission">Amount with commission</string>
@@ -398,6 +400,22 @@
     <string name="msg_payment_method_deleted">Payment method deleted</string>
     <string name="cd_add_payment_method">Add Payment Method</string>
     <string name="cd_delete_payment_method">Delete Payment Method</string>
+    <string name="payment_method_default_badge">Default</string>
+    <string name="error_payment_method_exists">This payment method already exists</string>
+    <string name="error_payment_method_default">Cannot add a reserved default payment method</string>
+    <string name="payment_method_photo_policy_label">Ticket photo option</string>
+    <string name="photo_policy_no_photo">No ticket photo</string>
+    <string name="photo_policy_optional">Optional ticket photo</string>
+    <string name="photo_policy_mandatory">Mandatory ticket photo</string>
+    <string name="photo_policy_no_photo_desc">Only Save button will appear</string>
+    <string name="photo_policy_optional_desc">Both Save and Photo options will appear</string>
+    <string name="photo_policy_mandatory_desc">Cannot save without a photo</string>
+    <string name="dialog_configure_payment_method">Configure Payment Method</string>
+    <string name="msg_payment_method_updated">Payment method updated</string>
+    <string name="badge_no_photo">No photo</string>
+    <string name="badge_photo_optional">Optional photo</string>
+    <string name="badge_photo_mandatory">Mandatory photo</string>
+    <string name="error_ticket_photo_required">A ticket photo is mandatory for this payment method</string>
 
     <!-- Online Backup Screen -->
     <string name="title_online_backup">Online Automatic Backup</string>
@@ -891,19 +909,37 @@
     <string name="settings_fleet_connect_desc">Share your income and expenses in real time with your fleet</string>
     <string name="fleet_connected_status_connected">Connected to fleet</string>
     <string name="fleet_connected_status_disconnected">No fleet connection</string>
-    <string name="fleet_connected_code_label">Fleet code: %1$s</string>
+    <string name="fleet_connected_code_label">Linking Email: %1$s</string>
     <string name="fleet_connected_name_label">Fleet name: %1$s</string>
     <string name="settings_fleet_connected_summary">Connected to fleet: %1$s</string>
     <string name="fleet_connection_explanation">By connecting with a fleet, they will automatically have real-time access to all your income and expenses, and can also send you messages.</string>
-    <string name="fleet_connect_with_code">Connect with code</string>
-    <string name="fleet_enter_code_dialog_title">Connect with code</string>
-    <string name="fleet_enter_code_dialog_desc">Enter the fleet name and the 6-digit code provided in your fleet application to establish the connection.</string>
+    <string name="fleet_connect_with_code">Connect by email</string>
+    <string name="fleet_enter_code_dialog_title">Connect by email</string>
+    <string name="fleet_enter_code_dialog_desc">Sign in with your email account assigned by the fleet manager to establish the connection automatically.</string>
     <string name="fleet_name_placeholder">Fleet name</string>
-    <string name="fleet_code_placeholder">6-digit code</string>
-    <string name="fleet_btn_connect">Connect</string>
+    <string name="fleet_code_placeholder">Email address</string>
+    <string name="fleet_btn_connect">Connect by email</string>
     <string name="fleet_btn_disconnect">Disconnect from fleet</string>
     <string name="fleet_disconnect_confirm_title">Disconnect from fleet?</string>
     <string name="fleet_disconnect_confirm_desc">Are you sure you want to disconnect from the fleet? You will stop sharing your income and expenses in real time.</string>
-    <string name="fleet_error_invalid_code">The code must be exactly 6 digits.</string>
+    <string name="fleet_error_invalid_code">Invalid email address.</string>
     <string name="fleet_error_invalid_name">The fleet name cannot be empty.</string>
+    <string name="fleet_option_work_title">I work with a fleet</string>
+    <string name="fleet_option_work_desc">Connect your account to share income and expenses with your fleet</string>
+    <string name="fleet_option_manage_title">I manage a fleet</string>
+    <string name="fleet_option_manage_desc">Platform for fleet managers and administrators</string>
+    <string name="fleet_option_whatsapp_title">WhatsApp Help</string>
+    <string name="fleet_option_whatsapp_desc">Contact support via WhatsApp</string>
+    <string name="fleet_manager_dialog_title">I manage a fleet</string>
+    <string name="fleet_manager_dialog_desc">The fleet management platform is available on the Web version. Coming soon to the mobile app.</string>
+    <string name="badge_coming_soon">Coming Soon</string>
+    <string name="fleet_unlinked_notice_title">Disconnected from fleet</string>
+    <string name="fleet_unlinked_notice_desc">The fleet manager has ended your affiliation or you have been removed from the fleet. Your local data remains intact on your device.</string>
+    <string name="fleet_unlinked_notice_button">Understood</string>
+
+    <!-- Shift & early morning sections -->
+    <string name="section_out_of_day">Next day / Early morning</string>
+    <string name="section_in_day">Shift day</string>
+    <string name="chip_same_day">Same day</string>
+    <string name="chip_next_day">+1 Day (Early morning)</string>
 </resources>

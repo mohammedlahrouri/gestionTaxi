@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.moham.taxi.data.model.Expense
 import com.moham.taxi.data.model.ExpenseType
@@ -107,6 +108,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE isSynced = 0")
     suspend fun getUnsyncedExpenses(): List<Expense>
 
+    @Query("SELECT COUNT(*) FROM expenses WHERE isSynced = 0")
+    fun getUnsyncedExpensesCountFlow(): Flow<Int>
+
     @Query("UPDATE expenses SET isSynced = :isSynced, firestoreId = :firestoreId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, isSynced: Boolean, firestoreId: String?)
 
@@ -115,4 +119,62 @@ interface ExpenseDao {
 
     @Query("UPDATE expenses SET isSynced = 0, firestoreId = NULL")
     suspend fun resetSyncStatus()
+
+    @Query("SELECT * FROM expenses ORDER BY id ASC")
+    suspend fun getAllExpensesList(): List<Expense>
+
+    @Query("DELETE FROM expenses WHERE id IN (:ids)")
+    suspend fun deleteExpensesByIds(ids: List<Long>): Int
+
+    @Query("""
+        SELECT * FROM expenses
+        WHERE date BETWEEN :minDate AND :maxDate
+        AND abs(amount - :amount) < 0.01
+        AND type = :type
+        LIMIT 1
+    """)
+    suspend fun findMatchingExpense(
+        minDate: Date,
+        maxDate: Date,
+        amount: Double,
+        type: ExpenseType
+    ): Expense?
+
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM expenses 
+            WHERE firestoreId IS NOT NULL AND firestoreId != ''
+            GROUP BY firestoreId 
+            HAVING COUNT(*) > 1 
+            LIMIT 1
+        )
+    """)
+    suspend fun hasDuplicateExpenses(): Boolean
+
+    @Transaction
+    suspend fun deduplicateExpenses(): Int {
+        if (!hasDuplicateExpenses()) return 0
+        val allExpenses = getAllExpensesList()
+        val seen = mutableMapOf<String, Expense>()
+        val idsToDelete = mutableListOf<Long>()
+
+        for (expense in allExpenses) {
+            val fId = expense.firestoreId?.trim()
+            if (!fId.isNullOrEmpty()) {
+                val existing = seen[fId]
+                if (existing == null) {
+                    seen[fId] = expense
+                } else {
+                    idsToDelete.add(expense.id)
+                }
+            }
+        }
+
+        if (idsToDelete.isNotEmpty()) {
+            idsToDelete.chunked(500).forEach { chunk ->
+                deleteExpensesByIds(chunk)
+            }
+        }
+        return idsToDelete.size
+    }
 }

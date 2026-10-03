@@ -260,3 +260,40 @@ val MIGRATION_19_20 = object : Migration(19, 20) {
     }
 }
 
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `pending_deletions` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `firestoreId` TEXT NOT NULL,
+                `collectionName` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE `payment_methods` ADD COLUMN `ticketPhotoPolicy` TEXT NOT NULL DEFAULT 'OPTIONAL'")
+    }
+}
+
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `notes` TEXT DEFAULT NULL")
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `isSplitPayment` INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `splitSecondaryMethod` TEXT DEFAULT NULL")
+        database.execSQL("ALTER TABLE `taxi_rides` ADD COLUMN `splitSecondaryPrice` REAL DEFAULT NULL")
+    }
+}
+
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_taxi_rides_isSynced` ON `taxi_rides` (`isSynced`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_isSynced` ON `expenses` (`isSynced`)")
+    }
+}
+

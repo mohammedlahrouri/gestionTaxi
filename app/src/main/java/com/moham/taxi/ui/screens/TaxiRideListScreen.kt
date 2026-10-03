@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
@@ -42,6 +44,9 @@ import com.moham.taxi.ui.components.TicketPhotoDialog
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.theme.AccentRed
+import com.moham.taxi.ui.theme.CalendarAccent
+import com.moham.taxi.ui.theme.CalendarBackground
+import com.moham.taxi.ui.theme.CalendarText
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import com.moham.taxi.utils.DateUtils
@@ -75,19 +80,20 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
     var rideToDelete by remember { mutableStateOf<TaxiRide?>(null) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
     
-    // Sync with DataStore selected date flow
-    val initialDate = remember(selectedDate) {
-        if (selectedDate > 0) Date(selectedDate) else Date()
-    }
-    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = initialDate)
+    // Fecha seleccionada unificada desde Application StateFlow (Single Source of Truth)
+    val currentUnifiedDate by application.selectedDateState.collectAsStateWithLifecycle()
     
+    // Si se pasa un timestamp explícito mayor a 0 diferente de la fecha actual, se sincroniza
     LaunchedEffect(selectedDate) {
         if (selectedDate > 0) {
-            application.saveSelectedDate(Date(selectedDate))
+            val dateFromArg = DateUtils.getStartOfDay(Date(selectedDate))
+            if (dateFromArg.time != currentUnifiedDate.time) {
+                application.updateSelectedDate(dateFromArg)
+            }
         }
     }
     
-    val useDate = selectedDateFromStore
+    val useDate = currentUnifiedDate
     val isToday = remember(useDate) {
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply { time = useDate }
@@ -108,7 +114,7 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
     val headerDateText = remember(useDate, isToday, dayOfWeek) {
         val locale = Locale.getDefault()
         val pattern = when (locale.language) {
-            "es" -> "d 'de' MMMM"
+            "es" -> "d MMMM"
             "fr" -> "d MMMM"
             "de" -> "d. MMMM"
             else -> "MMMM d"
@@ -129,50 +135,80 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
         "$prefix, $formattedDetail"
     }
     
-    val ridesToShow by taxiRideViewModel.getSelectedDateRides(useDate).collectAsState(initial = emptyList())
-    val expensesToShow by expenseViewModel.getSelectedDateExpenses(useDate).collectAsState(initial = emptyList())
+    val ridesToShow by remember(useDate) {
+        taxiRideViewModel.getSelectedDateRides(useDate)
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val expensesToShow by remember(useDate) {
+        expenseViewModel.getSelectedDateExpenses(useDate)
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    
+    val firstDayOfWeek by application.getFirstDayOfWeek().collectAsState(initial = Calendar.MONDAY)
+
+    val sortedRides = remember(ridesToShow) {
+        ridesToShow.sortedByDescending { ride ->
+            DateUtils.resolveEffectiveTimestamp(ride.date, ride.rideTime, ride.realDate)
+        }
+    }
+
+    val sortedExpenses = remember(expensesToShow) {
+        expensesToShow.sortedByDescending { expense ->
+            DateUtils.resolveEffectiveTimestamp(expense.date, null, expense.realDate)
+        }
+    }
     
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDatePicker by remember { mutableStateOf(false) }
     
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(useDate)
-        )
-        
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
-                            scope.launch {
-                                application.saveSelectedDate(newDate)
-                            }
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = Color(0xFF3B9C5C),
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = Color(0xFF3B9C5C),
-                    todayContentColor = Color(0xFF3B9C5C)
-                )
+        key(useDate.time) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(useDate),
+                initialDisplayedMonthMillis = DateUtils.dateToUtcStartOfDayMillis(useDate)
             )
+            
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                                application.updateSelectedDate(newDate)
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = CalendarBackground,
+                        titleContentColor = CalendarText,
+                        headlineContentColor = CalendarText,
+                        weekdayContentColor = CalendarText,
+                        subheadContentColor = CalendarText,
+                        yearContentColor = CalendarText,
+                        currentYearContentColor = CalendarAccent,
+                        selectedYearContainerColor = CalendarAccent,
+                        selectedYearContentColor = CalendarText,
+                        selectedDayContainerColor = CalendarAccent,
+                        selectedDayContentColor = CalendarText,
+                        todayContentColor = CalendarAccent,
+                        todayDateBorderColor = CalendarAccent,
+                        dayContentColor = CalendarText,
+                        dividerColor = CalendarText.copy(alpha = 0.2f)
+                    )
+                )
+            }
         }
     }
     
@@ -236,9 +272,11 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
-                            itemsIndexed(ridesToShow) { index, ride ->
+                            itemsIndexed(sortedRides, key = { _, ride -> ride.id }) { index, ride ->
                                 RideListItem(
                                     ride = ride,
+                                    jornadaDate = useDate,
+                                    firstDayOfWeek = firstDayOfWeek,
                                     onEdit = {
                                         val timestamp = ride.date.time
                                         val route = AppScreens.TaxiRideForm.createRouteWithDateAndId(timestamp, ride.id)
@@ -253,7 +291,7 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                                         showDeleteConfirmDialog = true
                                     }
                                 )
-                                if (index < ridesToShow.lastIndex) {
+                                if (index < sortedRides.lastIndex) {
                                     HorizontalDivider(
                                         color = Color.White.copy(alpha = 0.08f),
                                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -275,9 +313,11 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
-                            itemsIndexed(expensesToShow) { index, expense ->
+                            itemsIndexed(sortedExpenses, key = { _, expense -> expense.id }) { index, expense ->
                                 ExpenseListItem(
                                     expense = expense,
+                                    jornadaDate = useDate,
+                                    firstDayOfWeek = firstDayOfWeek,
                                     onEdit = {
                                         val timestamp = expense.date.time
                                         val route = AppScreens.ExpenseForm.createRouteWithDateAndId(timestamp, expense.id)
@@ -292,7 +332,7 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
                                         showDeleteConfirmDialog = true
                                     }
                                 )
-                                if (index < expensesToShow.lastIndex) {
+                                if (index < sortedExpenses.lastIndex) {
                                     HorizontalDivider(
                                         color = Color.White.copy(alpha = 0.08f),
                                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -362,27 +402,31 @@ fun TaxiRideListScreen(navController: NavHostController, selectedDate: Long = -1
 fun DateSelector(
     dateText: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 18.sp
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
-            .padding(vertical = 4.dp, horizontal = 8.dp),
+            .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             text = dateText,
-            fontSize = 20.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
         )
         Icon(
             imageVector = Icons.Default.KeyboardArrowDown,
             contentDescription = stringResource(R.string.action_change_date),
             tint = Color.White,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -434,6 +478,8 @@ fun SegmentedTabs(
 @Composable
 fun RideListItem(
     ride: TaxiRide,
+    jornadaDate: Date = Date(),
+    firstDayOfWeek: Int = Calendar.MONDAY,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onItemClick: () -> Unit
@@ -462,9 +508,17 @@ fun RideListItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val timeText = DateUtils.formatServiceTimeWithDay(
+                realDate = ride.realDate,
+                jornadaDate = jornadaDate,
+                timeStr = ride.rideTime,
+                firstDayOfWeek = firstDayOfWeek
+            )
+            val isOutOfDay = ride.realDate.time > 0L && DateUtils.isDifferentDay(ride.realDate, jornadaDate)
             Text(
-                text = ride.rideTime.ifBlank { "00:00" },
+                text = timeText,
                 fontSize = 16.sp,
+                fontWeight = if (isOutOfDay) FontWeight.SemiBold else FontWeight.Normal,
                 color = Color(0xFFF5F5F5)
             )
             
@@ -472,8 +526,8 @@ fun RideListItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val hasCommission = ride.netPrice != null && ride.netPrice != ride.price
-                if (hasCommission) {
+                val isCancelled = ride.paymentMethod.trim().lowercase() in listOf("cancelado", "rechazado", "cancelada")
+                if (isCancelled) {
                     Text(
                         text = formatCurrency(ride.price),
                         fontSize = 14.sp,
@@ -482,20 +536,38 @@ fun RideListItem(
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                     )
                     Text(
-                        text = formatCurrency(ride.netPrice!!),
+                        text = "0,00 €",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CD07D),
+                        color = Color(0xFFEF5350),
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                     )
                 } else {
-                    Text(
-                        text = formatCurrency(ride.price),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CD07D),
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
+                    val hasCommission = ride.netPrice != null && ride.netPrice != ride.price
+                    if (hasCommission) {
+                        Text(
+                            text = formatCurrency(ride.price),
+                            fontSize = 14.sp,
+                            color = Color(0xFF9AA0A6),
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                        Text(
+                            text = formatCurrency(ride.netPrice!!),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CD07D),
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                    } else {
+                        Text(
+                            text = formatCurrency(ride.price),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CD07D),
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                    }
                 }
                 
                 Box {
@@ -581,15 +653,38 @@ fun RideListItem(
                     textColor = platformTextColor
                 )
                 
-                val paymentIcon = when (ride.paymentMethod.lowercase()) {
-                    "efectivo" -> Icons.Filled.Payments
-                    "tarjeta" -> Icons.Filled.CreditCard
+                val paymentLower = ride.paymentMethod.trim().lowercase()
+                val isCancelledMethod = paymentLower in listOf("cancelado", "rechazado", "cancelada")
+                val paymentIcon = when {
+                    isCancelledMethod -> Icons.Filled.Cancel
+                    paymentLower == "efectivo" -> Icons.Filled.Payments
+                    paymentLower == "tarjeta" -> Icons.Filled.CreditCard
                     else -> Icons.Filled.Smartphone
                 }
+                val paymentDisplayLabel = if (isCancelledMethod) {
+                    stringResource(R.string.payment_cancelled)
+                } else if (ride.isSplitPayment && !ride.splitSecondaryMethod.isNullOrBlank()) {
+                    val secP = ride.splitSecondaryPrice ?: 0.0
+                    val primP = (ride.price - secP).coerceAtLeast(0.0)
+                    "${ride.paymentMethod} (${String.format(java.util.Locale.US, "%.0f", primP)}€) + ${ride.splitSecondaryMethod} (${String.format(java.util.Locale.US, "%.0f", secP)}€)"
+                } else {
+                    ride.paymentMethod
+                }
                 Chip(
-                    label = ride.paymentMethod,
-                    icon = paymentIcon
+                    label = paymentDisplayLabel,
+                    icon = paymentIcon,
+                    backgroundColor = if (isCancelledMethod) Color(0xFFEF5350).copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f),
+                    textColor = if (isCancelledMethod) Color(0xFFEF5350) else Color(0xFFF5F5F5)
                 )
+                
+                if (!ride.notes.isNullOrBlank()) {
+                    Chip(
+                        label = "Nota",
+                        icon = Icons.Filled.Edit,
+                        backgroundColor = Color(0xFF2E9E4F).copy(alpha = 0.15f),
+                        textColor = Color(0xFF2E9E4F)
+                    )
+                }
                 
                 val isTaximeter = ride.serviceType == TaxiRide.SERVICE_TYPE_METER || ride.serviceType == "METER" || ride.tariffId != null
                 val tariffLabel = if (isTaximeter) "Taxímetro" else "Cerrado"
@@ -658,12 +753,16 @@ fun Chip(
 @Composable
 fun TaxiRideItem(
     ride: TaxiRide,
+    jornadaDate: Date = Date(),
+    firstDayOfWeek: Int = Calendar.MONDAY,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onItemClick: () -> Unit
 ) {
     RideListItem(
         ride = ride,
+        jornadaDate = jornadaDate,
+        firstDayOfWeek = firstDayOfWeek,
         onEdit = onEdit,
         onDelete = onDelete,
         onItemClick = onItemClick
@@ -673,12 +772,16 @@ fun TaxiRideItem(
 @Composable
 fun ExpenseItem(
     expense: Expense,
+    jornadaDate: Date = Date(),
+    firstDayOfWeek: Int = Calendar.MONDAY,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onItemClick: () -> Unit
 ) {
     ExpenseListItem(
         expense = expense,
+        jornadaDate = jornadaDate,
+        firstDayOfWeek = firstDayOfWeek,
         onEdit = onEdit,
         onDelete = onDelete,
         onItemClick = onItemClick
@@ -688,6 +791,8 @@ fun ExpenseItem(
 @Composable
 fun ExpenseListItem(
     expense: Expense,
+    jornadaDate: Date = Date(),
+    firstDayOfWeek: Int = Calendar.MONDAY,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onItemClick: () -> Unit
@@ -715,9 +820,18 @@ fun ExpenseListItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val expenseTime = DateUtils.formatDate(if (expense.realDate.time > 0L) expense.realDate else expense.date, "HH:mm").ifBlank { "00:00" }
+            val timeText = DateUtils.formatServiceTimeWithDay(
+                realDate = expense.realDate,
+                jornadaDate = jornadaDate,
+                timeStr = expenseTime,
+                firstDayOfWeek = firstDayOfWeek
+            )
+            val isOutOfDay = expense.realDate.time > 0L && DateUtils.isDifferentDay(expense.realDate, jornadaDate)
             Text(
-                text = DateUtils.formatDate(expense.date, "HH:mm").ifBlank { "00:00" },
+                text = timeText,
                 fontSize = 16.sp,
+                fontWeight = if (isOutOfDay) FontWeight.SemiBold else FontWeight.Normal,
                 color = Color(0xFFF5F5F5)
             )
             

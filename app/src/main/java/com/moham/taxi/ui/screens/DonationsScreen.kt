@@ -48,6 +48,7 @@ import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
+import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
@@ -58,6 +59,7 @@ import com.moham.taxi.ui.theme.NewStatsBorder
 import com.moham.taxi.ui.theme.NewStatsCardBackground
 import com.moham.taxi.ui.theme.NewStatsTextPrimary
 import com.moham.taxi.ui.theme.NewStatsTextSecondary
+import kotlin.coroutines.resume
 import kotlinx.coroutines.launch
 
 private data class DonationOption(
@@ -115,9 +117,14 @@ fun DonationsScreen(navController: NavController) {
     }
 
     DisposableEffect(Unit) {
+        val pendingPurchasesParams = PendingPurchasesParams.newBuilder()
+            .enableOneTimeProducts()
+            .build()
+
         val client = BillingClient.newBuilder(context)
             .setListener(purchasesUpdatedListener)
-            .enablePendingPurchases()
+            .enablePendingPurchases(pendingPurchasesParams)
+            .enableAutoServiceReconnection()
             .build()
 
         billingClient = client
@@ -156,9 +163,9 @@ fun DonationsScreen(navController: NavController) {
             .setProductList(products)
             .build()
 
-        client.queryProductDetailsAsync(params) { result, productDetailsList ->
+        client.queryProductDetailsAsync(params) { result, queryProductDetailsResult ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                productDetailsById = productDetailsList.associateBy { it.productId }
+                productDetailsById = queryProductDetailsResult.productDetailsList.associateBy { it.productId }
             }
         }
     }
@@ -276,7 +283,7 @@ private suspend fun consumePurchase(
     return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
         billingClient.consumeAsync(params) { billingResult, _ ->
             if (cont.isActive) {
-                cont.resume(billingResult) {}
+                cont.resume(billingResult)
             }
         }
     }

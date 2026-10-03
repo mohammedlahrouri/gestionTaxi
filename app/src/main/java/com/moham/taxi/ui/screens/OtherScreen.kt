@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -55,19 +54,8 @@ fun OtherScreen(navController: NavController) {
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
     val currentCity by application.getCurrentCity().collectAsState(initial = "Madrid")
-    var showCommunityDialog by remember { mutableStateOf(false) }
     val isSpain = Locale.getDefault().country.equals("ES", ignoreCase = true) || 
                   GasStationService.getProvinceIdByCity(currentCity) != null
-
-    val openCommunityLink = {
-        val uri = Uri.parse("https://chat.whatsapp.com/F7XN8IGAw9s99m4W8ax9Ri")
-        val whatsappIntent = Intent(Intent.ACTION_VIEW, uri).setPackage("com.whatsapp")
-        try {
-            context.startActivity(whatsappIntent)
-        } catch (_: Exception) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-        }
-    }
 
     // Configurar el manejo del botón Atrás para volver a Home
     BackHandler {
@@ -87,7 +75,7 @@ fun OtherScreen(navController: NavController) {
                             popUpTo(AppScreens.Home.route) { inclusive = false }
                             launchSingleTop = true
                         }
-                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
+                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(application.selectedDateState.value.time))
                         2 -> navController.navigate(AppScreens.Statistics.route)
                         3 -> {} 
                     }
@@ -96,28 +84,6 @@ fun OtherScreen(navController: NavController) {
         },
         containerColor = DarkBackground
     ) { paddingValues ->
-        if (showCommunityDialog) {
-            AlertDialog(
-                onDismissRequest = { showCommunityDialog = false },
-                title = { Text(stringResource(R.string.community_dialog_title)) },
-                text = { Text(stringResource(R.string.community_dialog_message)) },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showCommunityDialog = false
-                            openCommunityLink()
-                        }
-                    ) {
-                        Text(stringResource(R.string.community_dialog_open))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCommunityDialog = false }) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                }
-            )
-        }
 
         Column(
             modifier = Modifier
@@ -235,17 +201,6 @@ fun OtherScreen(navController: NavController) {
                                 Uri.parse("https://wa.me/message/2J2FQ4D5IR75P1?src=qr")
                             )
                             context.startActivity(intent)
-                        }
-                    )
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
-                    SupportListRow(
-                        title = stringResource(R.string.option_community),
-                        icon = Icons.Filled.People,
-                        iconColor = Color(0xFF128C7E),
-                        onClick = {
-                            if (isSpain) {
-                                showCommunityDialog = true
-                            }
                         }
                     )
                     HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)

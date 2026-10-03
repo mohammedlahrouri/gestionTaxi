@@ -19,8 +19,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 // Repositorio actualizado para manejar correctamente Flow.first() y utilizar métodos directos del DAO
@@ -74,24 +77,43 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     
     val allTaxiRides: Flow<List<TaxiRide>> = taxiRideDao.getAllTaxiRides()
     
-    suspend fun insert(taxiRide: TaxiRide, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO) {
-        val id = taxiRideDao.insert(taxiRide)
-        rideCache[id] = CacheEntry(taxiRide.copy(id = id))
+    suspend fun insert(taxiRide: TaxiRide, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        val rideToInsert = if (taxiRide.firestoreId.isNullOrEmpty()) {
+            taxiRide.copy(firestoreId = java.util.UUID.randomUUID().toString())
+        } else {
+            taxiRide
+        }
+        val id = taxiRideDao.insert(rideToInsert)
+        rideCache[id] = CacheEntry(rideToInsert.copy(id = id))
         invalidateDateRangeCache()
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
+        application.updateLastActivity()
         application.savePendingBackup(true)
         application.scheduleFirebaseSyncDebounced()
         application.triggerImmediateFirebaseSync()
         id
     }
     
-    suspend fun update(taxiRide: TaxiRide) = withContext(Dispatchers.IO) {
-        taxiRideDao.update(taxiRide)
-        rideCache[taxiRide.id] = CacheEntry(taxiRide)
+    suspend fun update(taxiRide: TaxiRide) = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        val existing = taxiRideDao.getTaxiRideById(taxiRide.id)
+        val resolvedFirestoreId = if (!taxiRide.firestoreId.isNullOrEmpty()) {
+            taxiRide.firestoreId
+        } else if (!existing?.firestoreId.isNullOrEmpty()) {
+            existing?.firestoreId
+        } else {
+            java.util.UUID.randomUUID().toString()
+        }
+        val rideToUpdate = taxiRide.copy(
+            firestoreId = resolvedFirestoreId,
+            isSynced = false
+        )
+        taxiRideDao.update(rideToUpdate)
+        rideCache[taxiRide.id] = CacheEntry(rideToUpdate)
         invalidateDateRangeCache()
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
+        application.updateLastActivity()
         application.savePendingBackup(true)
         application.scheduleFirebaseSyncDebounced()
         application.triggerImmediateFirebaseSync()
@@ -99,14 +121,25 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
     
     suspend fun delete(taxiRide: TaxiRide) = withContext(Dispatchers.IO) {
         val application = context.applicationContext as GestionTaxiApplication
-        if (!taxiRide.firestoreId.isNullOrEmpty()) {
-            try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("rides")
-                    .document(taxiRide.firestoreId)
-                    .delete()
-            } catch (e: Exception) {
-                e.printStackTrace()
+        application.updateLastActivity()
+        val fireId = taxiRide.firestoreId
+        if (!fireId.isNullOrEmpty()) {
+            val pending = com.moham.taxi.data.model.PendingDeletion(
+                firestoreId = fireId,
+                collectionName = "rides"
+            )
+            database.pendingDeletionDao().insert(pending)
+            if (application.isNetworkAvailable()) {
+                try {
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("rides")
+                        .document(fireId)
+                        .delete()
+                        .await()
+                    database.pendingDeletionDao().deleteByFirestoreId(fireId)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
         taxiRideDao.delete(taxiRide)
@@ -216,8 +249,59 @@ class TaxiRideRepository(private val taxiRideDao: TaxiRideDao, private val datab
         }
         val endOfDay = calendar.time
         
-        val summaries = taxiRideDao.getTotalByPaymentMethod(startOfDay, endOfDay)
-        return summaries.associate { it.paymentMethod to it.total }
+        val rides = taxiRideDao.getTaxiRidesByDateRangeSuspend(startOfDay, endOfDay)
+        val result = mutableMapOf<String, Double>()
+        for (ride in rides) {
+            val lower = ride.paymentMethod.trim().lowercase()
+            if (lower in listOf("cancelado", "rechazado", "cancelada")) continue
+            if (ride.isSplitPayment && !ride.splitSecondaryMethod.isNullOrBlank() && (ride.splitSecondaryPrice ?: 0.0) > 0.0) {
+                val secPrice = (ride.splitSecondaryPrice ?: 0.0).coerceAtMost(ride.price)
+                val primPrice = (ride.price - secPrice).coerceAtLeast(0.0)
+                val primMethod = ride.paymentMethod.trim()
+                val secMethod = ride.splitSecondaryMethod.trim()
+                result[primMethod] = (result[primMethod] ?: 0.0) + primPrice
+                result[secMethod] = (result[secMethod] ?: 0.0) + secPrice
+            } else {
+                val primMethod = ride.paymentMethod.trim()
+                result[primMethod] = (result[primMethod] ?: 0.0) + ride.price
+            }
+        }
+        return result
+    }
+
+    suspend fun getDailyIncomesForDateRange(startDate: Date, endDate: Date): Map<String, Double> {
+        val rides = taxiRideDao.getTaxiRidesByDateRangeSuspend(startDate, endDate)
+        val dayFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        val result = mutableMapOf<String, Double>()
+        for (ride in rides) {
+            val lower = ride.paymentMethod.trim().lowercase()
+            if (lower in listOf("cancelado", "rechazado", "cancelada")) continue
+            val dayKey = dayFormat.format(ride.date)
+            val amount = ride.netPrice ?: ride.price
+            result[dayKey] = (result[dayKey] ?: 0.0) + amount
+        }
+        return result
+    }
+
+    suspend fun getIncomeByPaymentMethodForDateRange(startDate: Date, endDate: Date): Map<String, Double> {
+        val rides = taxiRideDao.getTaxiRidesByDateRangeSuspend(startDate, endDate)
+        val result = mutableMapOf<String, Double>()
+        for (ride in rides) {
+            val lower = ride.paymentMethod.trim().lowercase()
+            if (lower in listOf("cancelado", "rechazado", "cancelada")) continue
+            if (ride.isSplitPayment && !ride.splitSecondaryMethod.isNullOrBlank() && (ride.splitSecondaryPrice ?: 0.0) > 0.0) {
+                val secPrice = (ride.splitSecondaryPrice ?: 0.0).coerceAtMost(ride.price)
+                val primPrice = (ride.price - secPrice).coerceAtLeast(0.0)
+                val primMethod = ride.paymentMethod.trim()
+                val secMethod = ride.splitSecondaryMethod.trim()
+                result[primMethod] = (result[primMethod] ?: 0.0) + primPrice
+                result[secMethod] = (result[secMethod] ?: 0.0) + secPrice
+            } else {
+                val primMethod = ride.paymentMethod.trim()
+                result[primMethod] = (result[primMethod] ?: 0.0) + ride.price
+            }
+        }
+        return result
     }
 
     suspend fun getAppIncomeByPlatform(startDate: Date, endDate: Date): Map<String, Pair<Double, Int>> {

@@ -119,6 +119,12 @@ class BackupService(
                 ride.serviceType?.let { rideJson.put("service_type", it) }
                 rideJson.put("ride_time", ride.rideTime)
                 ride.ticketPhotoPath?.let { rideJson.put("ticket_photo_path", it) }
+                ride.notes?.let { rideJson.put("notes", it) }
+                rideJson.put("is_split_payment", ride.isSplitPayment)
+                ride.splitSecondaryMethod?.let { rideJson.put("split_secondary_method", it) }
+                ride.splitSecondaryPrice?.let { rideJson.put("split_secondary_price", it) }
+                rideJson.put("is_synced", ride.isSynced)
+                ride.firestoreId?.let { rideJson.put("firestore_id", it) }
                 ridesArray.put(rideJson)
             }
             backupJson.put("rides", ridesArray)
@@ -136,6 +142,8 @@ class BackupService(
                 expense.maintenanceKilometers?.let { expenseJson.put("maintenance_kilometers", it) }
                 expense.maintenanceDetails?.let { expenseJson.put("maintenance_details", it) }
                 expense.ticketPhotoPath?.let { expenseJson.put("ticket_photo_path", it) }
+                expenseJson.put("is_synced", expense.isSynced)
+                expense.firestoreId?.let { expenseJson.put("firestore_id", it) }
                 expensesArray.put(expenseJson)
             }
             backupJson.put("expenses", expensesArray)
@@ -189,6 +197,12 @@ class BackupService(
                 ride.serviceType?.let { rideJson.put("service_type", it) }
                 rideJson.put("ride_time", ride.rideTime)
                 ride.ticketPhotoPath?.let { rideJson.put("ticket_photo_path", it) }
+                ride.notes?.let { rideJson.put("notes", it) }
+                rideJson.put("is_split_payment", ride.isSplitPayment)
+                ride.splitSecondaryMethod?.let { rideJson.put("split_secondary_method", it) }
+                ride.splitSecondaryPrice?.let { rideJson.put("split_secondary_price", it) }
+                rideJson.put("is_synced", ride.isSynced)
+                ride.firestoreId?.let { rideJson.put("firestore_id", it) }
                 ridesArray.put(rideJson)
             }
             backupJson.put("rides", ridesArray)
@@ -206,6 +220,8 @@ class BackupService(
                 expense.maintenanceKilometers?.let { expenseJson.put("maintenance_kilometers", it) }
                 expense.maintenanceDetails?.let { expenseJson.put("maintenance_details", it) }
                 expense.ticketPhotoPath?.let { expenseJson.put("ticket_photo_path", it) }
+                expenseJson.put("is_synced", expense.isSynced)
+                expense.firestoreId?.let { expenseJson.put("firestore_id", it) }
                 expensesArray.put(expenseJson)
             }
             backupJson.put("expenses", expensesArray)
@@ -216,6 +232,7 @@ class BackupService(
                 val methodJson = JSONObject()
                 methodJson.put("id", method.id)
                 methodJson.put("name", method.name)
+                methodJson.put("ticketPhotoPolicy", method.ticketPhotoPolicy)
                 paymentMethodsArray.put(methodJson)
             }
             backupJson.put("payment_methods", paymentMethodsArray)
@@ -423,7 +440,13 @@ class BackupService(
                 serviceType = rideJson.optString("service_type").takeIf { it.isNotBlank() },
                 rideTime = rideJson.optString("ride_time", "00:00"),
                 ticketPhotoPath = rideJson.optString("ticket_photo_path").takeIf { it.isNotBlank() },
-                realDate = if (rideJson.has("real_date")) Date(rideJson.getLong("real_date")) else Date(rideJson.getLong("date"))
+                realDate = if (rideJson.has("real_date")) Date(rideJson.getLong("real_date")) else Date(rideJson.getLong("date")),
+                notes = rideJson.optString("notes").takeIf { it.isNotBlank() },
+                isSplitPayment = rideJson.optBoolean("is_split_payment", false),
+                splitSecondaryMethod = rideJson.optString("split_secondary_method").takeIf { it.isNotBlank() },
+                splitSecondaryPrice = rideJson.optDouble("split_secondary_price", Double.NaN).takeIf { !it.isNaN() },
+                isSynced = rideJson.optBoolean("is_synced", false),
+                firestoreId = rideJson.optString("firestore_id").takeIf { it.isNotBlank() }
             )
             taxiRideRepository.insertTaxiRide(ride)
         }
@@ -441,7 +464,9 @@ class BackupService(
                 maintenanceKilometers = if (expenseJson.has("maintenance_kilometers")) expenseJson.getInt("maintenance_kilometers") else null,
                 maintenanceDetails = expenseJson.optString("maintenance_details").takeIf { it.isNotBlank() },
                 ticketPhotoPath = expenseJson.optString("ticket_photo_path").takeIf { it.isNotBlank() },
-                realDate = if (expenseJson.has("real_date")) Date(expenseJson.getLong("real_date")) else Date(expenseJson.getLong("date"))
+                realDate = if (expenseJson.has("real_date")) Date(expenseJson.getLong("real_date")) else Date(expenseJson.getLong("date")),
+                isSynced = expenseJson.optBoolean("is_synced", false),
+                firestoreId = expenseJson.optString("firestore_id").takeIf { it.isNotBlank() }
             )
             expenseRepository.insertExpense(expense)
         }
@@ -455,12 +480,14 @@ class BackupService(
             for (i in 0 until paymentMethodsArray.length()) {
                 val methodJson = paymentMethodsArray.getJSONObject(i)
                 val methodName = methodJson.getString("name")
+                val policy = methodJson.optString("ticketPhotoPolicy", PaymentMethod.POLICY_OPTIONAL)
                 
                 // Solo insertar si no existe ya
                 if (!existingMethodNames.contains(methodName)) {
                     val method = PaymentMethod(
                         id = 0, // Siempre usar 0 para que Room asigne un nuevo ID
-                        name = methodName
+                        name = methodName,
+                        ticketPhotoPolicy = policy
                     )
                     paymentMethodRepository.insert(method)
                 }
@@ -621,9 +648,12 @@ class BackupService(
             for (i in 0 until paymentMethodsArray.length()) {
                 val m = paymentMethodsArray.getJSONObject(i)
                 val name = m.getString("name")
-                val exists = database.paymentMethodDao().paymentMethodExists(name)
-                if (!exists) {
-                    database.paymentMethodDao().insert(PaymentMethod(name = name))
+                val policy = m.optString("ticketPhotoPolicy", PaymentMethod.POLICY_OPTIONAL)
+                val existing = database.paymentMethodDao().getPaymentMethodByName(name)
+                if (existing == null) {
+                    database.paymentMethodDao().insert(PaymentMethod(name = name, ticketPhotoPolicy = policy))
+                } else {
+                    database.paymentMethodDao().update(existing.copy(ticketPhotoPolicy = policy))
                 }
             }
         }

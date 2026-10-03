@@ -62,6 +62,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,25 +154,32 @@ fun ExpenseFormScreen(
     var amount by remember { mutableStateOf("") }
     var ticketPhotoPath by remember { mutableStateOf<String?>(null) }
     var existingRealDate by remember { mutableStateOf<Date?>(null) }
-    var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+    var existingFirestoreId by remember { mutableStateOf<String?>(null) }
+    var tempPhotoPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            tempPhotoFile?.let { file ->
+        val currentPath = tempPhotoPath
+        android.util.Log.d("ImageUtils", "cameraLauncher callback in ExpenseForm: success=$success, path=$currentPath")
+        if (success && currentPath != null) {
+            val file = File(currentPath)
+            if (file.exists() && file.length() > 0L) {
                 val uri = android.net.Uri.fromFile(file)
                 val relativePath = ImageUtils.compressAndSaveTicketPhoto(context, uri)
+                android.util.Log.d("ImageUtils", "compressAndSaveTicketPhoto returned: $relativePath")
                 if (relativePath != null) {
                     ImageUtils.deleteTicketPhoto(context, ticketPhotoPath)
                     ticketPhotoPath = relativePath
                 }
-                file.delete()
+            } else {
+                android.util.Log.e("ImageUtils", "Temp photo file does not exist or has 0 bytes: $currentPath")
             }
-        } else {
-            tempPhotoFile?.delete()
+            file.delete()
+        } else if (currentPath != null) {
+            File(currentPath).delete()
         }
-        tempPhotoFile = null
+        tempPhotoPath = null
     }
 
     // Estado para errores
@@ -198,6 +206,7 @@ fun ExpenseFormScreen(
                 amount = expense.amount.toString()
                 ticketPhotoPath = expense.ticketPhotoPath
                 existingRealDate = expense.realDate
+                existingFirestoreId = expense.firestoreId
             }
         }
     }
@@ -250,13 +259,15 @@ fun ExpenseFormScreen(
                         amount = amount.toDouble(),
                         date = finalDate,
                         ticketPhotoPath = ticketPhotoPath,
-                        realDate = existingRealDate ?: Date()
+                        realDate = existingRealDate ?: Date(),
+                        firestoreId = existingFirestoreId,
+                        isSynced = false
                     )
                     
                     if (expenseId > 0) {
-                        expenseViewModel.update(expense)
+                        expenseViewModel.updateSuspend(expense)
                     } else {
-                        expenseViewModel.insert(expense)
+                        expenseViewModel.insertSuspend(expense)
                     }
                     
 
@@ -719,7 +730,7 @@ fun ExpenseFormScreen(
                         onClick = {
                             focusManager.clearFocus()
                             val file = ImageUtils.createTempImageFile(context)
-                            tempPhotoFile = file
+                            tempPhotoPath = file.absolutePath
                             val uri = FileProvider.getUriForFile(
                                 context,
                                 "${application.packageName}.provider",

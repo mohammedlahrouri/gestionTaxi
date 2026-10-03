@@ -20,7 +20,8 @@ import java.util.Date
         Index(value = ["workingDate"]),
         Index(value = ["paymentMethodId"]),
         Index(value = ["servicePlatformId"]),
-        Index(value = ["tariffId"])
+        Index(value = ["tariffId"]),
+        Index(value = ["isSynced"])
     ]
 )
 data class TaxiRide(
@@ -46,7 +47,11 @@ data class TaxiRide(
     val ticketPhotoPath: String? = null,
     val realDate: Date = Date(),
     val isSynced: Boolean = false,
-    val firestoreId: String? = null
+    val firestoreId: String? = null,
+    val notes: String? = null,
+    val isSplitPayment: Boolean = false,
+    val splitSecondaryMethod: String? = null,
+    val splitSecondaryPrice: Double? = null
 ) {
     companion object {
         const val SERVICE_TYPE_METER = "METER"

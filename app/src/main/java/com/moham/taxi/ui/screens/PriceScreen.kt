@@ -163,21 +163,21 @@ fun PriceScreen(navController: NavController) {
         }
     }
 
-    // Debounce para sugerencias de origen
+    // Debounce para sugerencias de origen (350ms para respuesta rápida y búsqueda exacta con Geocoder)
     LaunchedEffect(originQuery) {
         if (originQuery.trim().length >= 3 && originQuery != selectedOrigin?.displayName) {
-            delay(600)
-            originSuggestions = GeocodingService.getSuggestions(originQuery, currentCity)
+            delay(350)
+            originSuggestions = GeocodingService.getSuggestions(context, originQuery)
         } else if (originQuery.isEmpty() || originQuery == selectedOrigin?.displayName) {
             originSuggestions = emptyList()
         }
     }
 
-    // Debounce para sugerencias de destino
+    // Debounce para sugerencias de destino (350ms para respuesta rápida y búsqueda exacta con Geocoder)
     LaunchedEffect(destinationQuery) {
         if (destinationQuery.trim().length >= 3 && destinationQuery != selectedDestination?.displayName) {
-            delay(600)
-            destinationSuggestions = GeocodingService.getSuggestions(destinationQuery, currentCity)
+            delay(350)
+            destinationSuggestions = GeocodingService.getSuggestions(context, destinationQuery)
         } else if (destinationQuery.isEmpty() || destinationQuery == selectedDestination?.displayName) {
             destinationSuggestions = emptyList()
         }
@@ -224,7 +224,7 @@ fun PriceScreen(navController: NavController) {
                             popUpTo(AppScreens.Home.route) { inclusive = false }
                             launchSingleTop = true
                         }
-                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
+                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(application.selectedDateState.value.time))
                         2 -> navController.navigate(AppScreens.Statistics.route)
                         3 -> navController.navigate(AppScreens.Other.route)
                     }
@@ -519,7 +519,7 @@ fun PriceScreen(navController: NavController) {
                                                         .fillMaxWidth()
                                                         .clickable {
                                                             coroutineScope.launch {
-                                                                val suggestions = GeocodingService.getSuggestions(histOrigin, currentCity)
+                                                                val suggestions = GeocodingService.getSuggestions(context, histOrigin)
                                                                 val bestSuggestion = if (suggestions.isNotEmpty()) {
                                                                     suggestions.first()
                                                                 } else {

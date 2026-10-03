@@ -26,9 +26,12 @@ interface ServicePlatformDao {
     @Query("SELECT * FROM service_platforms WHERE id = :id")
     suspend fun getServicePlatformById(id: Long): ServicePlatform?
 
-    @Query("SELECT EXISTS(SELECT 1 FROM service_platforms WHERE name = :name LIMIT 1)")
+    @Query("SELECT EXISTS(SELECT 1 FROM service_platforms WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name)) LIMIT 1)")
     suspend fun servicePlatformExists(name: String): Boolean
 
-    @Query("SELECT * FROM service_platforms WHERE name = :name LIMIT 1")
+    @Query("SELECT * FROM service_platforms WHERE LOWER(TRIM(name)) = LOWER(TRIM(:name)) LIMIT 1")
     suspend fun getServicePlatformByName(name: String): ServicePlatform?
+
+    @Query("SELECT * FROM service_platforms")
+    suspend fun getAllServicePlatformsList(): List<ServicePlatform>
 }

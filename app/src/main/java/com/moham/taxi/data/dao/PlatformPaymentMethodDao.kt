@@ -13,10 +13,18 @@ import kotlinx.coroutines.flow.Flow
 interface PlatformPaymentMethodDao {
     @Query(
         """
-        SELECT pm.* FROM payment_methods pm
+        SELECT DISTINCT pm.* FROM payment_methods pm
         INNER JOIN platform_payment_methods ppm ON ppm.paymentMethodId = pm.id
         WHERE ppm.platformId = :platformId
-        ORDER BY pm.name ASC
+        ORDER BY 
+            CASE 
+                WHEN lower(pm.name) IN ('efectivo', 'cash') THEN 1 
+                WHEN lower(pm.name) IN ('tarjeta', 'card') THEN 2 
+                WHEN lower(replace(pm.name, ' ', '')) = 'viaapp' THEN 3 
+                WHEN lower(pm.name) IN ('cancelado', 'rechazado', 'cancelada') THEN 4 
+                ELSE 5 
+            END ASC, 
+            pm.name COLLATE NOCASE ASC
         """
     )
     fun getPaymentMethodsForPlatform(platformId: Long): Flow<List<PaymentMethod>>

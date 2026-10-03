@@ -37,6 +37,9 @@ class PaymentMethodRepository(private val paymentMethodDao: PaymentMethodDao, pr
     }
     
     suspend fun delete(paymentMethod: PaymentMethod) = withContext(Dispatchers.IO) {
+        if (paymentMethod.isDefault()) {
+            return@withContext
+        }
         paymentMethodDao.delete(paymentMethod)
         paymentMethodCache.remove(paymentMethod.id)
     }

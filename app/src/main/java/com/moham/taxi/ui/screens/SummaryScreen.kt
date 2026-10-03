@@ -111,38 +111,16 @@ fun SummaryScreen(navController: NavHostController) {
             weekExpenses = expenseViewModel.getCurrentWeekExpenses()
             weekNet = weekIncome - weekExpenses
             
-            // Calcular ingresos por método de pago para la semana
-            val todayMethods = todayIncomeByPaymentMethod.keys
-            val weekMethods = mutableMapOf<String, Double>()
-            
-            // Inicializar con los métodos del día
-            todayMethods.forEach { method ->
-                weekMethods[method] = 0.0
-            }
-            
-            // Obtener datos de la semana actual
-            val calendar = java.util.Calendar.getInstance()
-            
-            // Obtener el primer día de la semana configurado
+            // Calcular ingresos por método de pago para la semana en una sola consulta
             val firstDayOfWeek = application.getFirstDayOfWeek().first()
             val (weekStart, weekEnd) = com.moham.taxi.utils.DateUtils.getWeekRange(Date(), firstDayOfWeek)
-            
-            // Iterar por cada día de la semana usando el rango calculado
-            val weekCalendar = java.util.Calendar.getInstance().apply { time = weekStart }
-            while (weekCalendar.time <= weekEnd) {
-                val date = weekCalendar.time
-                val methodsForDay = taxiRideViewModel.getIncomeByPaymentMethodForDate(date)
-                
-                // Sumar a los totales semanales
-                methodsForDay.forEach { (method, amount) ->
-                    weekMethods[method] = (weekMethods[method] ?: 0.0) + amount
+            val weekBreakdown = taxiRideViewModel.getIncomeByPaymentMethodForDateRange(weekStart, weekEnd).toMutableMap()
+            todayIncomeByPaymentMethod.keys.forEach { method ->
+                if (!weekBreakdown.containsKey(method)) {
+                    weekBreakdown[method] = 0.0
                 }
-                
-                // Avanzar al siguiente día
-                weekCalendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
-            
-            weekIncomeByPaymentMethod = weekMethods
+            weekIncomeByPaymentMethod = weekBreakdown
             
             // Datos mensuales
             monthIncome = taxiRideViewModel.getTaxiMonthIncome()
@@ -387,12 +365,14 @@ fun PaymentMethodBreakdown(
     val cashLabel = stringResource(R.string.payment_cash)
     val cardLabel = stringResource(R.string.payment_card)
     val appLabel = stringResource(R.string.payment_via_app)
+    val cancelledLabel = stringResource(R.string.payment_cancelled)
     fun displayPaymentMethodName(value: String): String {
         val lower = value.trim().lowercase()
         return when {
             lower == "efectivo" || lower == "cash" -> cashLabel
             lower == "tarjeta" || lower == "card" -> cardLabel
             lower.replace(" ", "") == "viaapp" || lower == "via app" -> appLabel
+            lower == "cancelado" || lower == "rechazado" || lower == "cancelada" -> cancelledLabel
             else -> value
         }
     }

@@ -1,6 +1,7 @@
 package com.moham.taxi.ui.components
 
 import android.graphics.BitmapFactory
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +30,24 @@ import com.moham.taxi.utils.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Caché LRU en memoria para miniaturas de tickets.
+ * Evita releer del disco y decodificar continuamente durante el scroll en LazyColumn.
+ * Capacidad máxima de 100 miniaturas (~6 MB de RAM máx.).
+ */
+object TicketThumbnailCache {
+    private val cache = object : LruCache<String, ImageBitmap>(100) {}
+
+    fun get(key: String): ImageBitmap? = cache.get(key)
+    fun put(key: String, bitmap: ImageBitmap) {
+        cache.put(key, bitmap)
+    }
+    fun remove(key: String): ImageBitmap? = cache.remove(key)
+    fun clear() {
+        cache.evictAll()
+    }
+}
+
 @Composable
 fun TicketPhotoThumbnail(
     photoPath: String?,
@@ -37,15 +57,21 @@ fun TicketPhotoThumbnail(
     if (photoPath.isNullOrBlank()) return
 
     val context = LocalContext.current
-    var bitmap by remember(photoPath) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var bitmap by remember(photoPath) {
+        mutableStateOf(TicketThumbnailCache.get(photoPath))
+    }
 
     LaunchedEffect(photoPath) {
-        withContext(Dispatchers.IO) {
-            val file = ImageUtils.getTicketPhotoFile(context, photoPath)
-            if (file != null && file.exists()) {
-                val decoded = BitmapFactory.decodeFile(file.absolutePath)
-                if (decoded != null) {
-                    bitmap = decoded.asImageBitmap()
+        if (bitmap == null) {
+            withContext(Dispatchers.IO) {
+                val file = ImageUtils.getTicketPhotoFile(context, photoPath)
+                if (file != null && file.exists()) {
+                    val decoded = ImageUtils.decodeSampledBitmap(file.absolutePath, targetSize = 144)
+                    if (decoded != null) {
+                        val imageBitmap = decoded.asImageBitmap()
+                        TicketThumbnailCache.put(photoPath, imageBitmap)
+                        bitmap = imageBitmap
+                    }
                 }
             }
         }
@@ -166,7 +192,8 @@ fun InlineTicketPhoto(
         withContext(Dispatchers.IO) {
             val file = ImageUtils.getTicketPhotoFile(context, photoPath)
             if (file != null && file.exists()) {
-                val decoded = BitmapFactory.decodeFile(file.absolutePath)
+                val decoded = ImageUtils.decodeSampledBitmap(file.absolutePath, targetSize = 512)
+                    ?: BitmapFactory.decodeFile(file.absolutePath)
                 if (decoded != null) {
                     bitmap = decoded.asImageBitmap()
                 }

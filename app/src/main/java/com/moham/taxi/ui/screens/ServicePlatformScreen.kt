@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -59,6 +60,7 @@ import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
 import com.moham.taxi.data.model.ServicePlatform
 import com.moham.taxi.data.model.ServiceMode
+import com.moham.taxi.data.model.PaymentMethod
 import com.moham.taxi.ui.components.TaxiButton
 import com.moham.taxi.ui.components.TaxiTextField
 import com.moham.taxi.ui.viewmodel.PaymentMethodViewModel
@@ -259,9 +261,14 @@ fun ServicePlatformScreen(navController: NavHostController) {
                                             null
                                         }
                                         scope.launch {
+                                            val cleanName = newPlatformName.trim()
+                                            if (application.servicePlatformRepository.servicePlatformExists(cleanName)) {
+                                                snackbarHostState.showSnackbar("Ya existe una plataforma con el nombre \"$cleanName\"")
+                                                return@launch
+                                            }
                                             val platformId = application.servicePlatformRepository.insert(
                                                 ServicePlatform(
-                                                    name = newPlatformName,
+                                                    name = cleanName,
                                                     commissionPercentage = commissionValue,
                                                     commissionVat = vatValue,
                                                     useAlternativeMath = newPlatformAlternativeMath,
@@ -281,6 +288,7 @@ fun ServicePlatformScreen(navController: NavHostController) {
                                             newPlatformPaymentMethodIds = emptySet()
                                             newPaymentMethodName = ""
                                             showAddDialog = false
+                                            application.firebaseSyncRepository.syncServicePlatforms()
                                             snackbarHostState.showSnackbar(context.getString(R.string.msg_platform_added))
                                         }
                                     }
@@ -295,6 +303,7 @@ fun ServicePlatformScreen(navController: NavHostController) {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
+                            .imePadding()
                             .padding(horizontal = 16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
@@ -429,16 +438,23 @@ fun ServicePlatformScreen(navController: NavHostController) {
                         val cashLabel = stringResource(R.string.payment_cash)
                         val cardLabel = stringResource(R.string.payment_card)
                         val appLabel = stringResource(R.string.payment_via_app)
+                        val cancelledLabel = stringResource(R.string.payment_cancelled)
                         fun displayPaymentMethodName(value: String): String {
                             val lower = value.trim().lowercase()
                             return when {
                                 lower == "efectivo" || lower == "cash" -> cashLabel
                                 lower == "tarjeta" || lower == "card" -> cardLabel
                                 lower.replace(" ", "") == "viaapp" || lower == "via app" -> appLabel
+                                lower == "cancelado" || lower == "rechazado" || lower == "cancelada" -> cancelledLabel
                                 else -> value
                             }
                         }
-                        allPaymentMethods.forEach { method ->
+                        allPaymentMethods
+                            .distinctBy { it.name.trim().lowercase() }
+                            .sortedWith(
+                                compareBy<PaymentMethod> { PaymentMethod.getPaymentMethodSortOrder(it.name) }
+                                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+                            ).forEach { method ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
@@ -475,8 +491,8 @@ fun ServicePlatformScreen(navController: NavHostController) {
                             }
                         ) {
                             Text("Añadir", color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
@@ -525,9 +541,16 @@ fun ServicePlatformScreen(navController: NavHostController) {
                                         }
                                         platformToEdit?.let { platform ->
                                             scope.launch {
+                                                val cleanName = editPlatformName.trim()
+                                                if (!cleanName.equals(platform.name.trim(), ignoreCase = true)) {
+                                                    if (application.servicePlatformRepository.servicePlatformExists(cleanName)) {
+                                                        snackbarHostState.showSnackbar("Ya existe una plataforma con el nombre \"$cleanName\"")
+                                                        return@launch
+                                                    }
+                                                }
                                                 servicePlatformViewModel.update(
                                                     platform.copy(
-                                                        name = editPlatformName,
+                                                        name = cleanName,
                                                         commissionPercentage = commissionValue,
                                                         commissionVat = vatValue,
                                                         useAlternativeMath = editPlatformAlternativeMath,
@@ -539,6 +562,7 @@ fun ServicePlatformScreen(navController: NavHostController) {
                                                     paymentMethodIds = editPlatformPaymentMethodIds.toList()
                                                 )
                                                 showEditDialog = false
+                                                application.firebaseSyncRepository.syncServicePlatforms()
                                                 snackbarHostState.showSnackbar(context.getString(R.string.msg_platform_updated))
                                             }
                                         }
@@ -554,6 +578,7 @@ fun ServicePlatformScreen(navController: NavHostController) {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
+                            .imePadding()
                             .padding(horizontal = 16.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
@@ -688,16 +713,23 @@ fun ServicePlatformScreen(navController: NavHostController) {
                         val cashLabel = stringResource(R.string.payment_cash)
                         val cardLabel = stringResource(R.string.payment_card)
                         val appLabel = stringResource(R.string.payment_via_app)
+                        val cancelledLabel = stringResource(R.string.payment_cancelled)
                         fun displayPaymentMethodName(value: String): String {
                             val lower = value.trim().lowercase()
                             return when {
                                 lower == "efectivo" || lower == "cash" -> cashLabel
                                 lower == "tarjeta" || lower == "card" -> cardLabel
                                 lower.replace(" ", "") == "viaapp" || lower == "via app" -> appLabel
+                                lower == "cancelado" || lower == "rechazado" || lower == "cancelada" -> cancelledLabel
                                 else -> value
                             }
                         }
-                        allPaymentMethods.forEach { method ->
+                        allPaymentMethods
+                            .distinctBy { it.name.trim().lowercase() }
+                            .sortedWith(
+                                compareBy<PaymentMethod> { PaymentMethod.getPaymentMethodSortOrder(it.name) }
+                                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+                            ).forEach { method ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
@@ -734,8 +766,8 @@ fun ServicePlatformScreen(navController: NavHostController) {
                             }
                         ) {
                             Text("Añadir", color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(16.dp))
                         }
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
@@ -754,6 +786,7 @@ fun ServicePlatformScreen(navController: NavHostController) {
                             platformToDelete?.let { platform ->
                                 scope.launch {
                                     servicePlatformViewModel.delete(platform)
+                                    application.firebaseSyncRepository.syncServicePlatforms()
                                     showDeleteConfirmDialog = false
                                     snackbarHostState.showSnackbar(context.getString(R.string.msg_platform_deleted))
                                 }

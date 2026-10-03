@@ -20,7 +20,20 @@ interface PaymentMethodDao {
     @Delete
     suspend fun delete(paymentMethod: PaymentMethod)
 
-    @Query("SELECT * FROM payment_methods ORDER BY name ASC")
+    @Query(
+        """
+        SELECT * FROM payment_methods 
+        ORDER BY 
+            CASE 
+                WHEN lower(name) IN ('efectivo', 'cash') THEN 1 
+                WHEN lower(name) IN ('tarjeta', 'card') THEN 2 
+                WHEN lower(replace(name, ' ', '')) = 'viaapp' THEN 3 
+                WHEN lower(name) IN ('cancelado', 'rechazado', 'cancelada') THEN 4 
+                ELSE 5 
+            END ASC, 
+            name COLLATE NOCASE ASC
+        """
+    )
     fun getAllPaymentMethods(): Flow<List<PaymentMethod>>
 
     @Query("SELECT * FROM payment_methods WHERE id = :id")
@@ -31,4 +44,7 @@ interface PaymentMethodDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM payment_methods WHERE name = :name LIMIT 1)")
     suspend fun paymentMethodExists(name: String): Boolean
+
+    @Query("SELECT * FROM payment_methods")
+    suspend fun getAllPaymentMethodsList(): List<PaymentMethod>
 }

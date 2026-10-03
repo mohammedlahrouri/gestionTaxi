@@ -73,6 +73,8 @@
     <string name="payment_cash">Espèces</string>
     <string name="payment_card">Carte</string>
     <string name="payment_via_app">Via App</string>
+    <string name="payment_cancelled">Annulé</string>
+    <string name="meter_uncollected_cancelled">Non perçu pour annulation</string>
     <string name="error_select_payment">Veuillez sélectionner une méthode de paiement</string>
     <string name="error_valid_price">Veuillez entrer un prix valide</string>
     <string name="label_amount_with_commission">Montant avec commission</string>
@@ -393,6 +395,22 @@
     <string name="msg_payment_method_deleted">Méthode de paiement supprimée</string>
     <string name="cd_add_payment_method">Ajouter Méthode de Paiement</string>
     <string name="cd_delete_payment_method">Eliminer Méthode de Paiement</string>
+    <string name="payment_method_default_badge">Par défaut</string>
+    <string name="error_payment_method_exists">Cette méthode de paiement existe déjà</string>
+    <string name="error_payment_method_default">Impossible d\'ajouter une méthode de paiement réservée par défaut</string>
+    <string name="payment_method_photo_policy_label">Option de photo de ticket</string>
+    <string name="photo_policy_no_photo">Sans photo ticket</string>
+    <string name="photo_policy_optional">Photo ticket optionnelle</string>
+    <string name="photo_policy_mandatory">Photo ticket obligatoire</string>
+    <string name="photo_policy_no_photo_desc">Seul le bouton Enregistrer apparaîtra</string>
+    <string name="photo_policy_optional_desc">L’option Enregistrer et Photo apparaîtront</string>
+    <string name="photo_policy_mandatory_desc">Enregistrement impossible sans photo</string>
+    <string name="dialog_configure_payment_method">Configurer le mode de paiement</string>
+    <string name="msg_payment_method_updated">Mode de paiement mis à jour</string>
+    <string name="badge_no_photo">Sans photo</string>
+    <string name="badge_photo_optional">Photo optionnelle</string>
+    <string name="badge_photo_mandatory">Photo obligatoire</string>
+    <string name="error_ticket_photo_required">La photo du ticket est obligatoire pour ce mode de paiement</string>
 
     <!-- Online Backup Screen -->
     <string name="title_online_backup">Sauvegarde Automatique en Ligne</string>
@@ -870,19 +888,28 @@
     <string name="settings_fleet_connect_desc">Partagez vos revenus et dépenses en temps réel avec votre flotte</string>
     <string name="fleet_connected_status_connected">Connecté à la flotte</string>
     <string name="fleet_connected_status_disconnected">Pas de connexion à la flotte</string>
-    <string name="fleet_connected_code_label">Code de flotte : %1$s</string>
+    <string name="fleet_connected_code_label">E-mail de liaison : %1$s</string>
     <string name="fleet_connected_name_label">Nom de la flotte : %1$s</string>
     <string name="settings_fleet_connected_summary">Connecté à la flotte : %1$s</string>
     <string name="fleet_connection_explanation">En vous connectant à une flotte, celle-ci aura automatiquement accès en temps réel à tous vos revenus et dépenses, et pourra également vous envoyer des messages.</string>
-    <string name="fleet_connect_with_code">Se connecter avec un code</string>
-    <string name="fleet_enter_code_dialog_title">Se connecter avec un code</string>
-    <string name="fleet_enter_code_dialog_desc">Saisissez le nom de la flotte et le code à 6 chiffres fourni dans votre application de flotte pour établir la connexion.</string>
+    <string name="fleet_connect_with_code">Se connecter par e-mail</string>
+    <string name="fleet_enter_code_dialog_title">Se connecter par e-mail</string>
+    <string name="fleet_enter_code_dialog_desc">Connectez-vous avec l\'adresse e-mail attribuée par votre gestionnaire de flotte pour établir la connexion automatiquement.</string>
     <string name="fleet_name_placeholder">Nom de la flotte</string>
-    <string name="fleet_code_placeholder">Code à 6 chiffres</string>
-    <string name="fleet_btn_connect">Se connecter</string>
+    <string name="fleet_code_placeholder">Adresse e-mail</string>
+    <string name="fleet_btn_connect">Se connecter par e-mail</string>
     <string name="fleet_btn_disconnect">Se déconnecter de la flotte</string>
     <string name="fleet_disconnect_confirm_title">Se déconnecter de la flotte ?</string>
     <string name="fleet_disconnect_confirm_desc">Êtes-vous sûr de vouloir vous déconnecter de la flotte ? Vous cesserez de partager vos revenus et dépenses en temps réel.</string>
-    <string name="fleet_error_invalid_code">Le code doit comporter exactement 6 chiffres.</string>
+    <string name="fleet_error_invalid_code">Adresse e-mail non valide.</string>
     <string name="fleet_error_invalid_name">Le nom de la flotte ne peut pas être vide.</string>
+    <string name="fleet_unlinked_notice_title">Déconnecté de la flotte</string>
+    <string name="fleet_unlinked_notice_desc">Le gestionnaire de la flotte a mis fin à votre affiliation ou vous avez été retiré de la flotte. Vos données locales restent intactes sur votre appareil.</string>
+    <string name="fleet_unlinked_notice_button">Compris</string>
+
+    <!-- Sections jour de garde et lendemain -->
+    <string name="section_out_of_day">Lendemain / Tôt le matin</string>
+    <string name="section_in_day">Jour de garde</string>
+    <string name="chip_same_day">Même jour</string>
+    <string name="chip_next_day">+1 Jour (Matinée)</string>
 </resources>

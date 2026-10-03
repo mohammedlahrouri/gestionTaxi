@@ -115,8 +115,14 @@ fun TaxiRideDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Date & Time
+                    val isOutOfDay = currentRide.realDate.time > 0L && com.moham.taxi.utils.DateUtils.isDifferentDay(currentRide.realDate, currentRide.date)
                     val dateStr = com.moham.taxi.utils.DateUtils.formatDate(currentRide.date, "dd/MM/yyyy")
-                    val dateTimeStr = if (currentRide.rideTime.isNotBlank()) "$dateStr  ${currentRide.rideTime}" else dateStr
+                    val timePart = if (isOutOfDay && currentRide.rideTime.isNotBlank()) {
+                        "${com.moham.taxi.utils.DateUtils.getShortDayName(currentRide.realDate)} ${currentRide.rideTime}"
+                    } else {
+                        currentRide.rideTime
+                    }
+                    val dateTimeStr = if (timePart.isNotBlank()) "$dateStr  $timePart" else dateStr
                     Text(dateTimeStr, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
                     // Origin & Destination Route
@@ -164,11 +170,28 @@ fun TaxiRideDetailScreen(
                     }
 
                     // Payment Method
+                    val paymentMethodText = if (currentRide.isSplitPayment && !currentRide.splitSecondaryMethod.isNullOrBlank()) {
+                        val secPrice = currentRide.splitSecondaryPrice ?: 0.0
+                        val primPrice = (currentRide.price - secPrice).coerceAtLeast(0.0)
+                        "${translatePaymentMethod(currentRide.paymentMethod)} (${String.format(java.util.Locale.US, "%.2f", primPrice)}€) + ${translatePaymentMethod(currentRide.splitSecondaryMethod)} (${String.format(java.util.Locale.US, "%.2f", secPrice)}€)"
+                    } else {
+                        translatePaymentMethod(currentRide.paymentMethod)
+                    }
                     Text(
-                        text = stringResource(R.string.paid_via, translatePaymentMethod(currentRide.paymentMethod)),
+                        text = stringResource(R.string.paid_via, paymentMethodText),
                         color = Color.White,
                         fontSize = 16.sp
                     )
+
+                    // Notes
+                    if (!currentRide.notes.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Nota: ${currentRide.notes}",
+                            color = Color(0xFFA8A8AD),
+                            fontSize = 14.sp
+                        )
+                    }
                     
                     // Ticket photo at the end if present
                     if (!currentRide.ticketPhotoPath.isNullOrBlank()) {

@@ -280,6 +280,42 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
             
+            // Tarjeta para métodos de pago
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AppScreens.PaymentMethod.route) }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = stringResource(R.string.settings_payment_methods_content_desc),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_payment_methods_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_payment_methods_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.settings_payment_methods_arrow_desc),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
             // Tarjeta para datos de facturación
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -389,52 +425,58 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
 
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AppScreens.OnlineBackup.route) }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            val isFleetConnected by application.isFleetConnected().collectAsState(initial = false)
+            val fleetName by application.getFleetName().collectAsState(initial = null)
+
+            // La copia de seguridad en Google Drive es un mecanismo personal
+            // del conductor independiente; al unirse a una flota, la
+            // sincronización pasa a depender de la flota y esta opción deja
+            // de tener sentido, así que se oculta para no pisarse con ella.
+            if (!isFleetConnected) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.navigate(AppScreens.OnlineBackup.route) }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Cloud,
-                        contentDescription = stringResource(R.string.settings_online_backup_content_desc),
-                        modifier = Modifier.padding(end = 16.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_online_backup_title),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cloud,
+                            contentDescription = stringResource(R.string.settings_online_backup_content_desc),
+                            modifier = Modifier.padding(end = 16.dp)
                         )
-                        Text(
-                            text = stringResource(R.string.settings_online_backup_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_online_backup_title),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_online_backup_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = stringResource(R.string.settings_online_backup_arrow_desc),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = stringResource(R.string.settings_online_backup_arrow_desc),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
-            
+
             Divider(modifier = Modifier.padding(vertical = 8.dp))
-            
+
             // Sección de Flota
             Text(
                 text = stringResource(R.string.settings_fleet_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
             )
-            
-            val isFleetConnected by application.isFleetConnected().collectAsState(initial = false)
-            val fleetName by application.getFleetName().collectAsState(initial = null)
             
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -519,7 +561,49 @@ fun SettingsScreen(navController: NavController) {
                     )
                 }
             }
-            
+
+            // Política de Privacidad
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        Uri.parse("https://taximanagementconsole.com/politica-privacidad")
+                    )
+                    context.startActivity(intent)
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Política de Privacidad",
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Política de Privacidad",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Términos de privacidad, datos y supresión",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Ir a política de privacidad",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             // Información de versión
             OutlinedCard(
                 modifier = Modifier.fillMaxWidth()

@@ -1,7 +1,9 @@
 package com.moham.taxi
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -16,12 +18,16 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.core.os.LocaleListCompat
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import java.util.Calendar
 import java.util.Locale
 import com.moham.taxi.data.AppDatabase
+import com.google.firebase.auth.FirebaseAuth
 import com.moham.taxi.data.online.GoogleDriveAuthManager
 import com.moham.taxi.data.online.OnlineBackupRepository
 import com.moham.taxi.data.online.OnlineBackupWorker
@@ -35,16 +41,21 @@ import com.moham.taxi.data.service.ExportService
 import com.moham.taxi.data.service.BackupService
 import com.moham.taxi.data.model.SavedQuote
 import com.moham.taxi.data.model.QuoteData
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import com.moham.taxi.utils.DateUtils
 
 // Extension property para DataStore
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "taxi_settings")
@@ -52,19 +63,76 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ta
 class GestionTaxiApplication : Application() {
     
     // Scope único optimizado para todas las operaciones
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     override fun onCreate() {
         super.onCreate()
         // Reset any app-level locale override to align with device system language
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+        // Limpiar automáticamente posibles carreras o gastos duplicados en la base de datos local (solo una vez)
+        applicationScope.launch {
+            try {
+                val preferences = dataStore.data.first()
+                if (preferences[DUPLICATES_CLEANUP_V1_KEY] != true) {
+                    taxiRideDao.deduplicateRides()
+                    expenseDao.deduplicateExpenses()
+                    dataStore.edit { it[DUPLICATES_CLEANUP_V1_KEY] = true }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         // Sincronizar datos con Firebase al iniciar la aplicación
         scheduleFirebaseSyncDebounced()
+        schedulePeriodicFirebaseSync()
+
+        // Escucha en tiempo real para desconexión automática si el gestor expulsa al conductor
+        FirebaseAuth.getInstance().addAuthStateListener { auth ->
+            if (auth.currentUser != null) {
+                firebaseSyncRepository.startDriverProfileListener()
+            } else {
+                firebaseSyncRepository.stopDriverProfileListener()
+            }
+        }
+
+        // Comprobar si el conductor fue desvinculado o expulsado mientras la app estuvo cerrada
+        applicationScope.launch {
+            try {
+                if (firebaseSyncRepository.isFleetConnected()) {
+                    firebaseSyncRepository.checkDriverExpulsionOrUnlink()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // Inicializar fecha seleccionada respetando la jornada anterior si la inactividad es menor a 4 horas
+        initializeSelectedDate()
+
+        // Monitorear cuando la app pasa a primer o segundo plano para controlar las 4 horas de inactividad
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityResumed(activity: Activity) {
+                checkAndResetDateIfInactive()
+            }
+
+            override fun onActivityPaused(activity: Activity) {
+                updateLastActivity()
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
     }
     
+    // Fecha seleccionada unificada en memoria (Single Source of Truth para toda la app)
+    private val _selectedDateState = MutableStateFlow<Date>(DateUtils.getStartOfDay(Date()))
+    val selectedDateState: StateFlow<Date> = _selectedDateState.asStateFlow()
+
     // Sistema de caché para preferencias frecuentemente usadas
     private var cachedSummaryIncomeType: Int? = null
-    private var cachedSelectedDate: Date? = null
     var cachedBillingData: BillingData? = null
     var currentQuote: com.moham.taxi.data.model.QuoteData? = null
     var currentOrigin: String? = null
@@ -102,6 +170,8 @@ class GestionTaxiApplication : Application() {
     // Claves para almacenar preferencias
     companion object {
         val SELECTED_DATE_KEY = longPreferencesKey("selected_date")
+        val LAST_ACTIVITY_TIMESTAMP_KEY = longPreferencesKey("last_activity_timestamp")
+        const val INACTIVITY_THRESHOLD_MS = 4 * 60 * 60 * 1000L // 4 horas de inactividad
         val DAILY_TARGET_KEY = stringPreferencesKey("daily_target")
         val SUMMARY_INCOME_TYPE_KEY = intPreferencesKey("summary_income_type")
         val BILLING_NAME_KEY = stringPreferencesKey("billing_name")
@@ -134,6 +204,9 @@ class GestionTaxiApplication : Application() {
         val FLEET_CODE_KEY = stringPreferencesKey("fleet_code")
         val FLEET_NAME_KEY = stringPreferencesKey("fleet_name")
         val FLEET_ID_KEY = stringPreferencesKey("fleet_id")
+        val DUPLICATES_CLEANUP_V1_KEY = booleanPreferencesKey("duplicates_cleanup_v1")
+        val LAST_SYNCED_FLEET_ID_KEY = stringPreferencesKey("last_synced_fleet_id")
+        val FLEET_UNLINKED_NOTICE_KEY = booleanPreferencesKey("fleet_unlinked_notice")
     }
     
     // Método para guardar si el reto diario está habilitado
@@ -217,6 +290,34 @@ class GestionTaxiApplication : Application() {
     fun getFleetId(): Flow<String?> {
         return dataStore.data.map { preferences ->
             preferences[FLEET_ID_KEY]
+        }
+    }
+
+    suspend fun saveLastSyncedFleetId(id: String?) {
+        dataStore.edit { preferences ->
+            if (id != null) {
+                preferences[LAST_SYNCED_FLEET_ID_KEY] = id
+            } else {
+                preferences.remove(LAST_SYNCED_FLEET_ID_KEY)
+            }
+        }
+    }
+
+    suspend fun saveFleetUnlinkedNotice(pending: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[FLEET_UNLINKED_NOTICE_KEY] = pending
+        }
+    }
+
+    fun isFleetUnlinkedNoticePending(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[FLEET_UNLINKED_NOTICE_KEY] ?: false
+        }
+    }
+
+    fun getLastSyncedFleetId(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[LAST_SYNCED_FLEET_ID_KEY]
         }
     }
 
@@ -341,28 +442,141 @@ class GestionTaxiApplication : Application() {
         }
     }
     
-    // Método para guardar la fecha seleccionada con caché
-    suspend fun saveSelectedDate(date: Date) {
-        dataStore.edit { preferences ->
-            preferences[SELECTED_DATE_KEY] = date.time
-        }
-        cachedSelectedDate = date
+    val dateReadyDeferred = CompletableDeferred<Unit>()
+
+    suspend fun awaitDateReady() {
+        dateReadyDeferred.await()
     }
-    
-    // Método para obtener la fecha seleccionada con caché
-    fun getSelectedDate(): Flow<Date> {
-        return dataStore.data.map { preferences ->
-            cachedSelectedDate ?: preferences[SELECTED_DATE_KEY]?.let { timestamp ->
-                Date(timestamp).also { date ->
-                    cachedSelectedDate = date
+
+    private fun initializeSelectedDate() {
+        applicationScope.launch {
+            try {
+                val preferences = dataStore.data.first()
+                val now = System.currentTimeMillis()
+                val lastActivity = preferences[LAST_ACTIVITY_TIMESTAMP_KEY] ?: 0L
+                val savedDateTimestamp = preferences[SELECTED_DATE_KEY]
+                val today = DateUtils.getStartOfDay(Date())
+
+                if (savedDateTimestamp != null && lastActivity > 0L) {
+                    val diff = now - lastActivity
+                    if (diff in 0 until INACTIVITY_THRESHOLD_MS) {
+                        // Menos de 4 horas de inactividad: respetar la jornada anterior (turno de noche)
+                        val savedDate = DateUtils.getStartOfDay(Date(savedDateTimestamp))
+                        _selectedDateState.value = savedDate
+                    } else {
+                        // Pasaron 4 horas o más sin usar ni registrar nada: volver al día real actual
+                        _selectedDateState.value = today
+                        dataStore.edit { prefs ->
+                            prefs[SELECTED_DATE_KEY] = today.time
+                        }
+                    }
+                } else if (savedDateTimestamp != null && lastActivity == 0L) {
+                    val savedDate = DateUtils.getStartOfDay(Date(savedDateTimestamp))
+                    val calSaved = Calendar.getInstance().apply { time = savedDate }
+                    val calToday = Calendar.getInstance().apply { time = today }
+                    val isSameDay = calSaved.get(Calendar.YEAR) == calToday.get(Calendar.YEAR) &&
+                                    calSaved.get(Calendar.DAY_OF_YEAR) == calToday.get(Calendar.DAY_OF_YEAR)
+                    if (isSameDay) {
+                        _selectedDateState.value = savedDate
+                    } else {
+                        _selectedDateState.value = today
+                        dataStore.edit { prefs ->
+                            prefs[SELECTED_DATE_KEY] = today.time
+                        }
+                    }
+                } else {
+                    _selectedDateState.value = today
+                    dataStore.edit { prefs ->
+                        prefs[SELECTED_DATE_KEY] = today.time
+                    }
                 }
-            } ?: Date().also { date ->
-                cachedSelectedDate = date
-                applicationScope.launch {
-                    saveSelectedDate(date)
+
+                dataStore.edit { prefs ->
+                    prefs[LAST_ACTIVITY_TIMESTAMP_KEY] = now
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                dateReadyDeferred.complete(Unit)
             }
         }
+    }
+
+    fun checkAndResetDateIfInactive() {
+        applicationScope.launch {
+            try {
+                dateReadyDeferred.await()
+                val preferences = dataStore.data.first()
+                val now = System.currentTimeMillis()
+                val lastActivity = preferences[LAST_ACTIVITY_TIMESTAMP_KEY] ?: 0L
+                val today = DateUtils.getStartOfDay(Date())
+
+                if (lastActivity > 0L) {
+                    val diff = now - lastActivity
+                    if (diff >= INACTIVITY_THRESHOLD_MS) {
+                        // Han pasado 4 horas o más sin actividad -> llevar al día real actual
+                        if (_selectedDateState.value.time != today.time) {
+                            _selectedDateState.value = today
+                            dataStore.edit { prefs ->
+                                prefs[SELECTED_DATE_KEY] = today.time
+                            }
+                        }
+                    }
+                }
+
+                dataStore.edit { prefs ->
+                    prefs[LAST_ACTIVITY_TIMESTAMP_KEY] = now
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun updateLastActivity() {
+        val now = System.currentTimeMillis()
+        applicationScope.launch {
+            try {
+                dataStore.edit { prefs ->
+                    prefs[LAST_ACTIVITY_TIMESTAMP_KEY] = now
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Método para actualizar inmediatamente la fecha seleccionada en memoria y persistir en DataStore
+    fun updateSelectedDate(date: Date) {
+        val normalized = DateUtils.getStartOfDay(date)
+        _selectedDateState.value = normalized
+        val now = System.currentTimeMillis()
+        applicationScope.launch {
+            try {
+                dataStore.edit { preferences ->
+                    preferences[SELECTED_DATE_KEY] = normalized.time
+                    preferences[LAST_ACTIVITY_TIMESTAMP_KEY] = now
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Método suspendible para guardar la fecha seleccionada
+    suspend fun saveSelectedDate(date: Date) {
+        val normalized = DateUtils.getStartOfDay(date)
+        _selectedDateState.value = normalized
+        val now = System.currentTimeMillis()
+        dataStore.edit { preferences ->
+            preferences[SELECTED_DATE_KEY] = normalized.time
+            preferences[LAST_ACTIVITY_TIMESTAMP_KEY] = now
+        }
+    }
+    
+    // Método para obtener la fecha seleccionada unificada (reactiva e instantánea)
+    fun getSelectedDate(): Flow<Date> {
+        return selectedDateState
     }
     
     // Método para obtener el primer día de la semana (siempre lunes por defecto)
@@ -440,7 +654,7 @@ class GestionTaxiApplication : Application() {
     // Método para limpiar la caché
     fun clearCache() {
         cachedSummaryIncomeType = null
-        cachedSelectedDate = null
+        _selectedDateState.value = DateUtils.getStartOfDay()
         cachedBillingData = null
     }
     
@@ -612,15 +826,30 @@ class GestionTaxiApplication : Application() {
         )
     }
 
+    fun schedulePeriodicFirebaseSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val request = PeriodicWorkRequestBuilder<FirebaseSyncWorker>(30, java.util.concurrent.TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "firebase_sync_periodic",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
     fun triggerImmediateFirebaseSync() {
         applicationScope.launch {
             if (firebaseSyncRepository.isFleetConnected()) {
+                firebaseSyncRepository.syncServicePlatforms()
                 firebaseSyncRepository.syncRidesAndExpenses()
             }
         }
     }
 
-    private fun isNetworkAvailable(): Boolean {
+    fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(network) ?: return false
@@ -629,6 +858,16 @@ class GestionTaxiApplication : Application() {
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
                 caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
         return hasInternet && hasTransport
+    }
+
+    fun getPendingSyncCount(): Flow<Int> {
+        return kotlinx.coroutines.flow.combine(
+            taxiRideDao.getUnsyncedRidesCountFlow(),
+            expenseDao.getUnsyncedExpensesCountFlow(),
+            database.pendingDeletionDao().getPendingDeletionsCountFlow()
+        ) { unsyncedRides, unsyncedExpenses, pendingDeletes ->
+            unsyncedRides + unsyncedExpenses + pendingDeletes
+        }
     }
 
     private suspend fun syncOnlineBackupOnStartup() {

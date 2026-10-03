@@ -203,7 +203,7 @@ fun InvoiceScreen(navController: NavController) {
                             }
                             launchSingleTop = true
                         }
-                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
+                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(application.selectedDateState.value.time))
                         2 -> navController.navigate(AppScreens.Statistics.route)
                         3 -> navController.navigate(AppScreens.Other.route)
                     }

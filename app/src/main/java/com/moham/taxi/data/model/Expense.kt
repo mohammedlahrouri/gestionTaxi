@@ -25,7 +25,8 @@ enum class ExpenseType {
         Index(value = ["type"]),
         Index(value = ["date", "type"]), // Compound index for date range + type queries
         Index(value = ["amount"]), // Index for amount-based queries
-        Index(value = ["date", "amount"]) // Compound index for date range + amount queries
+        Index(value = ["date", "amount"]), // Compound index for date range + amount queries
+        Index(value = ["isSynced"])
     ]
 )
 data class Expense(

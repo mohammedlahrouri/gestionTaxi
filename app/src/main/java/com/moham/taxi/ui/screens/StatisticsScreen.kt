@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
@@ -85,7 +86,7 @@ fun StatisticsScreen(navController: NavHostController) {
     )
     
     // Estado para almacenar los datos financieros
-    var selectedDate by remember { mutableStateOf(Date()) }
+    val selectedDate by application.selectedDateState.collectAsStateWithLifecycle()
     var dateIncome by remember { mutableStateOf(0.0) }
     var weekIncome by remember { mutableStateOf(0.0) }
     var monthIncome by remember { mutableStateOf(0.0) }
@@ -118,10 +119,13 @@ fun StatisticsScreen(navController: NavHostController) {
     var monthNetPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var dateMeterIncome by remember { mutableStateOf(0.0) }
     var dateFixedIncome by remember { mutableStateOf(0.0) }
+    var dateMeterCancelled by remember { mutableStateOf(0.0) }
     var weekMeterIncome by remember { mutableStateOf(0.0) }
     var weekFixedIncome by remember { mutableStateOf(0.0) }
+    var weekMeterCancelled by remember { mutableStateOf(0.0) }
     var monthMeterIncome by remember { mutableStateOf(0.0) }
     var monthFixedIncome by remember { mutableStateOf(0.0) }
+    var monthMeterCancelled by remember { mutableStateOf(0.0) }
     var dateTips by remember { mutableStateOf(0.0) }
     var weekTips by remember { mutableStateOf(0.0) }
     var monthTips by remember { mutableStateOf(0.0) }
@@ -140,19 +144,11 @@ fun StatisticsScreen(navController: NavHostController) {
     var yearNetPlatformBreakdown by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var yearMeterIncome by remember { mutableStateOf(0.0) }
     var yearFixedIncome by remember { mutableStateOf(0.0) }
+    var yearMeterCancelled by remember { mutableStateOf(0.0) }
     var yearTips by remember { mutableStateOf(0.0) }
     var yearTipsByMethod by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
 
     var showDatePicker by remember { mutableStateOf(false) }
-    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = Date())
-
-    LaunchedEffect(selectedDateFromStore) {
-        selectedDateFromStore?.let {
-            if (selectedDate.time != it.time) {
-                selectedDate = it
-            }
-        }
-    }
     
     // Cargar datos financieros
     LaunchedEffect(selectedDate, tipsEnabled) {
@@ -176,8 +172,9 @@ fun StatisticsScreen(navController: NavHostController) {
                 tipsByMethod = emptyMap()
             }
             taxiRideViewModel.getServiceTypeTotalsForDate(selectedDate).let { totals ->
-                dateMeterIncome = totals.first
-                dateFixedIncome = totals.second
+                dateMeterIncome = totals.meterTotal
+                dateFixedIncome = totals.fixedTotal
+                dateMeterCancelled = totals.meterCancelledTotal
             }
             
             // Datos semanales basados en la fecha seleccionada
@@ -199,8 +196,9 @@ fun StatisticsScreen(navController: NavHostController) {
                 weekTipsByMethod = emptyMap()
             }
             taxiRideViewModel.getWeekServiceTypeTotalsForDate(selectedDate).let { totals ->
-                weekMeterIncome = totals.first
-                weekFixedIncome = totals.second
+                weekMeterIncome = totals.meterTotal
+                weekFixedIncome = totals.fixedTotal
+                weekMeterCancelled = totals.meterCancelledTotal
             }
             
             // Datos mensuales basados en la fecha seleccionada
@@ -222,8 +220,9 @@ fun StatisticsScreen(navController: NavHostController) {
                 monthTipsByMethod = emptyMap()
             }
             taxiRideViewModel.getMonthServiceTypeTotalsForDate(selectedDate).let { totals ->
-                monthMeterIncome = totals.first
-                monthFixedIncome = totals.second
+                monthMeterIncome = totals.meterTotal
+                monthFixedIncome = totals.fixedTotal
+                monthMeterCancelled = totals.meterCancelledTotal
             }
             
             // Datos anuales basados en la fecha seleccionada
@@ -245,8 +244,9 @@ fun StatisticsScreen(navController: NavHostController) {
                 yearTipsByMethod = emptyMap()
             }
             taxiRideViewModel.getYearServiceTypeTotalsForDate(selectedDate).let { totals ->
-                yearMeterIncome = totals.first
-                yearFixedIncome = totals.second
+                yearMeterIncome = totals.meterTotal
+                yearFixedIncome = totals.fixedTotal
+                yearMeterCancelled = totals.meterCancelledTotal
             }
         }
     }
@@ -375,6 +375,7 @@ fun StatisticsScreen(navController: NavHostController) {
             paymentMethods = buildPaymentMethods(paymentMethodBreakdown, appPlatformBreakdown),
             platforms = buildPlatformItems(totalPlatformBreakdown, netPlatformBreakdown),
             meterTotal = dateMeterIncome,
+            meterCancelledTotal = dateMeterCancelled,
             fixedTotal = dateFixedIncome,
             tipsTotal = dateTips,
             tipsByMethod = tipsByMethod,
@@ -393,6 +394,7 @@ fun StatisticsScreen(navController: NavHostController) {
             paymentMethods = buildPaymentMethods(weekPaymentMethodBreakdown, weekAppPlatformBreakdown),
             platforms = buildPlatformItems(weekTotalPlatformBreakdown, weekNetPlatformBreakdown),
             meterTotal = weekMeterIncome,
+            meterCancelledTotal = weekMeterCancelled,
             fixedTotal = weekFixedIncome,
             tipsTotal = weekTips,
             tipsByMethod = weekTipsByMethod,
@@ -411,6 +413,7 @@ fun StatisticsScreen(navController: NavHostController) {
             paymentMethods = buildPaymentMethods(monthPaymentMethodBreakdown, monthAppPlatformBreakdown),
             platforms = buildPlatformItems(monthTotalPlatformBreakdown, monthNetPlatformBreakdown),
             meterTotal = monthMeterIncome,
+            meterCancelledTotal = monthMeterCancelled,
             fixedTotal = monthFixedIncome,
             tipsTotal = monthTips,
             tipsByMethod = monthTipsByMethod,
@@ -429,6 +432,7 @@ fun StatisticsScreen(navController: NavHostController) {
             paymentMethods = buildPaymentMethods(yearPaymentMethodBreakdown, yearAppPlatformBreakdown),
             platforms = buildPlatformItems(yearTotalPlatformBreakdown, yearNetPlatformBreakdown),
             meterTotal = yearMeterIncome,
+            meterCancelledTotal = yearMeterCancelled,
             fixedTotal = yearFixedIncome,
             tipsTotal = yearTips,
             tipsByMethod = yearTipsByMethod,
@@ -455,7 +459,7 @@ fun StatisticsScreen(navController: NavHostController) {
     val headerDateText = remember(selectedDate, isToday, dayOfWeek) {
         val locale = Locale.getDefault()
         val pattern = when (locale.language) {
-            "es" -> "d 'de' MMMM"
+            "es" -> "d MMMM"
             "fr" -> "d MMMM"
             "de" -> "d. MMMM"
             else -> "MMMM d"
@@ -477,54 +481,54 @@ fun StatisticsScreen(navController: NavHostController) {
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = com.moham.taxi.utils.DateUtils.dateToUtcStartOfDayMillis(selectedDate)
-        )
-        
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = com.moham.taxi.utils.DateUtils.utcStartOfDayMillisToLocalDate(millis)
-                            selectedDate = newDate
-                            scope.launch {
-                                application.saveSelectedDate(newDate)
-                            }
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = CalendarBackground,
-                    titleContentColor = CalendarText,
-                    headlineContentColor = CalendarText,
-                    weekdayContentColor = CalendarText,
-                    subheadContentColor = CalendarText,
-                    yearContentColor = CalendarText,
-                    currentYearContentColor = CalendarAccent,
-                    selectedYearContainerColor = CalendarAccent,
-                    selectedYearContentColor = CalendarText,
-                    selectedDayContainerColor = CalendarAccent,
-                    selectedDayContentColor = CalendarText,
-                    todayContentColor = CalendarAccent,
-                    todayDateBorderColor = CalendarAccent,
-                    dayContentColor = CalendarText,
-                    dividerColor = CalendarText.copy(alpha = 0.2f)
-                )
+        key(selectedDate.time) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = com.moham.taxi.utils.DateUtils.dateToUtcStartOfDayMillis(selectedDate),
+                initialDisplayedMonthMillis = com.moham.taxi.utils.DateUtils.dateToUtcStartOfDayMillis(selectedDate)
             )
+            
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val newDate = com.moham.taxi.utils.DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                                application.updateSelectedDate(newDate)
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = CalendarBackground,
+                        titleContentColor = CalendarText,
+                        headlineContentColor = CalendarText,
+                        weekdayContentColor = CalendarText,
+                        subheadContentColor = CalendarText,
+                        yearContentColor = CalendarText,
+                        currentYearContentColor = CalendarAccent,
+                        selectedYearContainerColor = CalendarAccent,
+                        selectedYearContentColor = CalendarText,
+                        selectedDayContainerColor = CalendarAccent,
+                        selectedDayContentColor = CalendarText,
+                        todayContentColor = CalendarAccent,
+                        todayDateBorderColor = CalendarAccent,
+                        dayContentColor = CalendarText,
+                        dividerColor = CalendarText.copy(alpha = 0.2f)
+                    )
+                )
+            }
         }
     }
 
@@ -538,7 +542,7 @@ fun StatisticsScreen(navController: NavHostController) {
                             popUpTo(AppScreens.Home.route) { inclusive = false }
                             launchSingleTop = true
                         }
-                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(System.currentTimeMillis()))
+                        1 -> navController.navigate(AppScreens.TaxiRideList.createRouteWithDate(selectedDate.time))
                         2 -> {}
                         3 -> navController.navigate(AppScreens.Other.route)
                     }
@@ -612,7 +616,8 @@ fun StatisticsScreen(navController: NavHostController) {
             StatsPlatformBreakdown(
                 platforms = periodData.platforms,
                 meterTotal = periodData.meterTotal,
-                fixedTotal = periodData.fixedTotal
+                fixedTotal = periodData.fixedTotal,
+                meterCancelledTotal = periodData.meterCancelledTotal
             )
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             StatsExpenseDetails(
@@ -643,6 +648,7 @@ fun NewStatisticsCard(
     appPlatformBreakdown: Map<String, Double> = emptyMap(),
     totalPlatformBreakdown: Map<String, Double> = emptyMap(),
     serviceTypeMeterTotal: Double = 0.0,
+    serviceTypeMeterCancelled: Double = 0.0,
     serviceTypeFixedTotal: Double = 0.0,
     chartData: List<Pair<Date, Double>>? = null,
     chartExpensesData: List<Pair<Date, Double>>? = null,
@@ -1023,6 +1029,29 @@ fun NewStatisticsCard(
                         fontFamily = FontFamily.Monospace,
                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                     )
+                }
+                if (serviceTypeMeterCancelled > 0.0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 2.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.meter_uncollected_cancelled),
+                            color = Color(0xFFE57373),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.sp
+                        )
+                        AutoSizeText(
+                            text = formatCurrency(serviceTypeMeterCancelled),
+                            maxFontSize = 12.sp,
+                            minFontSize = 9.sp,
+                            color = Color(0xFFE57373),
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

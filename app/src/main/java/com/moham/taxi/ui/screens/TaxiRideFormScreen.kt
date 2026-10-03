@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +54,7 @@ import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
 import com.moham.taxi.R
 import com.moham.taxi.data.model.TaxiRide
+import com.moham.taxi.data.model.PaymentMethod
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.viewmodel.PaymentMethodViewModel
 import com.moham.taxi.ui.viewmodel.ServicePlatformViewModel
@@ -76,6 +78,7 @@ object CarreraColors {
     val SurfacePressed = Color(0xFF303036)
     val GreenPrimary = Color(0xFF2E9E4F)
     val GreenPressed = Color(0xFF268043)
+    val RedPrimary = Color(0xFFD32F2F)
     val OnBackground = Color(0xFFFAFAFA)
     val TextSecondary = Color(0xFFA8A8AD)
     val BorderSubtle = Color(0x1EFFFFFF) // rgba(255,255,255,0.12)
@@ -141,24 +144,30 @@ fun TaxiRideFormScreen(
     var destination by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var tip by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    var isSplitPayment by remember { mutableStateOf(false) }
+    var splitSecondaryMethod by remember { mutableStateOf("") }
+    var splitPrimaryPriceText by remember { mutableStateOf("") }
+    var splitError by remember { mutableStateOf(false) }
     var existingTip by remember { mutableStateOf<Double?>(null) }
     var existingRealDate by remember { mutableStateOf<Date?>(null) }
+    var existingFirestoreId by remember { mutableStateOf<String?>(null) }
     var rideTime by remember { mutableStateOf(timeFormat.format(Date())) }
     var selectedPaymentMethod by remember { mutableStateOf("") }
     var selectedServiceType by remember { mutableStateOf(TaxiRide.SERVICE_TYPE_METER) }
     var selectedServicePlatform by remember { mutableStateOf(context.getString(R.string.platform_direct)) }
     var priceInputMode by remember { mutableStateOf(context.getString(R.string.label_net).uppercase()) }
     var ticketPhotoPath by remember { mutableStateOf<String?>(null) }
-    var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+    var tempPhotoPath by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Estados de error y carga
     var priceError by remember { mutableStateOf(false) }
     var paymentMethodError by remember { mutableStateOf(false) }
+    var ticketPhotoError by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    // Estados de acordeones expandibles
-    var isRouteExpanded by remember { mutableStateOf(false) }
-    var isTipExpanded by remember { mutableStateOf(false) }
+    // Estado del acordeón unificado de opcionales
+    var isOptionalsExpanded by remember { mutableStateOf(false) }
 
     val priceFocusRequester = remember { FocusRequester() }
 
@@ -166,20 +175,27 @@ fun TaxiRideFormScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            tempPhotoFile?.let { file ->
+        val currentPath = tempPhotoPath
+        android.util.Log.d("ImageUtils", "cameraLauncher callback: success=$success, path=$currentPath")
+        if (success && currentPath != null) {
+            val file = File(currentPath)
+            if (file.exists() && file.length() > 0L) {
                 val uri = android.net.Uri.fromFile(file)
                 val relativePath = ImageUtils.compressAndSaveTicketPhoto(context, uri)
+                android.util.Log.d("ImageUtils", "compressAndSaveTicketPhoto returned: $relativePath")
                 if (relativePath != null) {
                     ImageUtils.deleteTicketPhoto(context, ticketPhotoPath)
                     ticketPhotoPath = relativePath
+                    ticketPhotoError = false
                 }
-                file.delete()
+            } else {
+                android.util.Log.e("ImageUtils", "Temp photo file does not exist or has 0 bytes: $currentPath")
             }
-        } else {
-            tempPhotoFile?.delete()
+            file.delete()
+        } else if (currentPath != null) {
+            File(currentPath).delete()
         }
-        tempPhotoFile = null
+        tempPhotoPath = null
     }
 
     // Datos del Viewmodel
@@ -222,6 +238,7 @@ fun TaxiRideFormScreen(
     val cashLabel = context.getString(R.string.payment_cash)
     val cardLabel = context.getString(R.string.payment_card)
     val appLabel = context.getString(R.string.payment_via_app)
+    val cancelledLabel = context.getString(R.string.payment_cancelled)
 
     fun canonicalizePaymentMethodStoredName(value: String): String {
         val v = value.trim()
@@ -230,6 +247,7 @@ fun TaxiRideFormScreen(
             lower == "efectivo" || lower == "cash" -> "Efectivo"
             lower == "tarjeta" || lower == "card" -> "Tarjeta"
             lower.replace(" ", "") == "viaapp" || lower == "via app" -> "Via App"
+            lower == "cancelado" || lower == "rechazado" || lower == "cancelada" -> "Cancelado"
             else -> v
         }
     }
@@ -240,6 +258,7 @@ fun TaxiRideFormScreen(
             canonical.equals("Efectivo", ignoreCase = true) -> cashLabel
             canonical.equals("Tarjeta", ignoreCase = true) -> cardLabel
             canonical.equals("Via App", ignoreCase = true) -> appLabel
+            canonical.equals("Cancelado", ignoreCase = true) -> cancelledLabel
             else -> storedName
         }
     }
@@ -253,12 +272,26 @@ fun TaxiRideFormScreen(
     }.collectAsState(initial = emptyList())
 
     val paymentMethodOptionsStored = run {
-        if (platformPaymentMethods.isNotEmpty()) {
+        val list = if (platformPaymentMethods.isNotEmpty()) {
             platformPaymentMethods.map { canonicalizePaymentMethodStoredName(it.name) }
         } else {
             emptyList()
+        }.toMutableList()
+        if (!list.any { it.equals("Cancelado", ignoreCase = true) }) {
+            list.add("Cancelado")
         }
-    }.distinctBy { it.lowercase() }
+        if (rideId > 0 && selectedPaymentMethod.isNotBlank()) {
+            val canonicalSelected = canonicalizePaymentMethodStoredName(selectedPaymentMethod)
+            if (!list.any { it.equals(canonicalSelected, ignoreCase = true) }) {
+                list.add(canonicalSelected)
+            }
+        }
+        list.distinctBy { it.lowercase() }
+            .sortedWith(
+                compareBy<String> { PaymentMethod.getPaymentMethodSortOrder(it) }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it }
+            )
+    }
 
     val paymentMethodOptionsDisplay = paymentMethodOptionsStored
         .map { toPaymentMethodDisplayName(it) }
@@ -266,6 +299,27 @@ fun TaxiRideFormScreen(
 
     val paymentMethodDisplayToStored = remember(paymentMethodOptionsStored, paymentMethodOptionsDisplay) {
         paymentMethodOptionsDisplay.zip(paymentMethodOptionsStored).toMap()
+    }
+
+    val allPaymentMethodsList by paymentMethodViewModel.allPaymentMethods.collectAsState(initial = emptyList())
+    val currentPaymentMethodObj = remember(platformPaymentMethods, allPaymentMethodsList, selectedPaymentMethod) {
+        val canonical = canonicalizePaymentMethodStoredName(selectedPaymentMethod)
+        platformPaymentMethods.firstOrNull { 
+            canonicalizePaymentMethodStoredName(it.name).equals(canonical, ignoreCase = true) ||
+            it.name.equals(selectedPaymentMethod, ignoreCase = true)
+        } ?: allPaymentMethodsList.firstOrNull {
+            canonicalizePaymentMethodStoredName(it.name).equals(canonical, ignoreCase = true) ||
+            it.name.equals(selectedPaymentMethod, ignoreCase = true)
+        }
+    }
+    val currentPhotoPolicy = currentPaymentMethodObj?.ticketPhotoPolicy ?: PaymentMethod.POLICY_OPTIONAL
+
+    LaunchedEffect(currentPhotoPolicy) {
+        if (currentPhotoPolicy == PaymentMethod.POLICY_NO_PHOTO && ticketPhotoPath != null) {
+            ImageUtils.deleteTicketPhoto(context, ticketPhotoPath)
+            ticketPhotoPath = null
+            ticketPhotoError = false
+        }
     }
 
     val scope = rememberCoroutineScope()
@@ -292,14 +346,18 @@ fun TaxiRideFormScreen(
                     rideTime = it.rideTime
                     ticketPhotoPath = it.ticketPhotoPath
                     existingRealDate = it.realDate
-                    
-                    // Si hay datos de ruta, expandir el acordeón
-                    if (it.origin.isNotEmpty() || it.destination.isNotEmpty()) {
-                        isRouteExpanded = true
+                    existingFirestoreId = it.firestoreId
+                    notes = it.notes ?: ""
+                    isSplitPayment = it.isSplitPayment
+                    splitSecondaryMethod = it.splitSecondaryMethod?.let { m -> canonicalizePaymentMethodStoredName(m) } ?: ""
+                    if (it.isSplitPayment && it.splitSecondaryPrice != null) {
+                        val prim = (it.price - it.splitSecondaryPrice).coerceAtLeast(0.0)
+                        splitPrimaryPriceText = String.format(Locale.US, "%.2f", prim)
                     }
-                    // Si hay propina, expandir el acordeón de propina
-                    if (it.tip != null && it.tip > 0.0) {
-                        isTipExpanded = true
+
+                    // Si hay datos opcionales (ruta, propina o notas), expandir el acordeón
+                    if (it.origin.isNotEmpty() || it.destination.isNotEmpty() || (it.tip != null && it.tip > 0.0) || !it.notes.isNullOrBlank()) {
+                        isOptionalsExpanded = true
                     }
                 }
             }
@@ -312,7 +370,7 @@ fun TaxiRideFormScreen(
     }
 
     // Inicialización y actualización de métodos de pago cuando cambia la plataforma
-    LaunchedEffect(paymentMethodOptionsStored, servicePlatformOptions, selectedServicePlatform, rideId) {
+    LaunchedEffect(paymentMethodOptionsStored, servicePlatformOptions, selectedServicePlatform, servicePlatforms, rideId) {
         if (rideId > 0) return@LaunchedEffect
 
         if (selectedServicePlatform.isBlank()) {
@@ -325,7 +383,10 @@ fun TaxiRideFormScreen(
         }
 
         val currentIsValid = paymentMethodOptionsStored.any { it.equals(selectedPaymentMethod, ignoreCase = true) }
-        if (selectedPaymentMethod.isBlank() || !currentIsValid || paymentMethodOptionsStored.size == 1) {
+        val isPrematureCancelled = selectedPaymentMethod.equals("Cancelado", ignoreCase = true) &&
+            paymentMethodOptionsStored.size > 1 &&
+            !paymentMethodOptionsStored.first().equals("Cancelado", ignoreCase = true)
+        if (selectedPaymentMethod.isBlank() || !currentIsValid || isPrematureCancelled) {
             selectedPaymentMethod = paymentMethodOptionsStored.first()
         }
     }
@@ -358,21 +419,39 @@ fun TaxiRideFormScreen(
             isValid = false
         }
 
+        if (currentPhotoPolicy == PaymentMethod.POLICY_MANDATORY && ticketPhotoPath.isNullOrBlank()) {
+            ticketPhotoError = true
+            isValid = false
+        }
+
+        val isSplit = isSplitPayment && splitSecondaryMethod.isNotBlank() && !splitSecondaryMethod.equals(selectedPaymentMethod, ignoreCase = true)
+        val splitPrimaryAmount = splitPrimaryPriceText.toDoubleOrNull() ?: 0.0
+        val inputPriceVal = price.toDoubleOrNull() ?: 0.0
+        val splitSecondaryAmount = if (isSplit) (inputPriceVal - splitPrimaryAmount).coerceAtLeast(0.0) else null
+
+        if (isSplitPayment) {
+            if (!isSplit || splitPrimaryAmount <= 0.0 || (splitSecondaryAmount ?: 0.0) <= 0.0) {
+                splitError = true
+                isValid = false
+            }
+        }
+
         if (isValid && !isSubmitting) {
             isSubmitting = true
 
             scope.launch {
                 try {
                     val inputPrice = price.toDouble()
-                    val tipValue = tip.toDoubleOrNull()?.takeIf { it > 0.0 }
-                    val finalCommission = selectedPlatformCommission
-                    val finalVat = selectedPlatformVat
+                    val isCancelled = selectedPaymentMethod.equals("Cancelado", ignoreCase = true)
+                    val tipValue = if (isCancelled) null else tip.toDoubleOrNull()?.takeIf { it > 0.0 }
+                    val finalCommission = if (isCancelled) null else selectedPlatformCommission
+                    val finalVat = if (isCancelled) null else selectedPlatformVat
                     val commissionRate = (finalCommission ?: 0.0) / 100.0
                     val vatRate = (finalVat ?: 0.0) / 100.0
                     val deductionFactor = commissionRate * (1 + vatRate)
                     val alternativeMath = selectedPlatform?.useAlternativeMath == true
                     
-                    val finalPrice = if (hasPlatformCommission && priceInputMode == context.getString(R.string.label_net).uppercase()) {
+                    val finalPrice = if (!isCancelled && hasPlatformCommission && priceInputMode == context.getString(R.string.label_net).uppercase()) {
                         if (alternativeMath) {
                             inputPrice * (1 + deductionFactor)
                         } else {
@@ -381,7 +460,9 @@ fun TaxiRideFormScreen(
                     } else {
                         inputPrice
                     }
-                    val finalNetPrice = if (hasPlatformCommission) {
+                    val finalNetPrice = if (isCancelled) {
+                        0.0
+                    } else if (hasPlatformCommission) {
                         if (priceInputMode == context.getString(R.string.label_net).uppercase()) {
                             inputPrice
                         } else {
@@ -396,6 +477,24 @@ fun TaxiRideFormScreen(
                         rideTime
                     } else {
                         timeFormat.format(Date())
+                    }
+
+                    val finalRealDate = if (rideId > 0 && existingRealDate != null && existingRealDate!!.time > 0L) {
+                        existingRealDate!!
+                    } else {
+                        val nowCal = Calendar.getInstance()
+                        if (finalRideTime.matches(Regex("^\\d{2}:\\d{2}$"))) {
+                            val parts = finalRideTime.split(":")
+                            val h = parts[0].toIntOrNull()
+                            val m = parts[1].toIntOrNull()
+                            if (h != null && m != null) {
+                                nowCal.set(Calendar.HOUR_OF_DAY, h)
+                                nowCal.set(Calendar.MINUTE, m)
+                                nowCal.set(Calendar.SECOND, 0)
+                                nowCal.set(Calendar.MILLISECOND, 0)
+                            }
+                        }
+                        nowCal.time
                     }
 
                     val taxiRide = TaxiRide(
@@ -413,13 +512,19 @@ fun TaxiRideFormScreen(
                         serviceType = selectedServiceType,
                         servicePlatform = toPlatformStoredName(selectedServicePlatform).ifBlank { directStoredName },
                         ticketPhotoPath = ticketPhotoPath,
-                        realDate = existingRealDate ?: Date()
+                        realDate = finalRealDate,
+                        firestoreId = existingFirestoreId,
+                        notes = notes.trim().ifBlank { null },
+                        isSplitPayment = isSplit,
+                        splitSecondaryMethod = if (isSplit) splitSecondaryMethod else null,
+                        splitSecondaryPrice = if (isSplit) splitSecondaryAmount else null,
+                        isSynced = false
                     )
 
                     if (rideId > 0) {
-                        taxiRideViewModel.update(taxiRide)
+                        taxiRideViewModel.updateSuspend(taxiRide)
                     } else {
-                        taxiRideViewModel.insert(taxiRide)
+                        taxiRideViewModel.insertSuspend(taxiRide)
                     }
 
                     navController.previousBackStackEntry?.savedStateHandle?.set("refresh_data", true)
@@ -489,32 +594,40 @@ fun TaxiRideFormScreen(
                 }
             }
 
-            // Botón de Cámara secundario
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(CarreraColors.Surface)
-                    .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
-                    .clickable {
-                        focusManager.clearFocus()
-                        val file = ImageUtils.createTempImageFile(context)
-                        tempPhotoFile = file
-                        val uri = FileProvider.getUriForFile(
-                            context,
-                            "${application.packageName}.provider",
-                            file
+            // Botón de Cámara secundario: Oculto si la política es Sin foto ticket
+            if (currentPhotoPolicy != PaymentMethod.POLICY_NO_PHOTO) {
+                val isPhotoMandatory = currentPhotoPolicy == PaymentMethod.POLICY_MANDATORY
+                val isPhotoPresent = ticketPhotoPath != null
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CarreraColors.Surface)
+                        .border(
+                            1.dp,
+                            if (ticketPhotoError && !isPhotoPresent) Color.Red else if (isPhotoMandatory && !isPhotoPresent) CarreraColors.GreenPrimary.copy(alpha = 0.5f) else CarreraColors.BorderSubtle,
+                            RoundedCornerShape(16.dp)
                         )
-                        cameraLauncher.launch(uri)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (ticketPhotoPath != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
-                    contentDescription = "Cámara",
-                    tint = if (ticketPhotoPath != null) CarreraColors.GreenPrimary else CarreraColors.OnBackground,
-                    modifier = Modifier.size(24.dp)
-                )
+                        .clickable {
+                            focusManager.clearFocus()
+                            val file = ImageUtils.createTempImageFile(context)
+                            tempPhotoPath = file.absolutePath
+                            val uri = FileProvider.getUriForFile(
+                                context,
+                                "${application.packageName}.provider",
+                                file
+                            )
+                            cameraLauncher.launch(uri)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isPhotoPresent) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
+                        contentDescription = "Cámara",
+                        tint = if (isPhotoPresent) CarreraColors.GreenPrimary else if (ticketPhotoError && !isPhotoPresent) Color.Red else CarreraColors.OnBackground,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -550,20 +663,22 @@ fun TaxiRideFormScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 1. TOPBAR
+                // 1. TOPBAR MINIMALISTA: Botón cerrar a la derecha sin título redundante para que el precio suba
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = if (rideId > 0) Arrangement.SpaceBetween else Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (rideId > 0) stringResource(R.string.edit_ride_title) else stringResource(R.string.new_ride_title),
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CarreraColors.OnBackground
+                    if (rideId > 0) {
+                        Text(
+                            text = stringResource(R.string.edit_ride_title),
+                            style = TextStyle(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CarreraColors.OnBackground
+                            )
                         )
-                    )
+                    }
                     IconButton(
                         onClick = {
                             focusManager.clearFocus()
@@ -580,7 +695,7 @@ fun TaxiRideFormScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Aviso si la fecha es distinta a la actual
                 if (!isToday) {
@@ -663,42 +778,7 @@ fun TaxiRideFormScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 4. ACORDEÓN DE RUTA
-                val routeSummary = remember(origin, destination) {
-                    when {
-                        origin.isNotEmpty() && destination.isNotEmpty() -> "$origin → $destination"
-                        origin.isNotEmpty() -> origin
-                        destination.isNotEmpty() -> destination
-                        else -> ""
-                    }
-                }
 
-                ExpandableSection(
-                    title = "Ruta",
-                    icon = Icons.Default.Place,
-                    summary = routeSummary,
-                    isExpanded = isRouteExpanded,
-                    onToggle = { isRouteExpanded = !isRouteExpanded }
-                ) {
-                    LabeledTextField(
-                        label = "",
-                        value = origin,
-                        onValueChange = { origin = it },
-                        placeholder = "Dirección de origen",
-                        icon = Icons.Default.MyLocation,
-                        cornerRadius = 12
-                    )
-                    LabeledTextField(
-                        label = "",
-                        value = destination,
-                        onValueChange = { destination = it },
-                        placeholder = "Dirección de destino",
-                        icon = Icons.Default.Flag,
-                        cornerRadius = 12
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
 
                 // 7. SECCIÓN TIPO DE SERVICIO (Dos chips grandes)
                 if (serviceTypeOptions.size > 1) {
@@ -786,56 +866,259 @@ fun TaxiRideFormScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 6. SECCIÓN MÉTODO DE PAGO (Chips limitados a 3 con opción 'Otros')
-                Text(
-                    text = "Método de pago",
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = CarreraColors.TextSecondary
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                )
-
-                val firstThreePayments = paymentMethodOptionsDisplay.take(3)
-                val isSelectedPaymentInFirstThree = firstThreePayments.any { it.equals(toPaymentMethodDisplayName(selectedPaymentMethod), ignoreCase = true) }
-                val autoExpandPayments = remember(selectedPaymentMethod, paymentMethodOptionsDisplay) {
-                    !isSelectedPaymentInFirstThree && paymentMethodOptionsDisplay.size > 3
+                // 6. SECCIÓN MÉTODO DE PAGO
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isSplitPayment) "1. Método principal" else "Método de pago",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = CarreraColors.TextSecondary
+                        )
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSplitPayment) CarreraColors.GreenPrimary.copy(alpha = 0.15f) else Color.Transparent)
+                            .clickable {
+                                isSplitPayment = !isSplitPayment
+                                splitError = false
+                                if (isSplitPayment && splitSecondaryMethod.isBlank()) {
+                                    val sec = paymentMethodOptionsStored.firstOrNull { !it.equals(selectedPaymentMethod, ignoreCase = true) }
+                                    if (sec != null) splitSecondaryMethod = sec
+                                    val currentP = price.toDoubleOrNull() ?: 0.0
+                                    if (splitPrimaryPriceText.isBlank() && currentP > 0.0) {
+                                        splitPrimaryPriceText = String.format(Locale.US, "%.2f", currentP * 0.66)
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwapHoriz,
+                            contentDescription = null,
+                            tint = CarreraColors.GreenPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isSplitPayment) "Pago mixto activo" else "Dividir pago",
+                            color = CarreraColors.GreenPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
-                var userToggledPayments by remember { mutableStateOf(false) }
-                val showAllPM = autoExpandPayments || userToggledPayments || paymentMethodOptionsDisplay.size <= 3
+                Spacer(modifier = Modifier.height(8.dp))
 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val paymentsToRender = if (showAllPM) paymentMethodOptionsDisplay else firstThreePayments
-                    paymentsToRender.forEach { paymentName ->
+                    paymentMethodOptionsDisplay.forEach { paymentName ->
                         val storedName = paymentMethodDisplayToStored[paymentName] ?: paymentName
+                        val isCancelled = storedName.equals("Cancelado", ignoreCase = true) ||
+                                storedName.equals("Cancelada", ignoreCase = true) ||
+                                storedName.equals("Rechazado", ignoreCase = true) ||
+                                paymentName.equals(cancelledLabel, ignoreCase = true)
                         ChoiceChip(
                             label = paymentName,
                             selected = selectedPaymentMethod.equals(storedName, ignoreCase = true),
+                            selectedColor = if (isCancelled) CarreraColors.RedPrimary else CarreraColors.GreenPrimary,
+                            selectedContentColor = if (isCancelled) Color.White else CarreraColors.Background,
                             onClick = {
                                 selectedPaymentMethod = storedName
                                 paymentMethodError = false
+                                ticketPhotoError = false
+                                if (isSplitPayment && splitSecondaryMethod.equals(storedName, ignoreCase = true)) {
+                                    val alt = paymentMethodOptionsStored.firstOrNull { !it.equals(storedName, ignoreCase = true) }
+                                    if (alt != null) splitSecondaryMethod = alt
+                                }
                             }
                         )
                     }
-                    if (!showAllPM && paymentMethodOptionsDisplay.size > 3) {
-                        ChoiceChip(
-                            label = "Otros",
-                            selected = false,
-                            onClick = { userToggledPayments = true }
+                }
+
+                // Tarjeta interactiva de Pago Dividido con auto-cálculo
+                if (isSplitPayment) {
+                    val inputP = price.toDoubleOrNull() ?: 0.0
+                    val primP = splitPrimaryPriceText.toDoubleOrNull() ?: 0.0
+                    val remP = (inputP - primP).coerceAtLeast(0.0)
+                    val remPStr = String.format(Locale.US, "%.2f", remP)
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CarreraColors.Surface, RoundedCornerShape(16.dp))
+                            .border(1.dp, CarreraColors.BorderSubtle, RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .background(CarreraColors.GreenPrimary.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SwapHoriz,
+                                        contentDescription = null,
+                                        tint = CarreraColors.GreenPrimary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Reparto del importe",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = CarreraColors.OnBackground
+                                        )
+                                    )
+                                    Text(
+                                        text = "Divide el total entre dos métodos",
+                                        style = TextStyle(
+                                            fontSize = 11.sp,
+                                            color = CarreraColors.TextSecondary
+                                        )
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Quitar división",
+                                style = TextStyle(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = CarreraColors.TextSecondary
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { isSplitPayment = false }
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Importe en $selectedPaymentMethod:",
+                            color = CarreraColors.TextSecondary,
+                            fontSize = 11.sp
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LabeledTextField(
+                            label = "",
+                            value = splitPrimaryPriceText,
+                            onValueChange = { newValue ->
+                                if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                    splitPrimaryPriceText = newValue
+                                    splitError = false
+                                }
+                            },
+                            placeholder = "0.00",
+                            suffixText = currencySymbol,
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Next,
+                            cornerRadius = 12
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "2. Restante en $splitSecondaryMethod:",
+                                color = CarreraColors.TextSecondary,
+                                fontSize = 11.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .background(CarreraColors.GreenPrimary.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                                    .border(1.dp, CarreraColors.GreenPrimary.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "$remPStr €",
+                                    color = CarreraColors.GreenPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            paymentMethodOptionsDisplay
+                                .filter { display ->
+                                    val stored = paymentMethodDisplayToStored[display] ?: display
+                                    !stored.equals(selectedPaymentMethod, ignoreCase = true)
+                                }
+                                .forEach { paymentName ->
+                                    val storedName = paymentMethodDisplayToStored[paymentName] ?: paymentName
+                                    val isCancelled = storedName.equals("Cancelado", ignoreCase = true) ||
+                                            storedName.equals("Cancelada", ignoreCase = true) ||
+                                            storedName.equals("Rechazado", ignoreCase = true) ||
+                                            paymentName.equals(cancelledLabel, ignoreCase = true)
+                                    ChoiceChip(
+                                        label = paymentName,
+                                        selected = splitSecondaryMethod.equals(storedName, ignoreCase = true),
+                                        selectedColor = if (isCancelled) CarreraColors.RedPrimary else CarreraColors.GreenPrimary,
+                                        selectedContentColor = if (isCancelled) Color.White else CarreraColors.Background,
+                                        onClick = {
+                                            splitSecondaryMethod = storedName
+                                            splitError = false
+                                        }
+                                    )
+                                }
+                        }
+
+                        if (splitError) {
+                            Text(
+                                text = "Indica un importe mayor que 0 para ambos métodos",
+                                color = Color.Red,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
                     }
                 }
 
                 if (paymentMethodError) {
                     Text(
                         text = stringResource(R.string.error_select_payment),
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    )
+                }
+
+                if (ticketPhotoError && currentPhotoPolicy == PaymentMethod.POLICY_MANDATORY && ticketPhotoPath.isNullOrBlank()) {
+                    Text(
+                        text = stringResource(R.string.error_ticket_photo_required),
                         color = Color.Red,
                         fontSize = 12.sp,
                         modifier = Modifier
@@ -879,32 +1162,111 @@ fun TaxiRideFormScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // 8. ACORDEÓN DE PROPINA
-                val tipSummary = remember(tip) {
-                    if (tip.isNotEmpty() && tip.toDoubleOrNull() != null) "+$tip €" else ""
+                // 8. ACORDEÓN UNIFICADO: OPCIONALES (Ruta, Propina, Notas)
+                val optionalsSummary = remember(origin, destination, tip, notes) {
+                    val parts = mutableListOf<String>()
+                    if (origin.isNotEmpty() && destination.isNotEmpty()) {
+                        parts.add("$origin → $destination")
+                    } else if (origin.isNotEmpty()) {
+                        parts.add(origin)
+                    } else if (destination.isNotEmpty()) {
+                        parts.add(destination)
+                    }
+                    val t = tip.toDoubleOrNull()
+                    if (t != null && t > 0.0) {
+                        parts.add("+$tip €")
+                    }
+                    if (notes.isNotBlank()) {
+                        parts.add("Con nota")
+                    }
+                    parts.joinToString(" · ")
                 }
 
                 ExpandableSection(
-                    title = "Propina",
-                    icon = Icons.Default.Add,
-                    summary = tipSummary,
-                    isExpanded = isTipExpanded,
-                    onToggle = { isTipExpanded = !isTipExpanded }
+                    title = "Opcionales (Ruta, Propina, Notas)",
+                    icon = Icons.Default.Tune,
+                    summary = optionalsSummary,
+                    isExpanded = isOptionalsExpanded,
+                    onToggle = { isOptionalsExpanded = !isOptionalsExpanded }
                 ) {
-                    LabeledTextField(
-                        label = "",
-                        value = tip,
-                        onValueChange = { newValue ->
-                            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                tip = newValue
-                            }
-                        },
-                        placeholder = "0.00",
-                        icon = Icons.Default.Add,
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Done,
-                        cornerRadius = 12
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // 1. Ruta
+                        Column {
+                            Text(
+                                text = "Ruta",
+                                color = CarreraColors.TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                            LabeledTextField(
+                                label = "",
+                                value = origin,
+                                onValueChange = { origin = it },
+                                placeholder = "Dirección de origen",
+                                icon = Icons.Default.MyLocation,
+                                cornerRadius = 12
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LabeledTextField(
+                                label = "",
+                                value = destination,
+                                onValueChange = { destination = it },
+                                placeholder = "Dirección de destino",
+                                icon = Icons.Default.Flag,
+                                cornerRadius = 12
+                            )
+                        }
+
+                        // 2. Propina
+                        Column {
+                            Text(
+                                text = "Propina",
+                                color = CarreraColors.TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                            LabeledTextField(
+                                label = "",
+                                value = tip,
+                                onValueChange = { newValue ->
+                                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                        tip = newValue
+                                    }
+                                },
+                                placeholder = "0.00",
+                                suffixText = currencySymbol,
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Next,
+                                cornerRadius = 12
+                            )
+                        }
+
+                        // 3. Notas
+                        Column {
+                            Text(
+                                text = "Notas u observaciones",
+                                color = CarreraColors.TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+                            LabeledTextField(
+                                label = "",
+                                value = notes,
+                                onValueChange = { notes = it },
+                                placeholder = "Añadir una nota u observación (ej. cobro parcial en mano, espera en destino...)",
+                                icon = Icons.Default.Description,
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Done,
+                                cornerRadius = 12
+                            )
+                        }
+                    }
                 }
 
                 // Total de carrera + propina
@@ -1068,11 +1430,13 @@ fun ChoiceChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedColor: Color = CarreraColors.GreenPrimary,
+    selectedContentColor: Color = CarreraColors.Background
 ) {
     val focusManager = LocalFocusManager.current
-    val backgroundColor = if (selected) CarreraColors.GreenPrimary else CarreraColors.Surface
-    val contentColor = if (selected) CarreraColors.Background else CarreraColors.OnBackground
+    val backgroundColor = if (selected) selectedColor else CarreraColors.Surface
+    val contentColor = if (selected) selectedContentColor else CarreraColors.OnBackground
     val borderModifier = if (selected) {
         Modifier
     } else {

@@ -107,6 +107,7 @@ data class StatsPeriodData(
     val paymentMethods: List<PaymentMethodItem>,
     val platforms: List<PlatformItem>,
     val meterTotal: Double,
+    val meterCancelledTotal: Double = 0.0,
     val fixedTotal: Double,
     val tipsTotal: Double,
     val tipsByMethod: Map<String, Double>,
@@ -509,7 +510,7 @@ fun StatsPaymentMethods(methods: List<PaymentMethodItem>) {
 }
 
 @Composable
-fun StatsPlatformBreakdown(platforms: List<PlatformItem>, meterTotal: Double, fixedTotal: Double) {
+fun StatsPlatformBreakdown(platforms: List<PlatformItem>, meterTotal: Double, fixedTotal: Double, meterCancelledTotal: Double = 0.0) {
     val totalGross = platforms.sumOf { it.gross }
     Column(
         modifier = Modifier
@@ -633,6 +634,14 @@ fun StatsPlatformBreakdown(platforms: List<PlatformItem>, meterTotal: Double, fi
                 .padding(12.dp)
         ) {
             StatsMiniRow(androidx.compose.ui.res.stringResource(com.moham.taxi.R.string.total_taximeter), formatCurrency(meterTotal), StatsTextSecondary, StatsTextPrimary)
+            if (meterCancelledTotal > 0.0) {
+                StatsMiniRow(
+                    label = androidx.compose.ui.res.stringResource(com.moham.taxi.R.string.meter_uncollected_cancelled),
+                    value = formatCurrency(meterCancelledTotal),
+                    labelColor = Color(0xFFE57373),
+                    valueColor = Color(0xFFE57373)
+                )
+            }
             StatsMiniRow(androidx.compose.ui.res.stringResource(com.moham.taxi.R.string.total_fixed_price), formatCurrency(fixedTotal), StatsTextSecondary, StatsTextPrimary)
         }
     }

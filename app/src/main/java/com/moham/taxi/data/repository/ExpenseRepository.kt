@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
@@ -87,26 +88,45 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     
     val allExpenses: Flow<List<Expense>> = expenseDao.getAllExpenses()
     
-    suspend fun insert(expense: Expense, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO) {
-        val id = expenseDao.insert(expense)
-        expenseCache[id] = CacheEntry(expense)
+    suspend fun insert(expense: Expense, triggerOnlineBackup: Boolean = true): Long = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        val expenseToInsert = if (expense.firestoreId.isNullOrEmpty()) {
+            expense.copy(firestoreId = java.util.UUID.randomUUID().toString())
+        } else {
+            expense
+        }
+        val id = expenseDao.insert(expenseToInsert)
+        expenseCache[id] = CacheEntry(expenseToInsert.copy(id = id))
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
+        application.updateLastActivity()
         application.savePendingBackup(true)
         application.scheduleFirebaseSyncDebounced()
         application.triggerImmediateFirebaseSync()
         id
     }
     
-    suspend fun update(expense: Expense) = withContext(Dispatchers.IO) {
-        expenseDao.update(expense)
-        expenseCache[expense.id] = CacheEntry(expense)
+    suspend fun update(expense: Expense) = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        val existing = expenseDao.getExpenseById(expense.id)
+        val resolvedFirestoreId = if (!expense.firestoreId.isNullOrEmpty()) {
+            expense.firestoreId
+        } else if (!existing?.firestoreId.isNullOrEmpty()) {
+            existing?.firestoreId
+        } else {
+            java.util.UUID.randomUUID().toString()
+        }
+        val expenseToUpdate = expense.copy(
+            firestoreId = resolvedFirestoreId,
+            isSynced = false
+        )
+        expenseDao.update(expenseToUpdate)
+        expenseCache[expense.id] = CacheEntry(expenseToUpdate)
         invalidateDateRangeCache()
         totalCache.clear() // Invalidar caché de totales
         cleanupCache()
         val application = context.applicationContext as GestionTaxiApplication
+        application.updateLastActivity()
         application.savePendingBackup(true)
         application.scheduleFirebaseSyncDebounced()
         application.triggerImmediateFirebaseSync()
@@ -114,14 +134,25 @@ class ExpenseRepository(private val expenseDao: ExpenseDao, private val database
     
     suspend fun delete(expense: Expense) = withContext(Dispatchers.IO) {
         val application = context.applicationContext as GestionTaxiApplication
-        if (!expense.firestoreId.isNullOrEmpty()) {
-            try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    .collection("expenses")
-                    .document(expense.firestoreId)
-                    .delete()
-            } catch (e: Exception) {
-                e.printStackTrace()
+        application.updateLastActivity()
+        val fireId = expense.firestoreId
+        if (!fireId.isNullOrEmpty()) {
+            val pending = com.moham.taxi.data.model.PendingDeletion(
+                firestoreId = fireId,
+                collectionName = "expenses"
+            )
+            database.pendingDeletionDao().insert(pending)
+            if (application.isNetworkAvailable()) {
+                try {
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("expenses")
+                        .document(fireId)
+                        .delete()
+                        .await()
+                    database.pendingDeletionDao().deleteByFirestoreId(fireId)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
         expenseDao.delete(expense)

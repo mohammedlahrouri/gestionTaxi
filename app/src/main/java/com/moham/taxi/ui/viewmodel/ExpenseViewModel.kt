@@ -48,8 +48,22 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
             e.printStackTrace()
         }
     }
+
+    suspend fun insertSuspend(expense: Expense): Long {
+        if (!expense.isValid()) {
+            return -1L
+        }
+        return repository.insert(expense)
+    }
     
     fun update(expense: Expense) = viewModelScope.launch {
+        repository.update(expense)
+    }
+
+    suspend fun updateSuspend(expense: Expense) {
+        if (!expense.isValid()) {
+            return
+        }
         repository.update(expense)
     }
     

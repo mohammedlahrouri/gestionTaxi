@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.moham.taxi.data.model.PaymentSummary
 import com.moham.taxi.data.model.ServicePlatformSummary
@@ -66,10 +67,10 @@ interface TaxiRideDao {
     @Query("SELECT * FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
     suspend fun getTaxiRidesByDateRangeSuspend(startDate: Date, endDate: Date): List<TaxiRide>
 
-    @Query("SELECT SUM(COALESCE(netPrice, price)) FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate")
+    @Query("SELECT SUM(COALESCE(netPrice, price)) FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')")
     suspend fun getTotalIncomeByDateRange(startDate: Date, endDate: Date): Double?
 
-    @Query("SELECT paymentMethod, SUM(price) as total FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate GROUP BY paymentMethod")
+    @Query("SELECT paymentMethod, SUM(price) as total FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada') GROUP BY paymentMethod")
     suspend fun getTotalByPaymentMethod(startDate: Date, endDate: Date): List<PaymentSummary>
 
     @Query("""
@@ -97,6 +98,7 @@ interface TaxiRideDao {
         FROM taxi_rides
         WHERE date BETWEEN :startDate AND :endDate
         AND servicePlatform IS NOT NULL
+        AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')
         GROUP BY servicePlatform
     """)
     suspend fun getTotalIncomeByPlatform(startDate: Date, endDate: Date): List<ServicePlatformSummary>
@@ -106,6 +108,7 @@ interface TaxiRideDao {
         FROM taxi_rides
         WHERE date BETWEEN :startDate AND :endDate
         AND servicePlatform IS NOT NULL
+        AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')
         GROUP BY servicePlatform
     """)
     suspend fun getNetIncomeByPlatform(startDate: Date, endDate: Date): List<ServicePlatformSummary>
@@ -125,6 +128,7 @@ interface TaxiRideDao {
         FROM taxi_rides
         WHERE date BETWEEN :startDate AND :endDate
         AND servicePlatform IS NOT NULL
+        AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')
         GROUP BY servicePlatform
     """)
     suspend fun getIncomeByPlatformWithCount(startDate: Date, endDate: Date): List<ServicePlatformCountSummary>
@@ -134,8 +138,18 @@ interface TaxiRideDao {
         FROM taxi_rides
         WHERE date BETWEEN :startDate AND :endDate
         AND servicePlatform IS NULL
+        AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')
     """)
     suspend fun getIncomeWithoutPlatform(startDate: Date, endDate: Date): IncomeCountSummary
+
+    @Query("""
+        SELECT COALESCE(SUM(price), 0.0)
+        FROM taxi_rides
+        WHERE date BETWEEN :startDate AND :endDate
+        AND (serviceType = 'METER' OR tariffId IS NOT NULL)
+        AND LOWER(paymentMethod) IN ('cancelado', 'rechazado', 'cancelada')
+    """)
+    suspend fun getCancelledMeterIncomeByDateRange(startDate: Date, endDate: Date): Double?
 
     @Query("SELECT COUNT(*) FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate")
     suspend fun getRideCountByDateRange(startDate: Date, endDate: Date): Int?
@@ -161,17 +175,17 @@ interface TaxiRideDao {
     fun getRecentTaxiRidesFlow(recentDate: Date): Flow<List<TaxiRide>>
     
     // Summary queries for dashboard
-    @Query("SELECT SUM(price) FROM taxi_rides WHERE date >= :recentDate")
+    @Query("SELECT SUM(price) FROM taxi_rides WHERE date >= :recentDate AND LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada')")
     suspend fun getRecentTotalIncome(recentDate: Date): Double?
     
     @Query("SELECT COUNT(*) FROM taxi_rides WHERE date >= :recentDate")
     suspend fun getRecentRideCount(recentDate: Date): Int
     
     // Monthly/yearly aggregations
-    @Query("SELECT strftime('%Y-%m', date/1000, 'unixepoch') as month, SUM(price) as total FROM taxi_rides GROUP BY month ORDER BY month DESC LIMIT :limit")
+    @Query("SELECT strftime('%Y-%m', date/1000, 'unixepoch') as month, SUM(price) as total FROM taxi_rides WHERE LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada') GROUP BY month ORDER BY month DESC LIMIT :limit")
     suspend fun getMonthlyIncomeSummary(limit: Int): List<MonthlySummary>
     
-    @Query("SELECT strftime('%Y', date/1000, 'unixepoch') as year, SUM(price) as total FROM taxi_rides GROUP BY year ORDER BY year DESC")
+    @Query("SELECT strftime('%Y', date/1000, 'unixepoch') as year, SUM(price) as total FROM taxi_rides WHERE LOWER(paymentMethod) NOT IN ('cancelado', 'rechazado', 'cancelada') GROUP BY year ORDER BY year DESC")
     suspend fun getYearlyIncomeSummary(): List<YearlySummary>
 
     @Query("SELECT SUM(COALESCE(tip, 0)) FROM taxi_rides WHERE date BETWEEN :startDate AND :endDate")
@@ -200,6 +214,9 @@ interface TaxiRideDao {
     @Query("SELECT * FROM taxi_rides WHERE isSynced = 0")
     suspend fun getUnsyncedRides(): List<TaxiRide>
 
+    @Query("SELECT COUNT(*) FROM taxi_rides WHERE isSynced = 0")
+    fun getUnsyncedRidesCountFlow(): Flow<Int>
+
     @Query("UPDATE taxi_rides SET isSynced = :isSynced, firestoreId = :firestoreId WHERE id = :id")
     suspend fun updateSyncStatus(id: Long, isSynced: Boolean, firestoreId: String?)
 
@@ -208,4 +225,68 @@ interface TaxiRideDao {
 
     @Query("UPDATE taxi_rides SET isSynced = 0, firestoreId = NULL")
     suspend fun resetSyncStatus()
+
+    @Query("SELECT * FROM taxi_rides ORDER BY id ASC")
+    suspend fun getAllTaxiRidesList(): List<TaxiRide>
+
+    @Query("DELETE FROM taxi_rides WHERE id IN (:ids)")
+    suspend fun deleteTaxiRidesByIds(ids: List<Long>): Int
+
+    @Query("""
+        SELECT * FROM taxi_rides
+        WHERE date BETWEEN :minDate AND :maxDate
+        AND abs(price - :price) < 0.01
+        AND paymentMethod = :paymentMethod
+        AND origin = :origin
+        AND destination = :destination
+        AND rideTime = :rideTime
+        LIMIT 1
+    """)
+    suspend fun findMatchingRide(
+        minDate: Date,
+        maxDate: Date,
+        price: Double,
+        paymentMethod: String,
+        origin: String,
+        destination: String,
+        rideTime: String
+    ): TaxiRide?
+
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM taxi_rides 
+            WHERE firestoreId IS NOT NULL AND firestoreId != ''
+            GROUP BY firestoreId 
+            HAVING COUNT(*) > 1 
+            LIMIT 1
+        )
+    """)
+    suspend fun hasDuplicateRides(): Boolean
+
+    @Transaction
+    suspend fun deduplicateRides(): Int {
+        if (!hasDuplicateRides()) return 0
+        val allRides = getAllTaxiRidesList()
+        val seen = mutableMapOf<String, TaxiRide>()
+        val idsToDelete = mutableListOf<Long>()
+
+        for (ride in allRides) {
+            val fId = ride.firestoreId?.trim()
+            if (!fId.isNullOrEmpty()) {
+                val existing = seen[fId]
+                if (existing == null) {
+                    seen[fId] = ride
+                } else {
+                    idsToDelete.add(ride.id)
+                }
+            }
+        }
+
+        if (idsToDelete.isNotEmpty()) {
+            idsToDelete.chunked(500).forEach { chunk ->
+                deleteTaxiRidesByIds(chunk)
+            }
+        }
+        return idsToDelete.size
+    }
 }

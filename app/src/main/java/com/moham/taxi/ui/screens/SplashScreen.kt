@@ -1,43 +1,38 @@
 package com.moham.taxi.ui.screens
 
-import androidx.compose.ui.res.stringResource
-import com.moham.taxi.R
-
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.moham.taxi.GestionTaxiApplication
-import com.moham.taxi.ui.theme.PrimaryBlue
+import com.moham.taxi.R
 import com.moham.taxi.ui.theme.DarkBackground
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
 import java.util.Date
 
 // Data class para los datos precargados
@@ -61,7 +56,9 @@ data class SplashScreenPreloadData(
     val fuelExpenses: Double,
     val weekFuelExpenses: Double,
     val monthFuelExpenses: Double,
-    val paymentMethodBreakdown: Map<String, Double>
+    val paymentMethodBreakdown: Map<String, Double>,
+    val isLoadedSuccessfully: Boolean = true,
+    var isConsumed: Boolean = false
 )
 
 @Composable
@@ -70,65 +67,41 @@ fun SplashScreen(
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as GestionTaxiApplication
-    
-    // Estado de progreso (0 a 100)
-    var progress by remember { mutableStateOf(0f) }
-    var loadingText by remember { mutableStateOf("") }
 
-    // Animación de pulso para el logo
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
+    // Animatable progress from 0f to 1f
+    val progressAnim = remember { Animatable(0f) }
 
-    // Animación "Ping" (anillo que se expande y desvanece)
-    val pingTransition = rememberInfiniteTransition(label = "ping")
-    val pingScale by pingTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pingScale"
-    )
-    val pingAlpha by pingTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pingAlpha"
-    )
+    // Obtener icono oficial de la aplicación
+    val appIconBitmap = remember(context) {
+        try {
+            val pm = context.packageManager
+            val appInfo = pm.getApplicationInfo(context.packageName, 0)
+            val drawable = pm.getApplicationIcon(appInfo)
+            val bmp = Bitmap.createBitmap(
+                256,
+                256,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bmp)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bmp.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
 
-    // Lógica principal
     LaunchedEffect(Unit) {
         val startTime = System.currentTimeMillis()
-        
+
         // 1. Iniciar carga de datos en segundo plano
         val dataDeferred = async(Dispatchers.IO) {
             try {
+                application.awaitDateReady()
                 val selectedDate = application.getSelectedDate().first()
                 val taxiRepo = application.taxiRideRepository
                 val expenseRepo = application.expenseRepository
-                
-                // Cargas paralelas de datos
+
                 val dateIncome = taxiRepo.getIncomeForDate(selectedDate)
                 val weekIncome = taxiRepo.getWeekIncomeForDate(selectedDate)
                 val monthIncome = taxiRepo.getMonthIncomeForDate(selectedDate)
@@ -170,177 +143,184 @@ fun SplashScreen(
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                null // Retornar null en caso de error
+                null
             }
         }
 
-        // 2. Controlar barra de progreso (simulada)
-        // Incremento de 2 cada 50ms => 100 pasos * 50ms = 5000ms = 5 segundos estricto
-        // Ajustamos para ser un poco más rápido si se desea, pero el TSX dice 50ms
-        launch {
-            while (progress < 100) {
-                delay(50)
-                progress += 2
-                // Sincronizar visualmente para que no pase de 100
-                if (progress > 100) progress = 100f
-            }
-        }
-        
-        // Esperar a que el progreso llegue a 100 (aprox 2.5 seg con step de 2 cada 50ms)
-        // Corrección: 100 / 2 = 50 steps. 50 * 50ms = 2500ms.
-        while (progress < 100) {
-            delay(50)
-        }
+        // 2. Animación de la barra de progreso:
+        // Fase 1: Rápida hasta casi el final (~88% en 1.3s)
+        progressAnim.animateTo(
+            targetValue = 0.88f,
+            animationSpec = tween(durationMillis = 1300, easing = FastOutSlowInEasing)
+        )
 
-        // Asegurar espera mínima de 4 segundos
+        // Fase 2: Ahí se queda un poco hasta cargar (~88% a 92% en 2.4s)
+        progressAnim.animateTo(
+            targetValue = 0.92f,
+            animationSpec = tween(durationMillis = 2400, easing = LinearOutSlowInEasing)
+        )
+
+        // Esperar a que los datos estén listos y asegurar tiempo total mínimo de 4 segundos
+        val data = dataDeferred.await()
         val elapsed = System.currentTimeMillis() - startTime
         if (elapsed < 4000) {
             delay(4000 - elapsed)
         }
 
-        // 3. Esperar resultados y finalizar
-        val data = dataDeferred.await()
-        
-        if (data != null) {
-            // Pequeña pausa final al 100%
-            delay(300) 
-            onLoadingComplete(data)
-        } else {
-             // Manejo de error si falla la carga (podríamos mostrar un botón de reintentar, pero por ahora...)
-            loadingText = context.getString(R.string.loading_error)
-            delay(2000)
-             // Intentar de nuevo o permitir entrar vacío? Por ahora llamamos con datos vacíos o reintentamos
-             // Para simplificar, si falla mucho, podríamos pasar un objeto vacío o salir.
-             // Aquí simplemente nos quedamos en error o llamamos onLoadingComplete con null si la firma lo permitiera.
-             // Al no permitir null, reintentamos la actividad (simplemente dejando al usuario aquí o reiniciando el proceso).
-        }
+        // Fase 3: Rápido remate al 100% (250ms)
+        progressAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing)
+        )
+
+        // Breve pausa para visualizar la barra completada antes de entrar a la app
+        delay(200)
+
+        val finalData = data ?: SplashScreenPreloadData(
+            selectedDate = Date(),
+            dateIncome = 0.0,
+            weekIncome = 0.0,
+            monthIncome = 0.0,
+            dateExpenses = 0.0,
+            weekExpenses = 0.0,
+            monthExpenses = 0.0,
+            dateNet = 0.0,
+            weekNet = 0.0,
+            monthNet = 0.0,
+            rideCount = 0,
+            weekRideCount = 0,
+            monthRideCount = 0,
+            expenseCount = 0,
+            weekExpenseCount = 0,
+            monthExpenseCount = 0,
+            fuelExpenses = 0.0,
+            weekFuelExpenses = 0.0,
+            monthFuelExpenses = 0.0,
+            paymentMethodBreakdown = emptyMap(),
+            isLoadedSuccessfully = false
+        )
+        onLoadingComplete(finalData)
     }
 
     // UI
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground) // Fondo oscuro compatible
+            .background(DarkBackground)
     ) {
-        // Efectos de fondo (blobs/gradientes)
-        // Blob superior
+        // Resplandor ambiental muy suave detrás del icono central
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = 100.dp) // top-1/4 aprox
-                .size(400.dp)
+                .align(Alignment.Center)
+                .size(260.dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            PrimaryBlue.copy(alpha = 0.15f),
+                            Color(0xFFFFC107).copy(alpha = 0.08f),
                             Color.Transparent
                         ),
-
-                        radius = 200f
-                    )
-                )
-                // En Compose standard el blur fuerte es costoso, usamos gradiente suave que ya simula el blur
-        )
-        
-        // Blob inferior
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = (-150).dp) // bottom-1/4 aprox
-                .size(300.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            PrimaryBlue.copy(alpha = 0.1f),
-                            Color.Transparent
-                        ),
-
-                        radius = 150f
+                        radius = 260f
                     )
                 )
         )
 
-        // Contenido Central
+        // Contenido Central: Icono de la App + Barra de Carga
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.Center)
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            
-            // Logo Container (Aumentado de tamaño)
+            // Contenedor del Icono de la App
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(300.dp) // Espacio para animaciones (anteriormente 200.dp)
+                modifier = Modifier
+                    .size(96.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(22.dp),
+                        spotColor = Color.Black.copy(alpha = 0.5f),
+                        ambientColor = Color.Black.copy(alpha = 0.3f)
+                    )
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color(0xFFFFC107))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(22.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                // Outer glow ring (animate-pulse)
-                Box(
-                    modifier = Modifier
-                        .size(180.dp) // Base size (anteriormente 120.dp)
-                        .scale(1.5f)
-                        .alpha(pulseAlpha)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue.copy(alpha = 0.2f))
-                )
-                
-                // Inner glow
-                Box(
-                    modifier = Modifier
-                        .size(180.dp) // Anteriormente 120.dp
-                        .scale(1.2f)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(PrimaryBlue.copy(alpha = 0.3f), Color.Transparent)
-                            )
-                        )
-                )
-
-                // Animated ring (ping)
-                Canvas(modifier = Modifier.size(180.dp)) { // Anteriormente 120.dp
-                    drawCircle(
-                        color = PrimaryBlue.copy(alpha = pingAlpha),
-                        radius = size.minDimension / 2 * pingScale,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                if (appIconBitmap != null) {
+                    Image(
+                        bitmap = appIconBitmap,
+                        contentDescription = "Icono de la app",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = "Icono de la app",
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
+            }
 
-                // Icon container actual
+            Spacer(modifier = Modifier.height(44.dp))
+
+            // Barra de Carga
+            Box(
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.12f))
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(168.dp) // Anteriormente 112.dp
+                        .fillMaxWidth(progressAnim.value.coerceIn(0f, 1f))
+                        .fillMaxHeight()
                         .clip(CircleShape)
                         .background(
-                            Brush.linearGradient(
+                            Brush.horizontalGradient(
                                 colors = listOf(
-                                    PrimaryBlue.copy(alpha = 0.2f),
-                                    PrimaryBlue.copy(alpha = 0.05f)
-                                ),
-                                start = Offset(0f, 0f),
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                    Color(0xFFFFB300),
+                                    Color(0xFFFFD54F)
+                                )
                             )
                         )
-                        .padding(1.dp) // Border thickness
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(Color.Transparent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.DirectionsCar,
-                            contentDescription = "Logo",
-                            tint = PrimaryBlue,
-                            modifier = Modifier.size(84.dp) // Anteriormente 56.dp
-                        )
-                    }
-                }
+                )
             }
         }
 
-
+        // Elemento inferior: Distintivo sutil con el "11"
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 28.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(
+                        width = 0.5.dp,
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "11",
+                    color = Color.White.copy(alpha = 0.45f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp
+                )
+            }
+        }
     }
 }

@@ -142,20 +142,38 @@ fun AppNavigation(navController: NavHostController, preloadData: SplashScreenPre
             ExpenseFormScreen(navController, expenseId, timestamp)
         }
         
+        // Pantalla de listado de taxis directa (usa fecha unificada)
+        composable(
+            route = AppScreens.TaxiRideList.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
+            TaxiRideListScreen(navController, -1L)
+        }
+
         // Pantalla de listado de taxis con parámetro de fecha opcional
         composable(
             route = "${AppScreens.TaxiRideList.route}/{timestamp}",
             arguments = listOf(
                 navArgument("timestamp") {
                     type = NavType.LongType
-                    defaultValue = Date().time
+                    defaultValue = -1L
                 }
             ),
             enterTransition = { fadeIn(animationSpec = tween(300)) },
             exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) { backStackEntry ->
-            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: Date().time
+            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: -1L
             TaxiRideListScreen(navController, timestamp)
+        }
+
+        // Pantalla de listado de gastos directa (usa fecha unificada)
+        composable(
+            route = AppScreens.ExpenseList.route,
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
+        ) {
+            ExpenseListScreen(navController, -1L)
         }
         
         // Pantalla de listado de gastos con parámetro de fecha opcional
@@ -164,13 +182,13 @@ fun AppNavigation(navController: NavHostController, preloadData: SplashScreenPre
             arguments = listOf(
                 navArgument("timestamp") {
                     type = NavType.LongType
-                    defaultValue = Date().time
+                    defaultValue = -1L
                 }
             ),
             enterTransition = { fadeIn(animationSpec = tween(300)) },
             exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) { backStackEntry ->
-            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: Date().time
+            val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: -1L
             ExpenseListScreen(navController, timestamp)
         }
         

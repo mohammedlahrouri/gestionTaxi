@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.moham.taxi.GestionTaxiApplication
@@ -42,6 +43,9 @@ import com.moham.taxi.ui.components.TicketPhotoDialog
 import com.moham.taxi.ui.components.formatCurrency
 import com.moham.taxi.ui.navigation.AppScreens
 import com.moham.taxi.ui.theme.AccentRed
+import com.moham.taxi.ui.theme.CalendarAccent
+import com.moham.taxi.ui.theme.CalendarBackground
+import com.moham.taxi.ui.theme.CalendarText
 import com.moham.taxi.ui.viewmodel.ExpenseViewModel
 import com.moham.taxi.ui.viewmodel.TaxiRideViewModel
 import com.moham.taxi.utils.DateUtils
@@ -76,19 +80,20 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     var rideToDelete by remember { mutableStateOf<TaxiRide?>(null) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
     
-    // Sync with DataStore selected date flow
-    val initialDate = remember(selectedDate) {
-        if (selectedDate > 0) Date(selectedDate) else Date()
-    }
-    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = initialDate)
+    // Fecha seleccionada unificada desde Application StateFlow (Single Source of Truth)
+    val currentUnifiedDate by application.selectedDateState.collectAsStateWithLifecycle()
     
+    // Si se pasa un timestamp explícito mayor a 0 diferente de la fecha actual, se sincroniza
     LaunchedEffect(selectedDate) {
         if (selectedDate > 0) {
-            application.saveSelectedDate(Date(selectedDate))
+            val dateFromArg = DateUtils.getStartOfDay(Date(selectedDate))
+            if (dateFromArg.time != currentUnifiedDate.time) {
+                application.updateSelectedDate(dateFromArg)
+            }
         }
     }
     
-    val useDate = selectedDateFromStore
+    val useDate = currentUnifiedDate
     val isToday = remember(useDate) {
         val today = Calendar.getInstance()
         val selectedCal = Calendar.getInstance().apply { time = useDate }
@@ -109,7 +114,7 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
     val headerDateText = remember(useDate, isToday, dayOfWeek) {
         val locale = Locale.getDefault()
         val pattern = when (locale.language) {
-            "es" -> "d 'de' MMMM"
+            "es" -> "d MMMM"
             "fr" -> "d MMMM"
             "de" -> "d. MMMM"
             else -> "MMMM d"
@@ -130,50 +135,66 @@ fun ExpenseListScreen(navController: NavHostController, selectedDate: Long = -1L
         "$prefix, $formattedDetail"
     }
     
-    val ridesToShow by taxiRideViewModel.getSelectedDateRides(useDate).collectAsState(initial = emptyList())
-    val expensesToShow by expenseViewModel.getSelectedDateExpenses(useDate).collectAsState(initial = emptyList())
+    val ridesToShow by remember(useDate) {
+        taxiRideViewModel.getSelectedDateRides(useDate)
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val expensesToShow by remember(useDate) {
+        expenseViewModel.getSelectedDateExpenses(useDate)
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
     
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDatePicker by remember { mutableStateOf(false) }
     
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(useDate)
-        )
-        
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
-                            scope.launch {
-                                application.saveSelectedDate(newDate)
-                            }
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = Color(0xFF3B9C5C),
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = Color(0xFF3B9C5C),
-                    todayContentColor = Color(0xFF3B9C5C)
-                )
+        key(useDate.time) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(useDate),
+                initialDisplayedMonthMillis = DateUtils.dateToUtcStartOfDayMillis(useDate)
             )
+            
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                                application.updateSelectedDate(newDate)
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = CalendarBackground,
+                        titleContentColor = CalendarText,
+                        headlineContentColor = CalendarText,
+                        weekdayContentColor = CalendarText,
+                        subheadContentColor = CalendarText,
+                        yearContentColor = CalendarText,
+                        currentYearContentColor = CalendarAccent,
+                        selectedYearContainerColor = CalendarAccent,
+                        selectedYearContentColor = CalendarText,
+                        selectedDayContainerColor = CalendarAccent,
+                        selectedDayContentColor = CalendarText,
+                        todayContentColor = CalendarAccent,
+                        todayDateBorderColor = CalendarAccent,
+                        dayContentColor = CalendarText,
+                        dividerColor = CalendarText.copy(alpha = 0.2f)
+                    )
+                )
+            }
         }
     }
     

@@ -12,7 +12,9 @@ import com.moham.taxi.data.dao.PaymentMethodDao
 import com.moham.taxi.data.dao.ServicePlatformDao
 import com.moham.taxi.data.dao.TaxiRideDao
 import com.moham.taxi.data.model.Expense
+import com.moham.taxi.data.dao.PendingDeletionDao
 import com.moham.taxi.data.model.PaymentMethod
+import com.moham.taxi.data.model.PendingDeletion
 import com.moham.taxi.data.model.PlatformPaymentMethodCrossRef
 import com.moham.taxi.data.model.ServicePlatform
 import com.moham.taxi.data.model.TaxiRide
@@ -38,13 +40,19 @@ import com.moham.taxi.data.MIGRATION_16_17
 import com.moham.taxi.data.MIGRATION_17_18
 import com.moham.taxi.data.MIGRATION_18_19
 import com.moham.taxi.data.MIGRATION_19_20
+import com.moham.taxi.data.MIGRATION_20_21
+import com.moham.taxi.data.MIGRATION_21_22
+import com.moham.taxi.data.MIGRATION_22_23
+import com.moham.taxi.data.MIGRATION_23_24
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @Database(
-    entities = [TaxiRide::class, Expense::class, PaymentMethod::class, ServicePlatform::class, Tariff::class, Surcharge::class, PlatformPaymentMethodCrossRef::class, RideSurchargeCrossRef::class],
-    version = 20,
+    entities = [TaxiRide::class, Expense::class, PaymentMethod::class, ServicePlatform::class, Tariff::class, Surcharge::class, PlatformPaymentMethodCrossRef::class, RideSurchargeCrossRef::class, PendingDeletion::class],
+    version = 24,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -56,6 +64,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun platformPaymentMethodDao(): PlatformPaymentMethodDao
     abstract fun tariffDao(): com.moham.taxi.data.dao.TariffDao
     abstract fun surchargeDao(): com.moham.taxi.data.dao.SurchargeDao
+    abstract fun pendingDeletionDao(): PendingDeletionDao
 
     companion object {
         @Volatile
@@ -87,9 +96,13 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_16_17,
                         MIGRATION_17_18,
                         MIGRATION_18_19,
-                        MIGRATION_19_20
+                        MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22,
+                        MIGRATION_22_23,
+                        MIGRATION_23_24
                     )
-                    .fallbackToDestructiveMigration() // Keep as fallback for other migrations
+                    .fallbackToDestructiveMigrationOnDowngrade()
                     .addCallback(AppDatabaseCallback(scope))
                     .build()
                 INSTANCE = instance
@@ -100,32 +113,115 @@ abstract class AppDatabase : RoomDatabase() {
         private class AppDatabaseCallback(
             private val scope: CoroutineScope
         ) : RoomDatabase.Callback() {
+            private val initMutex = Mutex()
+
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
+                // onCreate no inserta payment_methods para evitar condición de carrera con onOpen.
+                // Toda la inicialización y saneamiento se gestiona centralizadamente en onOpen.
+            }
+
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
                 INSTANCE?.let { database ->
                     scope.launch(Dispatchers.IO) {
-                        val paymentMethodDao = database.paymentMethodDao()
-                        val servicePlatformDao = database.servicePlatformDao()
-                        val platformPaymentMethodDao = database.platformPaymentMethodDao()
-                        
-                        val defaultPaymentMethods = listOf(
-                            PaymentMethod(name = "Efectivo"),
-                            PaymentMethod(name = "Tarjeta")
-                        )
+                        initMutex.withLock {
+                            try {
+                                val paymentMethodDao = database.paymentMethodDao()
+                                val platformPaymentMethodDao = database.platformPaymentMethodDao()
+                                val servicePlatformDao = database.servicePlatformDao()
 
-                        val paymentMethodIds = defaultPaymentMethods.map { paymentMethodDao.insert(it) }
-                        val directPlatformId = servicePlatformDao.insert(ServicePlatform(name = "Directo"))
-                        platformPaymentMethodDao.insertAll(
-                            paymentMethodIds.map { methodId ->
-                                PlatformPaymentMethodCrossRef(platformId = directPlatformId, paymentMethodId = methodId)
+                                // 1. Asegurar que existe al menos la plataforma Directo
+                                var allPlatforms = servicePlatformDao.getAllServicePlatformsList()
+                                if (allPlatforms.isEmpty()) {
+                                    servicePlatformDao.insert(ServicePlatform(name = "Directo"))
+                                    allPlatforms = servicePlatformDao.getAllServicePlatformsList()
+                                }
+                                val directPlatform = allPlatforms.firstOrNull { it.name.trim().equals("Directo", ignoreCase = true) } ?: allPlatforms.firstOrNull()
+
+                                // 2. Limpieza de duplicados existentes en payment_methods
+                                val currentMethods = paymentMethodDao.getAllPaymentMethodsList()
+                                val groupedByName = currentMethods.groupBy { m ->
+                                    val lower = m.name.trim().lowercase().replace(" ", "").replace("á", "a").replace("í", "i")
+                                    when {
+                                        lower == "efectivo" || lower == "cash" -> "efectivo"
+                                        lower == "tarjeta" || lower == "card" -> "tarjeta"
+                                        lower == "viaapp" -> "viaapp"
+                                        lower in listOf("cancelado", "cancelada", "rechazado") -> "cancelado"
+                                        else -> lower
+                                    }
+                                }
+
+                                for ((_, group) in groupedByName) {
+                                    if (group.size > 1) {
+                                        // Conservar el registro original (menor ID)
+                                        val keep = group.minByOrNull { it.id } ?: group.first()
+                                        val duplicates = group.filter { it.id != keep.id }
+                                        for (dup in duplicates) {
+                                            // Reasignar carreras del duplicado hacia el ID que se conserva
+                                            db.execSQL(
+                                                "UPDATE `taxi_rides` SET `paymentMethodId` = ? WHERE `paymentMethodId` = ?",
+                                                arrayOf<Any>(keep.id, dup.id)
+                                            )
+                                            // Eliminar enlaces del duplicado en platform_payment_methods
+                                            db.execSQL(
+                                                "DELETE FROM `platform_payment_methods` WHERE `paymentMethodId` = ?",
+                                                arrayOf<Any>(dup.id)
+                                            )
+                                            // Eliminar el método de pago duplicado
+                                            paymentMethodDao.delete(dup)
+                                        }
+                                    }
+                                }
+
+                                // 3. Asegurar que los 4 métodos estándar existen
+                                val methodsAfterCleanup = paymentMethodDao.getAllPaymentMethodsList()
+                                val defaultNames = listOf(
+                                    PaymentMethod.METHOD_CASH,
+                                    PaymentMethod.METHOD_CARD,
+                                    PaymentMethod.METHOD_APP,
+                                    PaymentMethod.METHOD_CANCELLED
+                                )
+
+                                for (defName in defaultNames) {
+                                    val existing = methodsAfterCleanup.firstOrNull { m ->
+                                        val n = m.name.trim().lowercase().replace(" ", "").replace("á", "a").replace("í", "i")
+                                        val target = defName.trim().lowercase().replace(" ", "").replace("á", "a").replace("í", "i")
+                                        n == target || (target == "cancelado" && n in listOf("cancelado", "cancelada", "rechazado"))
+                                    }
+
+                                    val methodId = if (existing == null) {
+                                        paymentMethodDao.insert(PaymentMethod(name = defName))
+                                    } else {
+                                        existing.id
+                                    }
+
+                                    if (methodId > 0) {
+                                        if (defName == PaymentMethod.METHOD_CANCELLED) {
+                                            if (allPlatforms.isNotEmpty()) {
+                                                val refs = allPlatforms.map { platform ->
+                                                    PlatformPaymentMethodCrossRef(platformId = platform.id, paymentMethodId = methodId)
+                                                }
+                                                platformPaymentMethodDao.insertAll(refs)
+                                            }
+                                        } else if (directPlatform != null) {
+                                            platformPaymentMethodDao.insertAll(listOf(
+                                                PlatformPaymentMethodCrossRef(platformId = directPlatform.id, paymentMethodId = methodId)
+                                            ))
+                                        }
+                                    }
+                                }
+
+                                // 4. Asegurar tarifas iniciales si no existen
+                                val tariffDao = database.tariffDao()
+                                if (tariffDao.getCount() == 0) {
+                                    tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Tarifa 1", isFixed = false, baseFare = 2.50, pricePerKm = 1.30, surcharge = 0.0))
+                                    tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Tarifa 2", isFixed = false, baseFare = 3.15, pricePerKm = 1.50, surcharge = 0.0))
+                                    tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Aeropuerto", isFixed = true, fixedPrice = 33.0))
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
-                        )
-
-                        val tariffDao = database.tariffDao()
-                        if (tariffDao.getCount() == 0) {
-                            tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Tarifa 1", isFixed = false, baseFare = 2.50, pricePerKm = 1.30, surcharge = 0.0))
-                            tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Tarifa 2", isFixed = false, baseFare = 3.15, pricePerKm = 1.50, surcharge = 0.0))
-                            tariffDao.insert(com.moham.taxi.data.model.Tariff(name = "Aeropuerto", isFixed = true, fixedPrice = 33.0))
                         }
                     }
                 }

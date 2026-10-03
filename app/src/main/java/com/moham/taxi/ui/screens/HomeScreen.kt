@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.zIndex
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.geometry.Offset
@@ -75,6 +77,13 @@ import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import android.widget.Toast
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -97,11 +106,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -161,18 +172,34 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     // Scope para operaciones de coroutine
     val scope = rememberCoroutineScope()
     
-    val privacyPolicyAccepted by application.isPrivacyPolicyAccepted().collectAsState(initial = true)
-    
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    var refreshKey by rememberSaveable(key = "home_refresh_key") { mutableStateOf(0) }
+    var selectedNavItem by remember { mutableStateOf(0) }
+
+    val privacyPolicyAccepted by application.isPrivacyPolicyAccepted().collectAsState(initial = true)
+    val isFleetConnected by application.isFleetConnected().collectAsState(initial = false)
+    val isFleetUnlinkedNoticePending by application.isFleetUnlinkedNoticePending().collectAsState(initial = false)
+    val isDriveEnabled by application.isOnlineBackupEnabled().collectAsState(initial = false)
+    val isDriveSignedIn = remember(application, refreshKey) { application.googleDriveAuthManager.isSignedIn() }
+    val isCloudActive = isFleetConnected || (isDriveEnabled && isDriveSignedIn)
+    val pendingSyncCount by application.getPendingSyncCount().collectAsState(initial = 0)
+
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                selectedNavItem = 0
+                if (preloadData == null || preloadData.isConsumed) {
+                    refreshKey++
+                }
                 scope.launch {
                     val enabled = application.isOnlineBackupEnabled().first()
                     val signedIn = application.googleDriveAuthManager.isSignedIn()
                     val pending = application.isPendingBackup().first()
                     if (enabled && signedIn && pending) {
                         application.scheduleOnlineBackupImmediate()
+                    }
+                    if (application.firebaseSyncRepository.isFleetConnected()) {
+                        application.firebaseSyncRepository.checkDriverExpulsionOrUnlink()
                     }
                 }
             }
@@ -183,37 +210,69 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
     }
     
-    // Usar los datos precargados si existen
-    val initialSelectedDate = preloadData?.selectedDate ?: Date()
-    var selectedDate by rememberSaveable(key = "selected_date") { 
-        mutableStateOf(initialSelectedDate)
+    // Fecha seleccionada unificada desde Application StateFlow (Single Source of Truth)
+    val selectedDate by application.selectedDateState.collectAsStateWithLifecycle()
+
+    val isPreloadActive = preloadData != null && !preloadData.isConsumed
+
+    // Estados para los datos financieros con rememberSaveable para preservar valores entre navegaciones
+    var dateIncome by rememberSaveable(key = "home_date_income") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.dateIncome else 0.0) 
     }
-    val selectedDateFromStore by application.getSelectedDate().collectAsState(initial = initialSelectedDate)
-    LaunchedEffect(selectedDateFromStore) {
-        if (selectedDate.time != selectedDateFromStore.time) {
-            selectedDate = selectedDateFromStore
-        }
+    var weekIncome by rememberSaveable(key = "home_week_income") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekIncome else 0.0) 
     }
-    // Estados para los datos financieros
-    var dateIncome by remember { mutableStateOf(preloadData?.dateIncome ?: 0.0) }
-    var weekIncome by remember { mutableStateOf(preloadData?.weekIncome ?: 0.0) }
-    var monthIncome by remember { mutableStateOf(preloadData?.monthIncome ?: 0.0) }
-    var dateExpenses by remember { mutableStateOf(preloadData?.dateExpenses ?: 0.0) }
-    var weekExpenses by remember { mutableStateOf(preloadData?.weekExpenses ?: 0.0) }
-    var monthExpenses by remember { mutableStateOf(preloadData?.monthExpenses ?: 0.0) }
-    var dateNet by remember { mutableStateOf(preloadData?.dateNet ?: 0.0) }
-    var weekNet by remember { mutableStateOf(preloadData?.weekNet ?: 0.0) }
-    var monthNet by remember { mutableStateOf(preloadData?.monthNet ?: 0.0) }
-    var rideCount by remember { mutableStateOf(preloadData?.rideCount ?: 0) }
-    var weekRideCount by remember { mutableStateOf(preloadData?.weekRideCount ?: 0) }
-    var monthRideCount by remember { mutableStateOf(preloadData?.monthRideCount ?: 0) }
-    var expenseCount by remember { mutableStateOf(preloadData?.expenseCount ?: 0) }
-    var weekExpenseCount by remember { mutableStateOf(preloadData?.weekExpenseCount ?: 0) }
-    var monthExpenseCount by remember { mutableStateOf(preloadData?.monthExpenseCount ?: 0) }
-    var fuelExpenses by remember { mutableStateOf(preloadData?.fuelExpenses ?: 0.0) }
-    var weekFuelExpenses by remember { mutableStateOf(preloadData?.weekFuelExpenses ?: 0.0) }
-    var monthFuelExpenses by remember { mutableStateOf(preloadData?.monthFuelExpenses ?: 0.0) }
-    var paymentMethodBreakdown by remember { mutableStateOf(preloadData?.paymentMethodBreakdown ?: emptyMap()) }
+    var monthIncome by rememberSaveable(key = "home_month_income") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthIncome else 0.0) 
+    }
+    var dateExpenses by rememberSaveable(key = "home_date_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.dateExpenses else 0.0) 
+    }
+    var weekExpenses by rememberSaveable(key = "home_week_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekExpenses else 0.0) 
+    }
+    var monthExpenses by rememberSaveable(key = "home_month_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthExpenses else 0.0) 
+    }
+    var dateNet by rememberSaveable(key = "home_date_net") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.dateNet else 0.0) 
+    }
+    var weekNet by rememberSaveable(key = "home_week_net") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekNet else 0.0) 
+    }
+    var monthNet by rememberSaveable(key = "home_month_net") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthNet else 0.0) 
+    }
+    var rideCount by rememberSaveable(key = "home_ride_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.rideCount else 0) 
+    }
+    var weekRideCount by rememberSaveable(key = "home_week_ride_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekRideCount else 0) 
+    }
+    var monthRideCount by rememberSaveable(key = "home_month_ride_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthRideCount else 0) 
+    }
+    var expenseCount by rememberSaveable(key = "home_expense_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.expenseCount else 0) 
+    }
+    var weekExpenseCount by rememberSaveable(key = "home_week_expense_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekExpenseCount else 0) 
+    }
+    var monthExpenseCount by rememberSaveable(key = "home_month_expense_count") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthExpenseCount else 0) 
+    }
+    var fuelExpenses by rememberSaveable(key = "home_fuel_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.fuelExpenses else 0.0) 
+    }
+    var weekFuelExpenses by rememberSaveable(key = "home_week_fuel_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.weekFuelExpenses else 0.0) 
+    }
+    var monthFuelExpenses by rememberSaveable(key = "home_month_fuel_expenses") { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.monthFuelExpenses else 0.0) 
+    }
+    var paymentMethodBreakdown by remember { 
+        mutableStateOf(if (isPreloadActive) preloadData!!.paymentMethodBreakdown else emptyMap()) 
+    }
     
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val dayOfWeekFormat = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
@@ -290,13 +349,10 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     val recentActivity by remember(taxiRideViewModel, expenseViewModel, selectedDate) {
         kotlinx.coroutines.flow.combine(
-            taxiRideViewModel.allTaxiRides,
-            expenseViewModel.allExpenses
-        ) { rides, expenses ->
+            taxiRideViewModel.getRidesForDate(selectedDate),
+            expenseViewModel.getSelectedDateExpenses(selectedDate)
+        ) { dayRides, dayExpenses ->
             val activities = mutableListOf<ActivityItem>()
-            val dayRange = com.moham.taxi.utils.DateUtils.getDayRange(selectedDate)
-            val dayRides = rides.filter { it.date.time >= dayRange.first.time && it.date.time <= dayRange.second.time }
-            val dayExpenses = expenses.filter { it.date.time >= dayRange.first.time && it.date.time <= dayRange.second.time }
             
             dayRides.forEach { ride ->
                 val hasRoute = ride.origin.isNotBlank() || ride.destination.isNotBlank()
@@ -401,7 +457,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     val headerDateText = remember(selectedDate, isToday, dayOfWeek) {
         val locale = Locale.getDefault()
         val pattern = when (locale.language) {
-            "es" -> "d 'de' MMMM"
+            "es" -> "d MMMM"
             "fr" -> "d MMMM"
             "de" -> "d. MMMM"
             else -> "MMMM d"
@@ -422,35 +478,46 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         "$prefix, $formattedDetail"
     }
     
-    var refreshKey by remember { mutableStateOf(0) }
-    
     // Función para cambiar de día manualmente
     fun changeDay(daysToAdd: Int) {
         val calendar = Calendar.getInstance()
         calendar.time = selectedDate
         calendar.add(Calendar.DAY_OF_YEAR, daysToAdd)
-        selectedDate = calendar.time
+        val newDate = com.moham.taxi.utils.DateUtils.getStartOfDay(calendar.time)
         refreshKey++
-        // Guardar la fecha seleccionada en DataStore
-        scope.launch {
-            application.saveSelectedDate(selectedDate)
-        }
+        application.updateSelectedDate(newDate)
     }
     
     // Efecto para detectar cuando se regresa a la pantalla y forzar actualización
     LaunchedEffect(Unit) {
-        val navBackStackEntry = navController.currentBackStackEntry
-        navBackStackEntry?.savedStateHandle?.getLiveData<Boolean>("refresh_data")?.observeForever { shouldRefresh ->
-            if (shouldRefresh == true) {
+        val navBackStackEntry = navController.currentBackStackEntry ?: return@LaunchedEffect
+        navBackStackEntry.savedStateHandle.getStateFlow("refresh_data", false).collect { shouldRefresh ->
+            if (shouldRefresh) {
                 refreshKey++
                 navBackStackEntry.savedStateHandle.set("refresh_data", false)
             }
         }
     }
-    
-    // Recargar datos cuando cambie la fecha seleccionada
+
+    // Recargar datos cuando cambie la fecha seleccionada o cambie refreshKey
     LaunchedEffect(selectedDate, refreshKey) {
         val normalizedSelectedDate = normalizeDate(selectedDate)
+
+        // Evitar doble carga ÚNICAMENTE en el arranque en frío si SplashScreen ya precargó con éxito los datos para esta misma fecha
+        if (preloadData != null && !preloadData.isConsumed && preloadData.isLoadedSuccessfully && refreshKey == 0) {
+            val calSelected = Calendar.getInstance().apply { time = selectedDate }
+            val calPreload = Calendar.getInstance().apply { time = preloadData.selectedDate }
+            val isSameDay = calSelected.get(Calendar.YEAR) == calPreload.get(Calendar.YEAR) &&
+                           calSelected.get(Calendar.DAY_OF_YEAR) == calPreload.get(Calendar.DAY_OF_YEAR)
+
+            if (isSameDay) {
+                preloadData.isConsumed = true
+                println("DEBUG HOME: Datos ya precargados por SplashScreen para la fecha actual, omitiendo consulta duplicada.")
+                return@LaunchedEffect
+            }
+        }
+        preloadData?.isConsumed = true
+
         println("DEBUG HOME: Cargando datos para fecha: ${dateFormat.format(normalizedSelectedDate)}")
         println("DEBUG HOME: Fecha normalizada timestamp: ${normalizedSelectedDate.time}")
         println("DEBUG HOME: refreshKey: $refreshKey")
@@ -511,54 +578,55 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
     
     // Diálogo de selección de fecha
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(selectedDate)
-        )
-        
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
-                            refreshKey++
-                            scope.launch {
-                                application.saveSelectedDate(selectedDate)
-                            }
-                        }
-                        showDatePicker = false
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = CalendarBackground, // Fondo azul gris oscuro
-                    titleContentColor = CalendarText, // Texto blanco
-                    headlineContentColor = CalendarText, // Texto blanco
-                    weekdayContentColor = CalendarText, // Texto blanco
-                    subheadContentColor = CalendarText, // Texto blanco
-                    yearContentColor = CalendarText, // Texto blanco
-                    currentYearContentColor = CalendarAccent, // Azul acero
-                    selectedYearContainerColor = CalendarAccent, // Azul acero
-                    selectedYearContentColor = CalendarText, // Texto blanco
-                    selectedDayContainerColor = CalendarAccent, // Azul acero
-                    selectedDayContentColor = CalendarText, // Texto blanco
-                    todayContentColor = CalendarAccent, // Azul acero
-                    todayDateBorderColor = CalendarAccent, // Azul acero
-                    dayContentColor = CalendarText, // Texto blanco
-                    dividerColor = CalendarText.copy(alpha = 0.2f) // Texto blanco con transparencia
-                )
+        key(selectedDate.time) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = DateUtils.dateToUtcStartOfDayMillis(selectedDate),
+                initialDisplayedMonthMillis = DateUtils.dateToUtcStartOfDayMillis(selectedDate)
             )
+            
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val newDate = DateUtils.utcStartOfDayMillisToLocalDate(millis)
+                                application.updateSelectedDate(newDate)
+                                refreshKey++
+                            }
+                            showDatePicker = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = CalendarBackground, // Fondo azul gris oscuro
+                        titleContentColor = CalendarText, // Texto blanco
+                        headlineContentColor = CalendarText, // Texto blanco
+                        weekdayContentColor = CalendarText, // Texto blanco
+                        subheadContentColor = CalendarText, // Texto blanco
+                        yearContentColor = CalendarText, // Texto blanco
+                        currentYearContentColor = CalendarAccent, // Azul acero
+                        selectedYearContainerColor = CalendarAccent, // Azul acero
+                        selectedYearContentColor = CalendarText, // Texto blanco
+                        selectedDayContainerColor = CalendarAccent, // Azul acero
+                        selectedDayContentColor = CalendarText, // Texto blanco
+                        todayContentColor = CalendarAccent, // Azul acero
+                        todayDateBorderColor = CalendarAccent, // Azul acero
+                        dayContentColor = CalendarText, // Texto blanco
+                        dividerColor = CalendarText.copy(alpha = 0.2f) // Texto blanco con transparencia
+                    )
+                )
+            }
         }
     }
 
@@ -622,9 +690,6 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         )
     }
     
-    // Estado para controlar la navegación inferior
-    var selectedNavItem by remember { mutableStateOf(0) }
-
     Scaffold(
         containerColor = DarkBackground,
         bottomBar = {
@@ -651,44 +716,6 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Discrete Top Notification Banner
-            AnimatedVisibility(
-                visible = showDateWarningNotification,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 16.dp, start = 16.dp, end = 16.dp)
-                    .zIndex(99f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF2C2C2E).copy(alpha = 0.95f))
-                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                        .clickable { showDateWarningNotification = false }
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = Color(0xFFF59E0B),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.date_different_warning),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -733,7 +760,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 } else {
                     DateSelector(
                         dateText = headerDateText,
-                        onClick = { showCalendarOverlay = true }
+                        onClick = { showCalendarOverlay = true },
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
                 
@@ -742,41 +770,137 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (!isToday && !oldVersionEnabled) {
-                        IconButton(
-                            onClick = { showDateWarningNotification = !showDateWarningNotification },
+                        Box(
                             modifier = Modifier
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFF59E0B).copy(alpha = 0.15f))
+                                .clickable { showDateWarningNotification = !showDateWarningNotification },
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Warning,
                                 contentDescription = stringResource(R.string.date_different_warning),
                                 tint = Color(0xFFF59E0B),
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     }
 
-                    IconButton(
-                        onClick = { 
-                            navController.navigate(AppScreens.Settings.route) {
-                                popUpTo(AppScreens.Home.route) {
-                                    saveState = true
+                    // Cloud Sync Status Icon: solo se muestra si la sincronización en la nube (Flota o Google Drive) está activa
+                    if (isCloudActive) {
+                        val hasNetwork = application.isNetworkAvailable()
+                        val isFullySynced = hasNetwork && pendingSyncCount == 0
+                        val badgeBg = if (isFullySynced) Color(0xFF10B981) else Color(0xFFF59E0B)
+                        val badgeIcon = if (isFullySynced) Icons.Filled.Check else Icons.Filled.Warning
+
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.1f))
+                                .clickable {
+                                    val currentNetwork = application.isNetworkAvailable()
+                                    val message = if (!currentNetwork) {
+                                        "Sin conexión a internet. Los datos se sincronizarán al conectarse."
+                                    } else if (pendingSyncCount > 0) {
+                                        "Sincronizando datos pendientes en la nube ($pendingSyncCount pendiente${if (pendingSyncCount > 1) "s" else ""})..."
+                                    } else {
+                                        if (isFleetConnected && (isDriveEnabled && isDriveSignedIn)) "Sincronizado en la Flota y Google Drive"
+                                        else if (isFleetConnected) "Sincronizado correctamente con la Flota"
+                                        else "Sincronizado correctamente en Google Drive"
+                                    }
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(contentAlignment = Alignment.BottomEnd) {
+                                Icon(
+                                    imageVector = Icons.Filled.Cloud,
+                                    contentDescription = "Cloud Status",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = 3.dp, y = 3.dp)
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(badgeBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = badgeIcon,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(6.dp)
+                                    )
                                 }
-                                launchSingleTop = true
                             }
-                        },
+                        }
+                    }
+
+                    Box(
                         modifier = Modifier
+                            .size(28.dp)
                             .clip(CircleShape)
-                            .background(Color.Transparent)
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .clickable { 
+                                navController.navigate(AppScreens.Settings.route) {
+                                    popUpTo(AppScreens.Home.route) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = stringResource(R.string.settings_title),
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+            }
+
+            // Banner de advertencia de fecha diferente debajo de la fecha (no tapándola)
+            AnimatedVisibility(
+                visible = showDateWarningNotification,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
+                        .border(1.dp, Color(0xFFF59E0B).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .clickable { showDateWarningNotification = false }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.date_different_warning),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFF59E0B),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B).copy(alpha = 0.7f),
+                        modifier = Modifier.size(12.dp)
+                    )
                 }
             }
 
@@ -811,13 +935,14 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                     formattedDate = formattedDate,
                     isToday = isToday,
                     onDateSelected = {
-                        selectedDate = it
+                        application.updateSelectedDate(it)
                         refreshKey++
                     },
                     onChangeDateClick = { showDatePicker = true },
                     taxiRideViewModel = taxiRideViewModel,
                     application = application,
-                    normalizeDate = ::normalizeDate
+                    normalizeDate = ::normalizeDate,
+                    refreshKey = refreshKey
                 )
             }
 
@@ -999,21 +1124,6 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 showIcon = oldVersionEnabled
             )
             
-            /*
-            AlertsBillboardCard(
-                cheapestStation = cheapestStation,
-                isLoading = isAlertsLoading,
-                hasError = alertsError,
-                selectedFuelType = selectedFuelType,
-                currentSlideIndex = currentSlideIndex,
-                onCardClick = {
-                    navController.navigate(AppScreens.FuelPrices.route)
-                },
-                modernThemeEnabled = modernThemeEnabled,
-                showIcon = oldVersionEnabled
-            )
-            */
-            
             RecentActivityCard(
                 activities = recentActivity,
                 onActivityClick = { item ->
@@ -1028,7 +1138,14 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                 showIcon = oldVersionEnabled
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            if (!isFleetConnected) {
+                ConnectFleetCard(
+                    onConnectClick = {
+                        navController.navigate(AppScreens.FleetConnection.route)
+                    },
+                    modernThemeEnabled = modernThemeEnabled
+                )
+            }
             
             DonationBannerCard(
                 onDonateClick = {
@@ -1065,7 +1182,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Espaciador para alinear el calendario justo encima de "Añadir ingreso o gasto"
-                    Spacer(modifier = Modifier.height(if (!isToday) 116.dp else 68.dp))
+                    Spacer(modifier = Modifier.height(68.dp))
 
                     DateSelectorCard(
                         selectedDate = selectedDate,
@@ -1073,7 +1190,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         formattedDate = formattedDate,
                         isToday = isToday,
                         onDateSelected = {
-                            selectedDate = it
+                            application.updateSelectedDate(it)
                             refreshKey++
                         },
                         onChangeDateClick = {
@@ -1089,7 +1206,8 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         ) {
                             // Prevenir que los clics dentro de la tarjeta cierren el overlay
                         },
-                        forceCardBackground = true
+                        forceCardBackground = true,
+                        refreshKey = refreshKey
                     )
                 }
             }
@@ -1150,7 +1268,7 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
             dismissButton = {
                 TextButton(
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sites.google.com/view/taxxipoliticaprivacidad/inicio"))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://taximanagementconsole.com/politica-privacidad"))
                         context.startActivity(intent)
                     }
                 ) {
@@ -1158,6 +1276,57 @@ fun HomeScreen(navController: NavHostController, preloadData: SplashScreenPreloa
                         text = stringResource(R.string.view_privacy_policy),
                         color = PrimaryBlue,
                         fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            containerColor = DarkCard,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (isFleetUnlinkedNoticePending) {
+        AlertDialog(
+            onDismissRequest = {
+                scope.launch { application.saveFleetUnlinkedNotice(false) }
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = PrimaryBlue
+                    )
+                    Text(
+                        text = stringResource(R.string.fleet_unlinked_notice_title),
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.fleet_unlinked_notice_desc),
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch { application.saveFleetUnlinkedNotice(false) }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBlue,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.fleet_unlinked_notice_button),
+                        fontWeight = FontWeight.Bold
                     )
                 }
             },
@@ -1524,7 +1693,8 @@ fun DateSelectorCard(
     application: GestionTaxiApplication,
     normalizeDate: (Date) -> Date,
     modifier: Modifier = Modifier,
-    forceCardBackground: Boolean = false
+    forceCardBackground: Boolean = false,
+    refreshKey: Int = 0
 ) {
     val scope = rememberCoroutineScope()
     val modernThemeEnabled by application.isModernThemeEnabled().collectAsState(initial = false)
@@ -1584,22 +1754,22 @@ fun DateSelectorCard(
             if (!isToday) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = 12.dp)
                         .clip(RoundedCornerShape(100.dp))
-                        .background(Color(0xFFF59E0B).copy(alpha = 0.1f)) // Amber-500 approx
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .background(Color(0xFFF59E0B).copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
+                            .size(5.dp)
                             .clip(CircleShape)
                             .background(Color(0xFFF59E0B))
                     )
                     Text(
                         text = stringResource(R.string.date_different_warning),
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFFF59E0B)
                     )
@@ -1627,14 +1797,38 @@ fun DateSelectorCard(
                     com.moham.taxi.utils.DateUtils.getWeekRange(selectedDate, firstDayOfWeek)
                 }
                 
-                 val selectedWeekStartCalendar = remember(selectedWeekRange) {
+                val selectedWeekStartCalendar = remember(selectedWeekRange) {
                     Calendar.getInstance().apply {
                         time = selectedWeekRange.first
                     }
                 }
 
+                val rangeStart = selectedWeekRange.first
+                val rangeEnd = remember(selectedWeekStartCalendar) {
+                    Calendar.getInstance().apply {
+                        time = selectedWeekStartCalendar.time
+                        add(Calendar.DAY_OF_YEAR, 6)
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }.time
+                }
+
+                var weekIncomesByDay by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+                val dayKeyFormat = remember { SimpleDateFormat("yyyyMMdd", Locale.getDefault()) }
+
+                // Una sola consulta agrupada para toda la semana
+                LaunchedEffect(rangeStart, rangeEnd, refreshKey) {
+                    weekIncomesByDay = taxiRideViewModel.getDailyIncomesForDateRange(rangeStart, rangeEnd)
+                }
+
+                val dayFormat = remember { SimpleDateFormat("dd", Locale.getDefault()) }
+                val symbol = remember { com.moham.taxi.utils.CurrencyUtils.getCurrencySymbol() }
+                val isEu = remember { com.moham.taxi.utils.CurrencyUtils.isEuCountry() }
+
                 for (dayOffset in 0..6) {
-                     val calendar = Calendar.getInstance()
+                    val calendar = Calendar.getInstance()
                     calendar.time = selectedWeekStartCalendar.time
                     calendar.add(Calendar.DAY_OF_YEAR, dayOffset)
                     
@@ -1645,19 +1839,11 @@ fun DateSelectorCard(
                         time = selectedDate 
                     }.get(Calendar.MONTH)
                     
-                    val dayFormat = SimpleDateFormat("dd", Locale.getDefault())
-                    
                     val day = dayFormat.format(calendar.time)
-                    
-                    var dayIncome by remember { mutableStateOf(0.0) }
-                    val calendarTime = calendar.time
-                    
-                    LaunchedEffect(calendarTime) {
-                        dayIncome = taxiRideViewModel.getIncomeForDate(calendarTime)
-                    }
+                    val dayKey = dayKeyFormat.format(calendar.time)
+                    val dayIncome = weekIncomesByDay[dayKey] ?: 0.0
 
-                    val symbol = com.moham.taxi.utils.CurrencyUtils.getCurrencySymbol()
-                    val formattedAmount = if (com.moham.taxi.utils.CurrencyUtils.isEuCountry()) {
+                    val formattedAmount = if (isEu) {
                         "${dayIncome.toInt()} $symbol"
                     } else {
                         "$symbol${dayIncome.toInt()}"
@@ -1670,9 +1856,7 @@ fun DateSelectorCard(
                         onClick = {
                             val newDate = normalizeDate(calendar.time)
                             onDateSelected(newDate)
-                            scope.launch {
-                                application.saveSelectedDate(newDate)
-                            }
+                            application.updateSelectedDate(newDate)
                         }
                     )
                 }
@@ -1954,6 +2138,72 @@ fun DonationBannerCard(
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ConnectFleetCard(
+    onConnectClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    modernThemeEnabled: Boolean = false
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (modernThemeEnabled) Color.Transparent else DarkCard
+        ),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onConnectClick() },
+        border = if (modernThemeEnabled) null else androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Group,
+                    contentDescription = null,
+                    tint = PrimaryBlue,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_fleet_connect_title),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.settings_fleet_connect_desc),
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.4f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

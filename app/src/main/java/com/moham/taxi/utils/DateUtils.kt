@@ -59,7 +59,7 @@ object DateUtils {
         return getDayRange(Date())
     }
     
-    private fun getStartOfDay(date: Date): Date {
+    fun getStartOfDay(date: Date = Date()): Date {
         val calendar = Calendar.getInstance()
         calendar.time = date
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -240,6 +240,157 @@ object DateUtils {
         val dayFormat = SimpleDateFormat("EEEE", locale)
         return dayFormat.format(date).replaceFirstChar { 
             if (it.isLowerCase()) it.titlecase(locale) else it.toString() 
+        }
+    }
+
+    /**
+     * Comprueba si dos fechas corresponden a días de calendario diferentes
+     */
+    fun isDifferentDay(date1: Date, date2: Date): Boolean {
+        val cal1 = Calendar.getInstance().apply { time = date1 }
+        val cal2 = Calendar.getInstance().apply { time = date2 }
+        return cal1.get(Calendar.YEAR) != cal2.get(Calendar.YEAR) ||
+               cal1.get(Calendar.DAY_OF_YEAR) != cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    /**
+     * Obtiene la abreviatura de 3 letras limpias en minúsculas del día de la semana (ej. 'dom', 'sáb', 'lun')
+     */
+    fun getShortDayName(date: Date, locale: Locale = Locale.getDefault()): String {
+        val cal = Calendar.getInstance().apply { time = date }
+        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+        return when (locale.language) {
+            "es" -> when (dayOfWeek) {
+                Calendar.MONDAY -> "lun"
+                Calendar.TUESDAY -> "mar"
+                Calendar.WEDNESDAY -> "mié"
+                Calendar.THURSDAY -> "jue"
+                Calendar.FRIDAY -> "vie"
+                Calendar.SATURDAY -> "sáb"
+                Calendar.SUNDAY -> "dom"
+                else -> "dom"
+            }
+            "de" -> when (dayOfWeek) {
+                Calendar.MONDAY -> "mo"
+                Calendar.TUESDAY -> "di"
+                Calendar.WEDNESDAY -> "mi"
+                Calendar.THURSDAY -> "do"
+                Calendar.FRIDAY -> "fr"
+                Calendar.SATURDAY -> "sa"
+                Calendar.SUNDAY -> "so"
+                else -> "so"
+            }
+            "fr" -> when (dayOfWeek) {
+                Calendar.MONDAY -> "lun"
+                Calendar.TUESDAY -> "mar"
+                Calendar.WEDNESDAY -> "mer"
+                Calendar.THURSDAY -> "jeu"
+                Calendar.FRIDAY -> "ven"
+                Calendar.SATURDAY -> "sam"
+                Calendar.SUNDAY -> "dim"
+                else -> "dim"
+            }
+            else -> {
+                val sdf = SimpleDateFormat("EEE", locale)
+                sdf.format(date).replace(".", "").trim().take(3).lowercase(locale)
+            }
+        }
+    }
+
+    /**
+     * Combina una fecha base con una cadena de hora "HH:mm", con opción de añadir 1 día (para madrugadas).
+     */
+    fun combineDateAndTime(baseDate: Date, timeStr: String, addDay: Boolean = false): Date {
+        val cal = Calendar.getInstance().apply { time = baseDate }
+        if (addDay) {
+            cal.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        val parts = timeStr.trim().split(":")
+        val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        cal.set(Calendar.HOUR_OF_DAY, h)
+        cal.set(Calendar.MINUTE, m)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.time
+    }
+
+    /**
+     * Resuelve el timestamp cronológico exacto de una carrera o gasto para ordenación precisa.
+     */
+    fun resolveEffectiveTimestamp(date: Date, timeStr: String?, realDate: Date?): Long {
+        if (realDate != null && realDate.time > 0L) {
+            val calReal = Calendar.getInstance().apply { time = realDate }
+            val isMidnight = calReal.get(Calendar.HOUR_OF_DAY) == 0 && calReal.get(Calendar.MINUTE) == 0 && calReal.get(Calendar.SECOND) == 0
+            if (!isMidnight) {
+                return realDate.time
+            }
+        }
+        val trimmed = timeStr?.trim()
+        if (!trimmed.isNullOrEmpty() && trimmed != "00:00") {
+            val parts = trimmed.split(":")
+            val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
+            val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            val cal = Calendar.getInstance().apply { time = date }
+            val isNextDay = if (realDate != null) isDifferentDay(realDate, date) else false
+            if (isNextDay) {
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+            cal.set(Calendar.HOUR_OF_DAY, h)
+            cal.set(Calendar.MINUTE, m)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            return cal.timeInMillis
+        }
+        return realDate?.time?.takeIf { it > 0L } ?: date.time
+    }
+
+    /**
+     * Formatea la hora de un servicio o gasto en relación a la jornada:
+     * - Si se realizó en el mismo día natural que la jornada -> hora limpia (ej. "22:00").
+     * - Si se realizó en un día diferente pero dentro de la misma semana -> 3 letras del día real + hora (ej. "dom 00:23").
+     * - Si se realizó fuera de la semana del día en que se puso -> fecha entera + hora (ej. "10/01/2026 22:00").
+     */
+    fun formatServiceTimeWithDay(
+        realDate: Date?,
+        jornadaDate: Date,
+        timeStr: String?,
+        firstDayOfWeek: Int = Calendar.MONDAY,
+        locale: Locale = Locale.getDefault()
+    ): String {
+        val cleanTime = if (!timeStr.isNullOrBlank()) timeStr.trim() else "00:00"
+        if (realDate == null || realDate.time <= 0L || !isDifferentDay(realDate, jornadaDate)) {
+            return cleanTime
+        }
+
+        val calReal = Calendar.getInstance().apply { time = realDate }
+        val calJornada = Calendar.getInstance().apply { time = jornadaDate }
+
+        val midReal = Calendar.getInstance().apply {
+            set(calReal.get(Calendar.YEAR), calReal.get(Calendar.MONTH), calReal.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val midJornada = Calendar.getInstance().apply {
+            set(calJornada.get(Calendar.YEAR), calJornada.get(Calendar.MONTH), calJornada.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val diffDays = Math.round(java.lang.Math.abs(midReal - midJornada).toDouble() / (24 * 60 * 60 * 1000.0)).toLong()
+
+        val isSameWeek = if (diffDays <= 1L) {
+            true
+        } else if (diffDays >= 7L) {
+            false
+        } else {
+            val weekRange = getWeekRange(jornadaDate, firstDayOfWeek)
+            realDate.time >= weekRange.first.time && realDate.time <= weekRange.second.time
+        }
+
+        return if (isSameWeek) {
+            "${getShortDayName(realDate, locale)} $cleanTime"
+        } else {
+            val fullDateFormat = SimpleDateFormat("dd/MM/yyyy", locale)
+            "${fullDateFormat.format(realDate)} $cleanTime"
         }
     }
 

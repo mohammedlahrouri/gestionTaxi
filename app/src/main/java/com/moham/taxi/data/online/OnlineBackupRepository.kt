@@ -216,6 +216,13 @@ class OnlineBackupRepository(
             r.netPrice?.let { obj.put("net_price", it) }
             r.commissionPercentAtTime?.let { obj.put("commission_percent_at_time", it) }
             r.commissionVatAtTime?.let { obj.put("commission_vat_at_time", it) }
+            r.notes?.let { obj.put("notes", it) }
+            obj.put("is_split_payment", r.isSplitPayment)
+            r.splitSecondaryMethod?.let { obj.put("split_secondary_method", it) }
+            r.splitSecondaryPrice?.let { obj.put("split_secondary_price", it) }
+            r.ticketPhotoPath?.let { obj.put("ticket_photo_path", it) }
+            obj.put("is_synced", r.isSynced)
+            r.firestoreId?.let { obj.put("firestore_id", it) }
             ridesArray.put(obj)
         }
         val expensesArray = org.json.JSONArray()
@@ -229,6 +236,8 @@ class OnlineBackupRepository(
             e.description?.let { obj.put("description", it) }
             e.maintenanceKilometers?.let { obj.put("maintenance_kilometers", it) }
             e.maintenanceDetails?.let { obj.put("maintenance_details", it) }
+            obj.put("is_synced", e.isSynced)
+            e.firestoreId?.let { obj.put("firestore_id", it) }
             expensesArray.put(obj)
         }
         root.put("rides", ridesArray)
@@ -310,6 +319,13 @@ class OnlineBackupRepository(
             r.netPrice?.let { obj.put("net_price", it) }
             r.commissionPercentAtTime?.let { obj.put("commission_percent_at_time", it) }
             r.commissionVatAtTime?.let { obj.put("commission_vat_at_time", it) }
+            r.notes?.let { obj.put("notes", it) }
+            obj.put("is_split_payment", r.isSplitPayment)
+            r.splitSecondaryMethod?.let { obj.put("split_secondary_method", it) }
+            r.splitSecondaryPrice?.let { obj.put("split_secondary_price", it) }
+            r.ticketPhotoPath?.let { obj.put("ticket_photo_path", it) }
+            obj.put("is_synced", r.isSynced)
+            r.firestoreId?.let { obj.put("firestore_id", it) }
             ridesArray.put(obj)
         }
         val expensesArray = org.json.JSONArray()
@@ -331,6 +347,8 @@ class OnlineBackupRepository(
             e.description?.let { obj.put("description", it) }
             e.maintenanceKilometers?.let { obj.put("maintenance_kilometers", it) }
             e.maintenanceDetails?.let { obj.put("maintenance_details", it) }
+            obj.put("is_synced", e.isSynced)
+            e.firestoreId?.let { obj.put("firestore_id", it) }
             expensesArray.put(obj)
         }
         val methodsArray = org.json.JSONArray()
@@ -339,6 +357,7 @@ class OnlineBackupRepository(
             val obj = org.json.JSONObject()
             obj.put("id", m.id)
             obj.put("name", m.name)
+            obj.put("ticketPhotoPolicy", m.ticketPhotoPolicy)
             methodsArray.put(obj)
         }
         val platformsArray = org.json.JSONArray()
@@ -380,9 +399,12 @@ class OnlineBackupRepository(
                     for (i in 0 until paymentMethods.length()) {
                         val m = paymentMethods.getJSONObject(i)
                         val name = m.getString("name")
-                        val exists = database.paymentMethodDao().paymentMethodExists(name)
-                        if (!exists) {
-                            database.paymentMethodDao().insert(PaymentMethod(name = name))
+                        val policy = m.optString("ticketPhotoPolicy", PaymentMethod.POLICY_OPTIONAL)
+                        val existing = database.paymentMethodDao().getPaymentMethodByName(name)
+                        if (existing == null) {
+                            database.paymentMethodDao().insert(PaymentMethod(name = name, ticketPhotoPolicy = policy))
+                        } else {
+                            database.paymentMethodDao().update(existing.copy(ticketPhotoPolicy = policy))
                         }
                     }
                 }
@@ -456,7 +478,14 @@ class OnlineBackupRepository(
                             netPrice = r.optDouble("net_price", Double.NaN).takeIf { !it.isNaN() },
                             commissionPercentAtTime = r.optDouble("commission_percent_at_time", Double.NaN).takeIf { !it.isNaN() },
                             commissionVatAtTime = r.optDouble("commission_vat_at_time", Double.NaN).takeIf { !it.isNaN() },
-                            realDate = realDate
+                            realDate = realDate,
+                            notes = r.optString("notes").takeIf { it.isNotBlank() },
+                            isSplitPayment = r.optBoolean("is_split_payment", false),
+                            splitSecondaryMethod = r.optString("split_secondary_method").takeIf { it.isNotBlank() },
+                            splitSecondaryPrice = r.optDouble("split_secondary_price", Double.NaN).takeIf { !it.isNaN() },
+                            ticketPhotoPath = r.optString("ticket_photo_path").takeIf { it.isNotBlank() },
+                            isSynced = r.optBoolean("is_synced", false),
+                            firestoreId = r.optString("firestore_id").takeIf { it.isNotBlank() }
                         )
                         database.taxiRideDao().insert(ride)
                     }
@@ -489,7 +518,9 @@ class OnlineBackupRepository(
                             maintenanceDetails = maintenanceDetails,
                             amount = amount,
                             date = date,
-                            realDate = realDate
+                            realDate = realDate,
+                            isSynced = e.optBoolean("is_synced", false),
+                            firestoreId = e.optString("firestore_id").takeIf { it.isNotBlank() }
                         )
                         database.expenseDao().insert(expense)
                     }

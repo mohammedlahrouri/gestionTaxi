@@ -75,6 +75,8 @@
     <string name="payment_cash">Efectivo</string>
     <string name="payment_card">Tarjeta</string>
     <string name="payment_via_app">Via App</string>
+    <string name="payment_cancelled">Cancelado</string>
+    <string name="meter_uncollected_cancelled">No cobrado por cancelar</string>
     <string name="error_select_payment">Por favor, seleccione un método de pago</string>
     <string name="error_valid_price">Por favor, ingrese un precio válido</string>
     <string name="label_amount_with_commission">Importe con comisión</string>
@@ -406,6 +408,22 @@
     <string name="msg_payment_method_deleted">Método de pago eliminado</string>
     <string name="cd_add_payment_method">Añadir Método de Pago</string>
     <string name="cd_delete_payment_method">Eliminar Método de Pago</string>
+    <string name="payment_method_default_badge">Por defecto</string>
+    <string name="error_payment_method_exists">Este método de pago ya existe</string>
+    <string name="error_payment_method_default">No se puede añadir un método de pago reservado por defecto</string>
+    <string name="payment_method_photo_policy_label">Opción de foto de ticket</string>
+    <string name="photo_policy_no_photo">Sin foto ticket</string>
+    <string name="photo_policy_optional">Foto ticket opcional</string>
+    <string name="photo_policy_mandatory">Foto ticket obligatorio</string>
+    <string name="photo_policy_no_photo_desc">Solo aparecerá el botón Guardar</string>
+    <string name="photo_policy_optional_desc">Aparecerá la opción Guardar y Foto</string>
+    <string name="photo_policy_mandatory_desc">No permitirá guardar sin foto</string>
+    <string name="dialog_configure_payment_method">Configurar Método de Pago</string>
+    <string name="msg_payment_method_updated">Método de pago actualizado</string>
+    <string name="badge_no_photo">Sin foto</string>
+    <string name="badge_photo_optional">Foto opcional</string>
+    <string name="badge_photo_mandatory">Foto obligatoria</string>
+    <string name="error_ticket_photo_required">La foto del ticket es obligatoria para este método de pago</string>
 
     <!-- Online Backup Screen -->
     <string name="title_online_backup">Copia de Seguridad Automática en Línea</string>
@@ -892,19 +910,43 @@
     <string name="settings_fleet_connect_desc">Comparte tus ingresos y gastos en tiempo real con tu flota</string>
     <string name="fleet_connected_status_connected">Conectado a la flota</string>
     <string name="fleet_connected_status_disconnected">Sin conexión a flota</string>
-    <string name="fleet_connected_code_label">Código de flota: %1$s</string>
+    <string name="fleet_connected_code_label">Correo de vinculación: %1$s</string>
     <string name="fleet_connected_name_label">Nombre de flota: %1$s</string>
     <string name="settings_fleet_connected_summary">Conectado a la flota: %1$s</string>
     <string name="fleet_connection_explanation">Al conectar con una flota, esta podrá tener acceso en tiempo real a todos tus ingresos y gastos de forma automática, además de poder enviarte mensajes.</string>
-    <string name="fleet_connect_with_code">Conectar con código</string>
-    <string name="fleet_enter_code_dialog_title">Conectar con código</string>
-    <string name="fleet_enter_code_dialog_desc">Introduce el nombre de la flota y el código de 6 números que se te ha proporcionado en la aplicación de tu flota para establecer la conexión.</string>
+    <string name="fleet_connect_with_code">Conectar por correo</string>
+    <string name="fleet_enter_code_dialog_title">Conectar por correo</string>
+    <string name="fleet_enter_code_dialog_desc">Inicia sesión con tu cuenta de correo asignada por el gestor de la flota para establecer la conexión automáticamente.</string>
     <string name="fleet_name_placeholder">Nombre de la flota</string>
-    <string name="fleet_code_placeholder">Código de 6 números</string>
-    <string name="fleet_btn_connect">Conectar</string>
+    <string name="fleet_code_placeholder">Correo electrónico</string>
+    <string name="fleet_btn_connect">Conectar por correo</string>
     <string name="fleet_btn_disconnect">Desconectar de la flota</string>
     <string name="fleet_disconnect_confirm_title">¿Desconectar de la flota?</string>
     <string name="fleet_disconnect_confirm_desc">¿Estás seguro de que deseas desconectarte de la flota? Dejarás de compartir tus ingresos y gastos en tiempo real.</string>
-    <string name="fleet_error_invalid_code">El código debe tener exactamente 6 números.</string>
+    <string name="fleet_error_invalid_code">Correo electrónico no válido.</string>
     <string name="fleet_error_invalid_name">El nombre de la flota no puede estar vacío.</string>
+    <string name="fleet_option_work_title">Trabajo con una flota</string>
+    <string name="fleet_option_work_desc">Conecta tu cuenta para compartir ingresos y gastos con tu flota</string>
+    <string name="fleet_option_manage_title">Gestiono una flota</string>
+    <string name="fleet_option_manage_desc">Plataforma para administradores y gestores de flota</string>
+    <string name="fleet_option_whatsapp_title">WhatsApp ayuda</string>
+    <string name="fleet_option_whatsapp_desc">Contacta con soporte a través de WhatsApp</string>
+    <string name="fleet_btn_leave">Abandonar flota actual</string>
+    <string name="fleet_leave_confirm_title">¿Abandonar la flota?</string>
+    <string name="fleet_leave_confirm_desc">¿Estás seguro de que deseas desvincularte de la flota \"%1$s\"? Ya no compartirás ingresos ni gastos con ella. Todos tus datos locales se conservarán íntegros y quedarás libre para unirte a otra flota o trabajar por libre.</string>
+    <string name="fleet_btn_confirm_leave">Desvincularme</string>
+    <string name="fleet_new_invitation_banner_title">¡Nueva invitación de flota!</string>
+    <string name="fleet_new_invitation_banner_desc">La flota \"%1$s\" te ha invitado a unirte. Pulsa para transferirte.</string>
+    <string name="fleet_manager_dialog_title">Gestiono una flota</string>
+    <string name="fleet_manager_dialog_desc">La plataforma para gestores de flota está disponible en versión Web. Próximamente podrás gestionar tu flota directamente desde la app.</string>
+    <string name="badge_coming_soon">Próximamente</string>
+    <string name="fleet_unlinked_notice_title">Desvinculado de la flota</string>
+    <string name="fleet_unlinked_notice_desc">El gestor de la flota ha finalizado tu vinculación o has sido expulsado de la flota. Tus datos locales se mantienen intactos en tu dispositivo.</string>
+    <string name="fleet_unlinked_notice_button">Entendido</string>
+
+    <!-- Secciones de jornada y madrugada -->
+    <string name="section_out_of_day">Madrugada / Día siguiente</string>
+    <string name="section_in_day">Día de la jornada</string>
+    <string name="chip_same_day">Mismo día</string>
+    <string name="chip_next_day">+1 Día (Madrugada)</string>
 </resources>

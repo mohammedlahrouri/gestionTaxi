@@ -1,7 +1,13 @@
 package com.moham.taxi.data.service
 
+import android.content.Context
+import android.location.Address
+import android.location.Geocoder
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -9,8 +15,8 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-
 import java.util.Locale
+import kotlin.coroutines.resume
 
 data class PlaceSuggestion(
     val displayName: String,
@@ -81,33 +87,139 @@ object GeocodingService {
         null
     }
 
-    suspend fun getSuggestions(query: String, biasCity: String? = null): List<PlaceSuggestion> = withContext(Dispatchers.IO) {
-        if (query.trim().length < 3) return@withContext emptyList()
+    suspend fun getSuggestions(query: String, biasCity: String? = null): List<PlaceSuggestion> {
+        return getSuggestions(context = null, query = query, biasCity = biasCity)
+    }
+
+    suspend fun getSuggestions(
+        context: Context? = null,
+        query: String,
+        biasCity: String? = null
+    ): List<PlaceSuggestion> = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        if (trimmed.length < 3) return@withContext emptyList()
+
+        // 1. Intentar Geocoder nativo de Android (Google Maps) si hay contexto disponible
+        if (context != null && Geocoder.isPresent()) {
+            try {
+                val geocoder = Geocoder(context, Locale.getDefault())
+                val addresses = try {
+                    withTimeoutOrNull(3500L) {
+                        getAddressesFromGeocoder(geocoder, trimmed, 6)
+                    } ?: emptyList()
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                if (addresses.isNotEmpty()) {
+                    val seen = mutableSetOf<String>()
+                    val results = mutableListOf<PlaceSuggestion>()
+                    for (addr in addresses) {
+                        val formatted = formatGeocoderAddress(addr)
+                        if (formatted.isNotBlank() && seen.add(formatted)) {
+                            results.add(PlaceSuggestion(formatted, addr.latitude, addr.longitude))
+                        }
+                    }
+                    if (results.isNotEmpty()) {
+                        return@withContext results
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback silencioso a Photon
+            }
+        }
+
+        // 2. Fallback a Photon (OpenStreetMap) sin forzar ciudad para permitir viajes interprovinciales
+        getSuggestionsPhoton(trimmed)
+    }
+
+    private suspend fun getAddressesFromGeocoder(
+        geocoder: Geocoder,
+        query: String,
+        maxResults: Int
+    ): List<Address> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            suspendCancellableCoroutine { continuation ->
+                try {
+                    geocoder.getFromLocationName(query, maxResults, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: MutableList<Address>) {
+                            if (continuation.isActive) {
+                                continuation.resume(addresses)
+                            }
+                        }
+
+                        override fun onError(errorMessage: String?) {
+                            if (continuation.isActive) {
+                                continuation.resume(emptyList())
+                            }
+                        }
+                    })
+                } catch (e: Exception) {
+                    if (continuation.isActive) {
+                        continuation.resume(emptyList())
+                    }
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            geocoder.getFromLocationName(query, maxResults) ?: emptyList()
+        }
+    }
+
+    private fun formatGeocoderAddress(address: Address): String {
+        val line0 = address.getAddressLine(0)
+        if (!line0.isNullOrBlank()) {
+            return line0
+                .replace(Regex(",\\s*(España|Spain)\\s*$", RegexOption.IGNORE_CASE), "")
+                .trim()
+        }
+
+        val parts = mutableListOf<String>()
+        val street = address.thoroughfare
+        val number = address.subThoroughfare
+        val locality = address.locality ?: address.subAdminArea ?: address.adminArea
+        val feature = address.featureName
+        val postalCode = address.postalCode
+
+        if (!street.isNullOrBlank()) {
+            if (!number.isNullOrBlank()) {
+                parts.add("$street, $number")
+            } else {
+                parts.add(street)
+            }
+        } else if (!feature.isNullOrBlank() && feature != number) {
+            parts.add(feature)
+        }
+
+        if (!postalCode.isNullOrBlank() && !locality.isNullOrBlank()) {
+            parts.add("$postalCode $locality")
+        } else if (!locality.isNullOrBlank()) {
+            parts.add(locality)
+        }
+
+        return parts.joinToString(", ")
+    }
+
+    private suspend fun getSuggestionsPhoton(query: String): List<PlaceSuggestion> = withContext(Dispatchers.IO) {
         val suggestions = mutableListOf<PlaceSuggestion>()
+        val seen = mutableSetOf<String>()
         var connection: HttpURLConnection? = null
         try {
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val countryCode = Locale.getDefault().country.lowercase(Locale.ROOT)
             
-            // Querying Photon (by Komoot)
-            var urlString = "https://photon.komoot.io/api?q=$encodedQuery&limit=5"
+            // Limit 10 para poder filtrar ruido y mantener hasta 6 resultados limpios
+            var urlString = "https://photon.komoot.io/api?q=$encodedQuery&limit=10"
             if (countryCode.isNotEmpty()) {
                 urlString += "&countrycode=$countryCode"
-            }
-
-            if (!biasCity.isNullOrBlank()) {
-                val coords = getCityCoords(biasCity)
-                if (coords != null) {
-                    urlString += "&lat=${coords.first}&lon=${coords.second}&location_bias_scale=0.2"
-                }
             }
 
             val url = URL(urlString)
             connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("User-Agent", USER_AGENT)
-            connection.connectTimeout = 8000
-            connection.readTimeout = 8000
+            connection.connectTimeout = 7000
+            connection.readTimeout = 7000
 
             val responseCode = connection.responseCode
             if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -124,57 +236,60 @@ object GeocodingService {
                 if (features != null) {
                     for (i in 0 until features.length()) {
                         val feature = features.getJSONObject(i)
-                        
+                        val properties = feature.optJSONObject("properties") ?: continue
+
+                        // Filtrar paradas de bus y elementos irrelevantes
+                        val osmKey = properties.optString("osm_key", "")
+                        val osmValue = properties.optString("osm_value", "")
+                        if (osmKey == "highway" && (osmValue == "bus_stop" || osmValue == "platform")) continue
+                        if (osmValue in listOf("waste_basket", "bench", "waste_disposal", "recycling")) continue
+
                         // Parse coordinates (GeoJSON is [longitude, latitude])
                         val geometry = feature.optJSONObject("geometry")
                         val coordinates = geometry?.optJSONArray("coordinates")
                         if (coordinates != null && coordinates.length() >= 2) {
                             val lon = coordinates.optDouble(0, 0.0)
                             val lat = coordinates.optDouble(1, 0.0)
-                            
-                            // Parse properties to build a clean display name
-                            val properties = feature.optJSONObject("properties")
-                            if (properties != null) {
-                                val name = properties.optString("name", "")
-                                val housenumber = properties.optString("housenumber", "")
-                                val city = properties.optString("city", "")
-                                val postcode = properties.optString("postcode", "")
-                                val street = properties.optString("street", "")
-                                
-                                val parts = mutableListOf<String>()
-                                
-                                // Build main address line
-                                val mainPart = if (name.isNotEmpty()) {
-                                    if (street.isNotEmpty() && name != street) {
-                                        if (housenumber.isNotEmpty()) "$name ($street $housenumber)" else "$name ($street)"
-                                    } else {
-                                        if (housenumber.isNotEmpty()) "$name $housenumber" else name
-                                    }
-                                } else if (street.isNotEmpty()) {
-                                    if (housenumber.isNotEmpty()) "$street $housenumber" else street
+
+                            val name = properties.optString("name", "")
+                            val housenumber = properties.optString("housenumber", "")
+                            val city = properties.optString("city", properties.optString("town", properties.optString("village", "")))
+                            val postcode = properties.optString("postcode", "")
+                            val street = properties.optString("street", "")
+                            val state = properties.optString("state", "")
+
+                            val parts = mutableListOf<String>()
+
+                            val mainPart = if (street.isNotEmpty()) {
+                                if (housenumber.isNotEmpty()) {
+                                    if (name.isNotEmpty() && name != street) "$street $housenumber ($name)" else "$street $housenumber"
                                 } else {
-                                    ""
+                                    if (name.isNotEmpty() && name != street) "$street ($name)" else street
                                 }
-                                
-                                if (mainPart.isNotEmpty()) {
-                                    parts.add(mainPart)
+                            } else if (name.isNotEmpty()) {
+                                if (housenumber.isNotEmpty()) "$name $housenumber" else name
+                            } else {
+                                ""
+                            }
+
+                            if (mainPart.isNotEmpty()) {
+                                parts.add(mainPart)
+                            }
+
+                            if (city.isNotEmpty()) {
+                                if (postcode.isNotEmpty()) {
+                                    parts.add("$postcode $city")
+                                } else {
+                                    parts.add(city)
                                 }
-                                
-                                // Build city/postcode line
-                                if (city.isNotEmpty()) {
-                                    if (postcode.isNotEmpty()) {
-                                        parts.add("$postcode $city")
-                                    } else {
-                                        parts.add(city)
-                                    }
-                                } else if (postcode.isNotEmpty()) {
-                                    parts.add(postcode)
-                                }
-                                
-                                val displayName = parts.joinToString(", ")
-                                if (displayName.isNotEmpty()) {
-                                    suggestions.add(PlaceSuggestion(displayName, lat, lon))
-                                }
+                            } else if (state.isNotEmpty()) {
+                                parts.add(state)
+                            }
+
+                            val displayName = parts.joinToString(", ")
+                            if (displayName.isNotEmpty() && seen.add(displayName)) {
+                                suggestions.add(PlaceSuggestion(displayName, lat, lon))
+                                if (suggestions.size >= 6) break
                             }
                         }
                     }

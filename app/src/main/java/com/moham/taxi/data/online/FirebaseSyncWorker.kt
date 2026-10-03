@@ -23,6 +23,12 @@ class FirebaseSyncWorker(
             return Result.failure()
         }
 
+        // Si el conductor fue expulsado o desvinculado por el gestor, se limpia la vinculación y no se reintenta
+        val unlinked = repository.checkDriverExpulsionOrUnlink()
+        if (unlinked || !repository.isFleetConnected()) {
+            return Result.success()
+        }
+
         val success = repository.syncRidesAndExpenses()
         return if (success) {
             Result.success()
